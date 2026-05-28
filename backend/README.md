@@ -5,6 +5,7 @@
 - storage/images: 存储用户上传的图像素材
 - src: 源码目录
 - src/main.py: 入口文件
+- tests/videos: 存放测试用的视频素材
 
 ## Quickstart
 
