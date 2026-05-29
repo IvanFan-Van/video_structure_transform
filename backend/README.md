@@ -5,7 +5,11 @@
 - storage/images: 存储用户上传的图像素材
 - src: 源码目录
 - src/main.py: 入口文件
+- src/models.py: 定义数据库模型, 例如 User, Asset 等
+- src/utils.py: 定义一些辅助函数, 例如 `verify_password`, `hash_password`
+- src/video.py: 定义 `VideoClip` 类, 用于保存 Video 信息
 - tests/videos: 存放测试用的视频素材
+
 
 ## Quickstart
 
