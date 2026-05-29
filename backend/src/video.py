@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 import ffmpeg
@@ -146,7 +147,7 @@ class VideoClip:
             )
 
             process.run(overwrite_output=True, capture_stdout=True, capture_stderr=True)
-            print("视频压缩成功！")
+            print(f"Video Compressed Successfully: {output_path.resolve()}")
 
         except ffmpeg.Error as e:
             print("FFmpeg 压缩过程中出错！")
@@ -156,6 +157,13 @@ class VideoClip:
 
         # 5. 返回压缩后的新对象
         return VideoClip(str(output_path.resolve()))
+
+    def base64_encode(self) -> str:
+        """Return the base64-encoded string of the video file."""
+
+        with open(self.filepath, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode("utf-8")
+        return encoded
 
 
 if __name__ == "__main__":
