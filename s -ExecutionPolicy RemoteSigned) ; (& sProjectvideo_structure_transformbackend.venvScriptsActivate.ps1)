@@ -1,0 +1,75 @@
+[1mdiff --cc backend/notebooks/main.ipynb[m
+[1mindex cd674f1,cd7d352..0000000[m
+[1m--- a/backend/notebooks/main.ipynb[m
+[1m+++ b/backend/notebooks/main.ipynb[m
+[36m@@@ -16,35 -16,39 +16,70 @@@[m
+     "execution_count": null,[m
+     "id": "bf1448fa",[m
+     "metadata": {},[m
+[32m++<<<<<<< Updated upstream[m
+[32m +   "outputs": [],[m
+[32m +   "source": [[m
+[32m +    "import os\n",[m
+[32m +    "import sys\n",[m
+[32m++=======[m
+[32m+    "outputs": [[m
+[32m+     {[m
+[32m+      "data": {[m
+[32m+       "text/plain": [[m
+[32m+        "True"[m
+[32m+       ][m
+[32m+      },[m
+[32m+      "execution_count": 4,[m
+[32m+      "metadata": {},[m
+[32m+      "output_type": "execute_result"[m
+[32m+     }[m
+[32m+    ],[m
+[32m+    "source": [[m
+[32m+     "import os\n",[m
+[32m+     "from pathlib import Path\n",[m
+[32m+     "from openai import OpenAI\n",[m
+[32m++>>>>>>> Stashed changes[m
+      "from dotenv import load_dotenv, find_dotenv\n",[m
+[32m +    "from pathlib import Path\n",[m
+      "\n",[m
+[32m++<<<<<<< Updated upstream[m
+[32m +    "load_dotenv(find_dotenv(), override=True)\n",[m
+[32m +    "\n",[m
+[32m +    "sys.path.append(str(Path(os.getcwd()).parent))"[m
+[32m++=======[m
+[32m+     "load_dotenv(find_dotenv(), override=True)\n"[m
+[32m++>>>>>>> Stashed changes[m
+     ][m
+    },[m
+    {[m
+     "cell_type": "code",[m
+     "execution_count": null,[m
+[32m++<<<<<<< Updated upstream[m
+[32m +   "id": "4549ff13",[m
+[32m +   "metadata": {},[m
+[32m +   "outputs": [],[m
+[32m +   "source": [][m
+[32m +  },[m
+[32m +  {[m
+[32m +   "cell_type": "code",[m
+[32m +   "execution_count": null,[m
+[32m +   "id": "ff0074b2",[m
+[32m +   "metadata": {},[m
+[32m +   "outputs": [],[m
+[32m +   "source": [[m
+[32m +    "for video_path in Path(\"../tests/videos\").glob(\"*.mp4\"):\n",[m
+[32m +    "    print(video_path)"[m
+[32m++=======[m
+[32m+    "id": "c2ead8de",[m
+[32m+    "metadata": {},[m
+[32m+    "outputs": [],[m
+[32m+    "source": [[m
+[32m+     "VIDEO_FILENAME = \"抖音2026528-645764.mp4\"\n",[m
+[32m+     "VIDEO_PATH = Path.cwd().parent/\"tests\"/\"videos\"/VIDEO_FILENAME\n",[m
+[32m+     "AUDIO_PATH = Path.cwd()/\"temp_audio.wav\"\n",[m
+[32m+     "print(f\"目标视频路径: {VIDEO_PATH.resolve()}\")\n",[m
+[32m+     "print(f\"检查视频是否存在: {VIDEO_PATH.exists()}\")"[m
+[32m++>>>>>>> Stashed changes[m
+     ][m
+    },[m
+    {[m
