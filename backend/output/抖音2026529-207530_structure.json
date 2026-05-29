@@ -1,0 +1,83 @@
+{
+    "production_strategy": {
+        "video_category": "纯文字创意反差剪辑",
+        "requires_physical_shooting": false,
+        "user_action_required": [
+            "无需人工拍摄，下游系统可全自动触发 AI 画面合成及自动剪辑"
+        ]
+    },
+    "global_config": {
+        "visual_style": "高对比度极简黑底白字视觉体系，文字边缘带柔和辉光，关键内容使用红色高亮衬底，搭配RGB色彩偏移故障特效点缀，底部固定哥特风格小字水印，整体画面干净利落，视觉冲击力强",
+        "audio_bgm_vibe": "节奏紧凑的电子氛围感背景音乐，鼓点随内容推进逐步加强，在关键反转节点搭配重音音效，营造洗脑反差的传播感"
+    },
+    "global_placeholders": {
+        "{{核心提问}}": "原视频中是“什么东西比10亿更有价值？”，可替换为任意反差类核心提问",
+        "{{常规高价值事物列表}}": "原视频中是[友谊,时光,自由]，可替换为大众普遍认知的高价值事物集合",
+        "{{反常识高价值数字}}": "原视频中是11亿，可替换为对应提问的反常识核心答案数字"
+    },
+    "storyboard_scenes": [
+        {
+            "scene_id": 1,
+            "time_slot": "0.0s - 1.24s",
+            "scene_role": "开篇悬念铺垫",
+            "ai_video_prompt": "纯黑背景，底部保留哥特风格白色小水印，居中位置渐显白色发光中文大字，镜头完全固定，文字边缘带柔和弥散辉光",
+            "script_template": "那天我问了个问题",
+            "screen_overlay": "居中白色发光大字：那天我问了个问题，底部角落保留哥特字体水印",
+            "transition_effect": "文字渐隐转场"
+        },
+        {
+            "scene_id": 2,
+            "time_slot": "1.24s - 2.47s",
+            "scene_role": "抛出核心提问",
+            "ai_video_prompt": "纯白背景，居中显示浅灰色渐变的大号提问文字，镜头静止，文字带轻微动态模糊效果",
+            "script_template": "{{核心提问}}",
+            "screen_overlay": "居中浅灰色大号文字：什么东西比10亿更有价值？",
+            "transition_effect": "全屏闪黑转场"
+        },
+        {
+            "scene_id": 3,
+            "time_slot": "2.47s - 4.7s",
+            "scene_role": "常规答案展示",
+            "ai_video_prompt": "纯黑背景，三根红色吊绳从画面上方垂下，依次悬挂三张白色卡片，卡片上的红色文字依次亮起，镜头缓慢推近卡片",
+            "script_template": "依次展示大众认知里比金钱更有价值的事物",
+            "screen_overlay": "三张悬挂卡片分别显示红色文字：友谊、时光、自由",
+            "transition_effect": "卡片全部消失，黑屏转场"
+        },
+        {
+            "scene_id": 4,
+            "time_slot": "4.7s - 8.76s",
+            "scene_role": "反转铺垫+揭晓反常识答案",
+            "ai_video_prompt": "纯黑背景，白色发光文字依次渐显，其中关键词用红色高亮块衬底，最后反常识数字以高饱和红色发光效果弹出，带RGB色彩偏移故障特效",
+            "script_template": "直到有一天，一个“傻子”回答道：{{反常识高价值数字}}",
+            "screen_overlay": "依次出现文字：直到有一天、一个“傻子”回答道、最终弹出带故障特效的红色高亮文字：11亿",
+            "transition_effect": "故障闪屏转场"
+        },
+        {
+            "scene_id": 5,
+            "time_slot": "8.76s - 10.4s",
+            "scene_role": "强化数字对比",
+            "ai_video_prompt": "纯白背景，居中显示浅灰色的数字大小对比公式，镜头静止，文字带轻微呼吸发光效果",
+            "script_template": "{{反常识高价值数字}} > 10亿",
+            "screen_overlay": "居中浅灰色大号文字：11亿 > 10亿",
+            "transition_effect": "全屏切黑转场"
+        },
+        {
+            "scene_id": 6,
+            "time_slot": "10.4s - 14.2s",
+            "scene_role": "补充价值佐证清单",
+            "ai_video_prompt": "深灰渐变背景，白色说明文字快速滚动展示，镜头静止，文字逐行高亮弹出",
+            "script_template": "逐条列出11项比10亿更有价值的人生内容",
+            "screen_overlay": "滚动展示带编号的价值说明文字，依次显示3.纯粹靠谱的知己、4.坦荡无愧的本心...8.平安顺遂",
+            "transition_effect": "文字全部淡出转场"
+        },
+        {
+            "scene_id": 7,
+            "time_slot": "14.2s - 20.1s",
+            "scene_role": "收尾强化记忆点",
+            "ai_video_prompt": "纯黑背景，白色发光的核心数字反复渐显，随后弹出数字大小对比公式，最后画面渐黑，镜头全程固定",
+            "script_template": "28 launching",
+            "screen_overlay": "反复弹出白色发光文字11亿，随后展示10亿<11亿、11亿>10亿的对比公式，最终画面变黑",
+            "transition_effect": "画面全黑结束"
+        }
+    ]
+}
