@@ -6,8 +6,9 @@ from dotenv import find_dotenv, load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from models import User, engine
 from sqlmodel import Session, select
+
+from models import User, engine
 from utils import create_access_token, hash_password, verify_password
 
 load_dotenv(find_dotenv())

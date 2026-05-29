@@ -22,3 +22,6 @@ dependencies = [
 
 [dependency-groups]
 dev = ["ipykernel>=7.2.0", "ipywidgets>=8.1.8"]
+
+[tool.ruff]
+select = ["I", "UP", "E", "F", "W", "C90"]
