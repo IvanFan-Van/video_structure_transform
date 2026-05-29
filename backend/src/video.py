@@ -158,7 +158,7 @@ class VideoClip:
         # 5. 返回压缩后的新对象
         return VideoClip(str(output_path.resolve()))
 
-    def base64_encode(self) -> str:
+    def to_base64(self) -> str:
         """Return the base64-encoded string of the video file."""
 
         with open(self.filepath, "rb") as f:
