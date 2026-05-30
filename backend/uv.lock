@@ -183,6 +183,7 @@ dependencies = [
     { name = "opencv-python" },
     { name = "python-dotenv" },
     { name = "python-jose", extra = ["cryptography"] },
+    { name = "scenedetect" },
     { name = "sqlmodel" },
     { name = "uvicorn" },
 ]
@@ -206,6 +207,7 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.13.0.92" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.5.0" },
+    { name = "scenedetect", specifier = ">=0.7" },
     { name = "sqlmodel", specifier = ">=0.0.38" },
     { name = "uvicorn", specifier = ">=0.48.0" },
 ]
@@ -2265,6 +2267,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/da/8a/22b7beea3ee0d44b1916c0c1cb0ee3af23b700b6da9f04991899d0c555d4/rsa-4.9.1.tar.gz", hash = "sha256:e7bdbfdb5497da4c07dfd35530e1a902659db6ff241e39d9953cad06ebd0ae75", size = 29034, upload-time = "2025-04-16T09:51:18.218Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/64/8d/0133e4eb4beed9e425d9a98ed6e081a55d195481b7632472be1af08d2f6b/rsa-4.9.1-py3-none-any.whl", hash = "sha256:68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762", size = 34696, upload-time = "2025-04-16T09:51:17.142Z" },
+]
+
+[[package]]
+name = "scenedetect"
+version = "0.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "numpy" },
+    { name = "opencv-python" },
+    { name = "platformdirs" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0a/72/24d145369ac027c9839150fd7ef059659367d8615510a5526af511415453/scenedetect-0.7.tar.gz", hash = "sha256:c907ac5e30e7771c73554f68c432277cf72b917408dd02ead6dc1425bc587407", size = 245286, upload-time = "2026-05-03T22:49:35.069Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/73/3aed375e903bfe4622dd9bd984ef86f31e9e1a29a1b7d28f92b935b8e350/scenedetect-0.7-py3-none-any.whl", hash = "sha256:ae0fa86fd7c723fa9b56517888c4a8b8ff5b6e6d0f1990a13d59fc11910ee7e1", size = 134726, upload-time = "2026-05-03T22:49:31.623Z" },
 ]
 
 [[package]]
