@@ -4,3 +4,6 @@ database.db
 output/
 **/__pycache__/
 **/*.pyc
+
+notebooks/*
+!notebooks/*.ipynb
