@@ -1,0 +1,96 @@
+<template id="beat-3-proof-template">
+  <div class="composition" data-composition-id="beat-3-proof" data-width="1080" data-height="1920" style="width: 1080px; height: 1920px; position: relative; overflow: hidden; background: #000000;">
+    <!-- 背景层 -->
+    <div id="beat-3-proof-bg" class="clip" data-start="0" data-duration="10.0" data-track-index="0" style="width: 100%; height: 100%; background-color: #1A1A1A; position: absolute; top: 0; left: 0;"></div>
+    
+    <!-- 顶部渐变遮罩 -->
+    <div id="beat-3-proof-top-mask" class="clip" data-start="0" data-duration="10.0" data-track-index="1" style="width: 100%; height: 240px; position: absolute; top: 0; left: 0; background: linear-gradient(to bottom, #1A1A1A, transparent); z-index: 2;"></div>
+    
+    <!-- 底部渐变遮罩 -->
+    <div id="beat-3-proof-bottom-mask" class="clip" data-start="0" data-duration="10.0" data-track-index="2" style="width: 100%; height: 240px; position: absolute; bottom: 0; left: 0; background: linear-gradient(to top, #1A1A1A, transparent); z-index: 2;"></div>
+    
+    <!-- 滚动文本容器 -->
+    <div id="beat-3-proof-scroll-container" class="clip" data-start="0.1" data-duration="9.0" data-track-index="3" style="width: 900px; position: absolute; left: 90px; top: 320px; z-index: 3;">
+      <div style="font-family: 'Noto Sans SC'; font-size: 32px; color: #B0B0B0; line-height: 2.2; text-align: center;">
+        1. 健康无病的身体<br>
+        2. 通透自洽的情绪<br>
+        3. 无条件爱你的家人<br>
+        4. 不被消耗的社交圈<br>
+        5. 持续成长的能力<br>
+        6. 敢随时重启的勇气<br>
+        7. 深度专注的专注力<br>
+        8. 对世界的好奇心<br>
+        9. 不被绑架的自由<br>
+        10. 睡个好觉的睡眠<br>
+        11. 发自内心的快乐<br>
+        <br><br><br>
+      </div>
+    </div>
+
+    <!-- 核心不等式1 -->
+    <div id="beat-3-proof-ineq1" class="clip" data-start="8.2" data-duration="1.8" data-track-index="4" style="font-family: 'Noto Serif SC'; font-size: 88px; font-weight: 700; color: #FFFFFF; position: absolute; top: 760px; left: 50%; transform: translateX(-50%); text-shadow: 0 0 32px rgba(255,255,255,0.6); z-index: 4; opacity: 0; filter: blur(20px);">
+      10亿 < 11亿
+    </div>
+
+    <!-- 核心不等式2 红色高亮 -->
+    <div id="beat-3-proof-ineq2" class="clip" data-start="8.8" data-duration="1.2" data-track-index="5" style="font-family: 'Noto Serif SC'; font-size: 96px; font-weight: 700; color: #FF2222; position: absolute; top: 900px; left: 50%; transform: translateX(-50%); text-shadow: 0 0 40px rgba(255,34,34,0.7); z-index: 5; opacity: 0; filter: blur(25px);">
+      11亿 > 10亿
+    </div>
+
+    <!-- 径向光晕装饰 -->
+    <div id="beat-3-proof-glow" class="clip" data-start="0.1" data-duration="9.9" data-track-index="6" style="width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle, rgba(255,238,238,0.12), transparent 70%); position: absolute; top: 660px; left: 240px; z-index: 1; opacity: 0.6;"></div>
+
+    <!-- 底部品牌水印 -->
+    <div id="beat-3-proof-brand" class="clip" data-start="0" data-duration="10.0" data-track-index="7" style="font-family: 'Noto Serif SC'; font-size: 28px; font-weight: 500; color: #B0B0B0; position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 10; letter-spacing: 8px;">
+      wuqr
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const duration = 10.0;
+
+    // 高速向上滚动11项内容
+    tl.fromTo("#beat-3-proof-scroll-container", 
+      { y: 800 }, 
+      { y: -2200, duration: 8, ease: "sine.inOut" },
+      0.1
+    );
+
+    // 光晕呼吸 ambient loop
+    tl.fromTo("#beat-3-proof-glow",
+      { scale: 1, opacity: 0.6 },
+      { scale: 1.3, opacity: 0.9, duration: 3, ease: "sine.inOut", yoyo: true, repeat: Math.floor(duration / 3) - 1 },
+      0.1
+    );
+
+    // 第一个不等式渐显
+    tl.fromTo("#beat-3-proof-ineq1",
+      { opacity: 0, filter: "blur(20px)", scale: 0.8 },
+      { opacity: 1, filter: "blur(0px)", scale: 1, duration: 0.4, ease: "power3.out" },
+      8.2
+    );
+
+    // 第二个红色高亮不等式入场
+    tl.fromTo("#beat-3-proof-ineq2",
+      { opacity: 0, filter: "blur(25px)", scale: 0.7 },
+      { opacity: 1, filter: "blur(0px)", scale: 1.05, duration: 0.4, ease: "power3.out" },
+      8.8
+    );
+
+    // 统一向上退场动效 velocity-matched upward
+    tl.to([
+      "#beat-3-proof-scroll-container",
+      "#beat-3-proof-ineq1",
+      "#beat-3-proof-ineq2",
+      "#beat-3-proof-glow"
+    ], {
+      y: "-150%",
+      filter: "blur(30px)",
+      duration: 0.33,
+      ease: "power2.in"
+    }, 9.6);
+
+    window.__timelines = window.__timelines || {};
+      window.__timelines["beat-3-proof"] = tl;
+  </script>
+</template>

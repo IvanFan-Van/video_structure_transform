@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .clip {
+            position: relative;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            background: #000;
+            transition: background 0.1s steps(2);
+        }
+
+        .watermark {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.4);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .values-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+            text-align: center;
+            font-size: 28px;
+            line-height: 2;
+            color: white;
+            font-weight: 500;
+        }
+
+        .value-item {
+            opacity: 0.4;
+            transition: opacity 0.2s, text-shadow 0.2s;
+            margin: 10px 0;
+        }
+
+        .value-item.highlight {
+            opacity: 1;
+            color: #FF3333;
+            text-shadow: 0 0 12px rgba(255, 51, 51, 0.6);
+            font-weight: 700;
+        }
+
+        /* 快速背景闪烁 */
+        @keyframes bgFlash {
+            0% {
+                background: #000;
+            }
+
+            49% {
+                background: #000;
+            }
+
+            50% {
+                background: #fff;
+            }
+
+            100% {
+                background: #fff;
+            }
+        }
+
+        .flash {
+            animation: bgFlash 0.08s infinite;
+        }
+
+        /* 轻微抖动 */
+        @keyframes shake {
+            0% {
+                transform: translate(-50%, -50%) translateX(0);
+            }
+
+            25% {
+                transform: translate(-50%, -50%) translateX(3px);
+            }
+
+            75% {
+                transform: translate(-50%, -50%) translateX(-3px);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) translateX(0);
+            }
+        }
+
+        .shake {
+            animation: shake 0.1s infinite;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+
+<body>
+    <div class="clip" data-start="9.8" data-duration="5.0" data-beat="4">
+        <div class="values-container" id="valuesList">
+            <div class="value-item">11 亿次心跳</div>
+            <div class="value-item">11 亿次呼吸</div>
+            <div class="value-item">11 亿个微笑</div>
+            <div class="value-item">11 亿次日落</div>
+            <div class="value-item">11 亿次感谢</div>
+            <div class="value-item">11 亿个拥抱</div>
+            <div class="value-item">11 亿次原谅</div>
+            <div class="value-item">11 亿个新的开始</div>
+            <div class="value-item">11 亿次 I love you</div>
+            <div class="value-item">11 亿次重新站起</div>
+            <div class="value-item">11 亿秒陪伴</div>
+            <div class="value-item ending" style="margin-top:30px; font-size:24px;">每一个「1」背后，都是一段真实的人生。</div>
+        </div>
+        <div class="watermark">✧ 智作 | 你的品牌</div>
+    </div>
+    <script>
+        const container = document.getElementById("valuesList");
+        const items = container.querySelectorAll(".value-item:not(.ending)");
+        let index = 0;
+        // 闪烁背景和抖动
+        document.querySelector(".clip").classList.add("flash", "shake");
+        function highlightNext() {
+            if (index > 0) items[index - 1].classList.remove("highlight");
+            if (index < items.length) {
+                items[index].classList.add("highlight");
+                index++;
+                setTimeout(highlightNext, 380);
+            } else {
+                // 高亮最后结束语
+                document.querySelector(".ending").classList.add("highlight");
+                // 停止闪烁抖动
+                setTimeout(() => {
+                    document.querySelector(".clip").classList.remove("flash", "shake");
+                }, 400);
+            }
+        }
+        setTimeout(highlightNext, 200);
+    </script>
+</body>
+
+</html>

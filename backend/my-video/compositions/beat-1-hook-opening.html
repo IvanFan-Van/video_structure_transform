@@ -1,0 +1,157 @@
+<template id="beat-1-hook-opening-template">
+  <div 
+    class="composition"
+    data-composition-id="beat-1-hook-opening"
+    data-width="1080"
+    data-height="1920"
+    style="width: 100%; height: 100%; position: relative; overflow: hidden; background-color: #000000;"
+  >
+    <!-- 纯黑背景层 -->
+    <div 
+      id="beat-1-hook-opening-bg"
+      class="clip"
+      data-start="0"
+      data-duration="1.7"
+      data-track-index="0"
+      style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; background-color: #000000;"
+    ></div>
+
+    <!-- 全局径向柔光层 -->
+    <div 
+      id="beat-1-hook-opening-radial-glow"
+      class="clip"
+      data-start="0"
+      data-duration="1.7"
+      data-track-index="1"
+      style="width: 700px; height: 700px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%);"
+    ></div>
+
+    <!-- 装饰光点1 -->
+    <div 
+      id="beat-1-hook-opening-dot-1"
+      class="clip"
+      data-start="0"
+      data-duration="1.7"
+      data-track-index="2"
+      style="width: 12px; height: 12px; position: absolute; top: 320px; left: 180px; border-radius: 50%; background-color: rgba(255,255,255,0.15);"
+    ></div>
+
+    <!-- 装饰光点2 -->
+    <div 
+      id="beat-1-hook-opening-dot-2"
+      class="clip"
+      data-start="0"
+      data-duration="1.7"
+      data-track-index="3"
+      style="width: 8px; height: 8px; position: absolute; top: 480px; right: 220px; border-radius: 50%; background-color: rgba(255,34,34,0.2);"
+    ></div>
+
+    <!-- 装饰光点3 -->
+    <div 
+      id="beat-1-hook-opening-dot-3"
+      class="clip"
+      data-start="0"
+      data-duration="1.7"
+      data-track-index="4"
+      style="width: 10px; height: 10px; position: absolute; bottom: 420px; left: 240px; border-radius: 50%; background-color: rgba(255,255,255,0.12);"
+    ></div>
+
+    <!-- 装饰光点4 -->
+    <div 
+      id="beat-1-hook-opening-dot-4"
+      class="clip"
+      data-start="0"
+      data-duration="1.7"
+      data-track-index="5"
+      style="width: 6px; height: 6px; position: absolute; bottom: 560px; right: 190px; border-radius: 50%; background-color: rgba(255,34,34,0.18);"
+    ></div>
+
+    <!-- 主标题 -->
+    <div 
+      id="beat-1-hook-opening-main-title"
+      class="clip"
+      data-start="0.1"
+      data-duration="1.7"
+      data-track-index="6"
+      style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-family: 'Noto Serif SC', serif; font-size: 80px; font-weight: 700; color: #FFFFFF; text-align: center; line-height: 1.4; text-shadow: 0 0 40px rgba(255,255,255,0.35);"
+    >
+      那天我问了个问题
+    </div>
+
+    <!-- 底部品牌水印 -->
+    <div 
+      id="beat-1-hook-opening-brand-watermark"
+      class="clip"
+      data-start="0.2"
+      data-duration="1.7"
+      data-track-index="7"
+      style="position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%); font-family: 'Cinzel', serif; font-size: 24px; font-weight: 500; color: #888888; letter-spacing: 4px;"
+    >
+      WUQR
+    </div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const duration = 1.7;
+
+    // 背景光晕呼吸动画
+    tl.fromTo(
+      "#beat-1-hook-opening-radial-glow",
+      { scale: 1 },
+      { scale: 1.07, duration: duration, ease: "sine.inOut" },
+      0
+    );
+
+    // 装饰点1漂移动画
+    tl.fromTo(
+      "#beat-1-hook-opening-dot-1",
+      { x: 0, y: 0 },
+      { x: 25, y: -15, duration: duration, ease: "power1.inOut" },
+      0
+    );
+
+    // 装饰点2漂移动画
+    tl.fromTo(
+      "#beat-1-hook-opening-dot-2",
+      { x: 0, y: 0 },
+      { x: -20, y: 20, duration: duration, ease: "power2.inOut" },
+      0
+    );
+
+    // 装饰点3漂移动画
+    tl.fromTo(
+      "#beat-1-hook-opening-dot-3",
+      { x: 0, y: 0 },
+      { x: 18, y: -12, duration: duration, ease: "sine.inOut" },
+      0
+    );
+
+    // 装饰点4漂移动画
+    tl.fromTo(
+      "#beat-1-hook-opening-dot-4",
+      { x: 0, y: 0 },
+      { x: -15, y: 18, duration: duration, ease: "power1.out" },
+      0
+    );
+
+    // 主标题从顶部猛击入场
+    tl.fromTo(
+      "#beat-1-hook-opening-main-title",
+      { y: -220, opacity: 0, scale: 0.8, filter: "blur(12px)" },
+      { y: 0, opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.4, ease: "power3.out" },
+      0.1
+    );
+
+    // 品牌水印从底部淡入
+    tl.fromTo(
+      "#beat-1-hook-opening-brand-watermark",
+      { y: 35, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.3, ease: "power2.out" },
+      0.2
+    );
+
+    window.__timelines = window.__timelines || {};
+      window.__timelines["beat-1-hook-opening"] = tl;
+  </script>
+</template>
