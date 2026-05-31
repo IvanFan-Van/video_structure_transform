@@ -3,6 +3,7 @@ import json
 import os
 import re
 import sys
+import traceback
 from pathlib import Path
 
 import ffmpeg
@@ -594,8 +595,6 @@ def pipeline(video_path: str | Path, output_dir: str | Path):
 
 
 if __name__ == "__main__":
-    import traceback
-
     video_path = "tests/videos/6.mp4"  # 替换为你的测试视频路径
     output_dir = "output"
 
