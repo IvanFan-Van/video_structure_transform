@@ -116,7 +116,7 @@ def build_script_prompt(segments, total_text, cuts, duration, design_content):
         ]
     )
     return SCRIPT_MD_TEMPLATE.format(
-        design_content=design_content,
+        design_content_summary=design_content[:600],
         duration=duration,
         scene_list_str=scene_list_str,
         total_text=total_text,
@@ -170,6 +170,47 @@ def call_model(system_prompt: str, user_prompt: str, video_b64: str | None = Non
     except Exception as e:
         traceback.print_exc()
         print(f"⚠️ 模型调用失败: {e}")
+        raise e
+
+    return response.choices[0].message.content
+
+
+@retry(stop=stop_after_attempt(3))
+async def call_model_async(
+    system_prompt: str, user_prompt: str, video_b64: str | None = None
+):
+    print("🤖 正在异步调用多模态模型生成内容...")
+    user_content: list[dict] = [
+        {
+            "type": "text",
+            "text": user_prompt,
+        }
+    ]
+    if video_b64:
+        user_content.append(
+            {
+                "type": "video_url",
+                "video_url": {"url": f"data:video/mp4;base64,{video_b64}"},
+            }
+        )
+
+    try:
+        response = await aclient.chat.completions.create(
+            model=os.getenv("MODEL"),  # type: ignore
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt,
+                },
+                {
+                    "role": "user",
+                    "content": user_content,
+                },  # type: ignore
+            ],
+        )
+    except Exception as e:
+        traceback.print_exc()
+        print(f"⚠️ 异步模型调用失败: {e}")
         raise e
 
     return response.choices[0].message.content
@@ -250,12 +291,16 @@ def build_composition_prompt(
     ]
 
     return COMPOSITION_HTML_TEMPLATE.format(
-        beat=beat,
+        beat_num=beat["num"],
+        beat_label=beat["label"],
+        beat_id=beat["id"],
+        beat_start=beat["start"],
+        beat_end=beat["end"],
         design_content=design_content,
         storyboard_beat_section=storyboard_beat_section,
-        relative_words=relative_words,
+        relative_words_json=json.dumps(relative_words, ensure_ascii=False, indent=2),
         beat_duration=beat_duration,
-        is_final=is_final,
+        is_final_str=str(is_final).lower(),
     )
 
 
@@ -494,18 +539,31 @@ def pipeline(video_path: str | Path, output_dir: str | Path):
     print(f"检测到 {len(beats)} 个 Beat")
     compositions_dir = output_dir / "compositions"
     compositions_dir.mkdir(exist_ok=True)
-    for idx, beat in enumerate(beats):
-        is_final = idx == len(beats) - 1
-        beat_filename = f"beat_{idx + 1}.html"
-        beat_file = compositions_dir / beat_filename
-        print(f"   → 生成 {beat_filename} (Beat {beat['num']}: {beat['label']}) ...")
-        beat_section = extract_beat_section(storyboard_content, beat["num"])
-        beat_prompt = build_composition_prompt(
-            beat, design_content, beat_section, segments, is_final
-        )
-        html_content = call_model(COMPOSITION_HTML_SYSTEM_PROMPT, beat_prompt) or ""
-        beat_file.write_text(html_content, encoding="utf-8")
-        print(f"     ✅ {beat_file}")
+
+    async def generate_all_beats():
+        async def process_beat(idx, beat):
+            is_final = idx == len(beats) - 1
+            beat_filename = beat["filename"]
+            beat_file = compositions_dir / beat_filename
+            print(
+                f"   → 生成 {beat_filename} (Beat {beat['num']}: {beat['label']}) ..."
+            )
+            beat_section = extract_beat_section(storyboard_content, beat["num"])
+            beat_prompt = build_composition_prompt(
+                beat, design_content, beat_section, segments, is_final
+            )
+            html_content = (
+                await call_model_async(COMPOSITION_HTML_SYSTEM_PROMPT, beat_prompt)
+                or ""
+            )
+            beat_file.write_text(html_content, encoding="utf-8")
+            print(f"     ✅ {beat_file}")
+
+        tasks = [process_beat(idx, beat) for idx, beat in enumerate(beats)]
+        await asyncio.gather(*tasks)
+
+    # 运行异步任务并行生成
+    asyncio.run(generate_all_beats())
 
     print("\n   → 生成 index.html ...")
     index_html_path = output_dir / "index.html"
