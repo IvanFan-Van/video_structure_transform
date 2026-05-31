@@ -1,6 +1,7 @@
+import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 import bcrypt
 from jose import jwt
@@ -32,7 +33,7 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """生成 JWT 访问令牌"""
     to_encode = data.copy()
     if expires_delta:
@@ -46,6 +47,20 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         to_encode, os.environ["SECRET_KEY"], algorithm=os.getenv("ALGORITHM", "HS256")
     )
     return encoded_jwt
+
+
+def extract_json(text: str) -> dict | None:
+    try:
+        pattern = r"```json\s*(.*?)\s*```"
+        match = re.search(pattern, text, re.DOTALL)
+
+        if match:
+            text = match.group(1)
+
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        print(f"JSON 解码错误: {e}")
+        return None
 
 
 # --- 实战测试 ---
