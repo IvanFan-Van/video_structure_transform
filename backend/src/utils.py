@@ -1,7 +1,9 @@
 import json
 import os
 import re
+import time
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 
 import bcrypt
 from jose import jwt
@@ -61,6 +63,20 @@ def extract_json(text: str) -> dict | None:
     except json.JSONDecodeError as e:
         print(f"JSON 解码错误: {e}")
         return None
+
+
+def timer(func):
+    @wraps(func)  # 保留原函数的元数据（如函数名、文档字符串）
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()  # 使用高精度计时器
+        result = func(*args, **kwargs)  # 执行原函数
+        end_time = time.perf_counter()
+
+        execution_time = end_time - start_time
+        print(f"函数 [{func.__name__}] 运行耗时: {execution_time:.6f} 秒")
+        return result  # 返回原函数的执行结果
+
+    return wrapper
 
 
 # --- 实战测试 ---

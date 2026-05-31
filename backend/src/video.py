@@ -18,6 +18,8 @@ class VideoClip:
         self.audio_sample_rate = None
         self.audio_channels = None
         self.a_bitrate = None
+        self.size = None
+        self.duration: float | None = None
         self.__initialize()
 
     def __str__(self) -> str:
@@ -37,6 +39,9 @@ class VideoClip:
         try:
             # 使用 ffprobe 探测文件元数据
             probe = ffmpeg.probe(self.filepath)
+
+            self.size = probe.get("format", {}).get("size")
+            self.duration = float(probe.get("format", {}).get("duration"))
 
             # 分离视频流和音频流
             video_stream = next(
