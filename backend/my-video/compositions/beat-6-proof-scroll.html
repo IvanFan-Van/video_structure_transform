@@ -1,0 +1,59 @@
+<template id="beat-6-proof-scroll-template">
+  <div class="composition" data-composition-id="beat-6-proof-scroll" data-width="1080" data-height="1920" style="width: 100%; height: 100%; position: relative; overflow: hidden; background: #1A1A1A;">
+    <!-- 背景层 -->
+    <div id="beat-6-proof-scroll-bg" class="clip" data-start="0" data-duration="7.63" data-track-index="0" style="position: absolute; inset: 0; background-color: #1A1A1A;"></div>
+    
+    <!-- 滚动容器 -->
+    <div id="beat-6-proof-scroll-scroll-container" class="clip" data-start="0.1" data-duration="7.53" data-track-index="1" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, 0); width: 800px; display: flex; flex-direction: column; gap: 32px;">
+      <div id="beat-6-proof-scroll-item-1" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">1. 健康的身体</div>
+      <div id="beat-6-proof-scroll-item-2" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">2. 真挚的友谊</div>
+      <div id="beat-6-proof-scroll-item-3" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">3. 自由的灵魂</div>
+      <div id="beat-6-proof-scroll-item-4" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">4. 清醒的认知</div>
+      <div id="beat-6-proof-scroll-item-5" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">5. 温暖的亲情</div>
+      <div id="beat-6-proof-scroll-item-6" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">6. 长久的热爱</div>
+      <div id="beat-6-proof-scroll-item-7" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">7. 无畏的勇气</div>
+      <div id="beat-6-proof-scroll-item-8" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">8. 坚定的信念</div>
+      <div id="beat-6-proof-scroll-item-9" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">9. 从容的心态</div>
+      <div id="beat-6-proof-scroll-item-10" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FFFFFF; text-align: center; padding: 24px 0; opacity: 0;">10. 珍贵的时光</div>
+      <div id="beat-6-proof-scroll-item-11" style="font-family: 'Noto Sans SC'; font-size: 48px; font-weight: 400; color: #FF2222; text-align: center; padding: 24px 0; opacity: 0;">11. 被人深爱的底气</div>
+    </div>
+
+    <!-- 底部品牌水印 -->
+    <div id="beat-6-proof-scroll-watermark" class="clip" data-start="0" data-duration="7.63" data-track-index="13" style="position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%); font-family: 'Noto Serif SC'; font-size: 24px; font-weight: 500; color: #888888; opacity: 0.7;">WUQR</div>
+  </div>
+
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const duration = 7.63;
+
+    // 入场动画
+    tl.fromTo("#beat-6-proof-scroll-bg", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power3.out" }, 0.1);
+    tl.fromTo("#beat-6-proof-scroll-watermark", { opacity: 0 }, { opacity: 0.7, duration: 0.5, ease: "expo.out" }, 0.3);
+
+    // 匀速向上滚动主动画
+    tl.to("#beat-6-proof-scroll-scroll-container", { y: -1320, duration: 7.53, ease: "none" }, 0.1);
+
+    // 条目逐次淡入淡出
+    for (let i = 1; i <= 11; i++) {
+      const itemId = `#beat-6-proof-scroll-item-${i}`;
+      const entryTime = 0.1 + (i - 1) * 0.65;
+      tl.fromTo(itemId, { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power2.out" }, entryTime);
+      tl.to(itemId, { opacity: 0, filter: "blur(8px)", duration: 0.2, ease: "power2.in" }, entryTime + 0.6);
+    }
+
+    //  ambient 呼吸发光循环
+    tl.to("#beat-6-proof-scroll-watermark", { 
+      opacity: 0.9, 
+      duration: 2, 
+      ease: "sine.inOut", 
+      yoyo: true, 
+      repeat: Math.floor(duration / 4) - 1 
+    }, 1);
+
+    // 出场过渡动画 velocity-matched upward
+    tl.to("#beat-6-proof-scroll-scroll-container", { yPercent: -150, filter: "blur(30px)", duration: 0.33, ease: "power2.in" }, duration - 0.33);
+
+    window.__timelines = window.__timelines || {};
+      window.__timelines["beat-6-proof-scroll"] = tl;
+  </script>
+</template>
