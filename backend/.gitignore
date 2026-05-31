@@ -7,3 +7,4 @@ output/
 
 notebooks/*
 !notebooks/*.ipynb
+models/
