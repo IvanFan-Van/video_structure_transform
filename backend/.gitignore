@@ -8,3 +8,4 @@ output/
 notebooks/*
 !notebooks/*.ipynb
 models/
+storage/
