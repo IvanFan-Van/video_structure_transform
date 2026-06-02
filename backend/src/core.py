@@ -26,7 +26,7 @@ from prompts import (
     STORYBOARD_SYSTEM_PROMPT,
 )
 from utils import timer
-from video import VideoClip
+from video import VideoMeta, probe_video, video_to_base64
 
 load_dotenv(find_dotenv(), override=True)
 
@@ -49,8 +49,7 @@ aclient = AsyncOpenAI(
 
 
 @timer
-def extract_vocal_and_bgm(video: VideoClip, output_dir: Path):
-    video_path = video.filepath
+def extract_vocal_and_bgm(video_path: str | Path, output_dir: Path):
     print("📢 正在提取音频并分离人声与伴奏...")
     audio_path = output_dir / "audio.mp3"
     ffmpeg.input(str(video_path)).output(str(audio_path)).run(
@@ -98,11 +97,10 @@ def extract_transcript(audio_vocals_path: Path):
 
 
 @timer
-def analyze_video_rhythm(video: VideoClip):
+def analyze_video_rhythm(video_path: str | Path, duration: float | None):
     print("🎬 正在分析视频节奏...")
-    video_path = video.filepath
     scene_list = detect(str(video_path), ContentDetector())
-    print(f"✅ 时长: {video.duration:.1f}s | 切镜: {len(scene_list)}个")
+    print(f"✅ 时长: {duration:.1f}s | 切镜: {len(scene_list)}个")
     return scene_list
 
 
@@ -482,17 +480,17 @@ def pipeline(video_path: str | Path, output_dir: str | Path):
     print(f"  输出 : {PROJECT_DIR}")
     print(f"{'=' * 62}\n")
 
-    video = VideoClip(str(video_path))
+    meta = probe_video(video_path)
 
-    audio_vocal_path, audio_bgm_path = extract_vocal_and_bgm(video, output_dir)
+    audio_vocal_path, audio_bgm_path = extract_vocal_and_bgm(video_path, output_dir)
     segments, total_text = extract_transcript(audio_vocal_path)
-    scene_list = analyze_video_rhythm(video)
+    scene_list = analyze_video_rhythm(video_path, meta.duration)
 
     # ── Step A: DESIGN.md ─────────────────────────────────────────
     print("【Step A】生成 DESIGN.md ...")
     design_md_path = output_dir / "DESIGN.md"
     design_content = (
-        call_model(DESIGN_SYSTEM_PROMPT, DESIGN_MD_TEMPLATE, video.to_base64()) or ""
+        call_model(DESIGN_SYSTEM_PROMPT, DESIGN_MD_TEMPLATE, video_to_base64(video_path)) or ""
     )
     design_md_path.write_text(design_content, encoding="utf-8")
     print(f"✅ DESIGN.md → {design_md_path}")
@@ -501,10 +499,10 @@ def pipeline(video_path: str | Path, output_dir: str | Path):
     print("\n【Step B】生成 SCRIPT.md ...")
     script_md_path = output_dir / "SCRIPT.md"
     script_prompt = build_script_prompt(
-        segments, total_text, scene_list, video.duration, design_content
+        segments, total_text, scene_list, meta.duration, design_content
     )
     script_content = (
-        call_model(SCRIPT_SYSTEM_PROMPT, script_prompt, video.to_base64()) or ""
+        call_model(SCRIPT_SYSTEM_PROMPT, script_prompt, video_to_base64(video_path)) or ""
     )
     script_md_path.write_text(script_content, encoding="utf-8")
     print(f"✅ SCRIPT.md → {script_md_path}")
@@ -513,10 +511,10 @@ def pipeline(video_path: str | Path, output_dir: str | Path):
     print("\n【Step C】生成 STORYBOARD.md ...")
     storyboard_md_path = output_dir / "STORYBOARD.md"
     sb_prompt = build_storyboard_prompt(
-        segments, video.duration, design_content, script_content
+        segments, meta.duration, design_content, script_content
     )
     storyboard_content = (
-        call_model(STORYBOARD_SYSTEM_PROMPT, sb_prompt, video.to_base64()) or ""
+        call_model(STORYBOARD_SYSTEM_PROMPT, sb_prompt, video_to_base64(video_path)) or ""
     )
     storyboard_md_path.write_text(storyboard_content, encoding="utf-8")
     print(f"✅ STORYBOARD.md → {storyboard_md_path}")
@@ -568,7 +566,7 @@ def pipeline(video_path: str | Path, output_dir: str | Path):
 
     print("\n   → 生成 index.html ...")
     index_html_path = output_dir / "index.html"
-    index_content = generate_index_html(beats, design_content, video.duration or 0)
+    index_content = generate_index_html(beats, design_content, meta.duration or 0)
     index_html_path.write_text(index_content, encoding="utf-8")
     print(f"✅ index.html → {index_html_path}")
 
@@ -595,7 +593,7 @@ def pipeline(video_path: str | Path, output_dir: str | Path):
 
 
 if __name__ == "__main__":
-    video_path = "tests/videos/6.mp4"  # 替换为你的测试视频路径
+    video_path = "tests/videos/6.mp4"
     output_dir = "output"
 
     try:
