@@ -223,22 +223,17 @@ async def upload_video(
 
     VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-    original_asset_id = str(uuid.uuid4())
-    compressed_asset_id = str(uuid.uuid4())
-    video_id = original_asset_id
-
-    original_filename = f"{original_asset_id}{ext}"
-    compressed_filename = f"{compressed_asset_id}_compressed.mp4"
-    original_path = VIDEO_STORAGE_DIR / original_filename
-    compressed_path = VIDEO_STORAGE_DIR / compressed_filename
+    asset_id = str(uuid.uuid4())
+    filename = f"{asset_id}{ext}"
+    filepath = VIDEO_STORAGE_DIR / filename
 
     content = await file.read()
-    original_path.write_bytes(content)
+    filepath.write_bytes(content)
 
     try:
-        original_meta = probe_video(original_path)
+        meta = probe_video(filepath)
     except Exception as e:
-        original_path.unlink(missing_ok=True)
+        filepath.unlink(missing_ok=True)
         return {
             "success": False,
             "status": 500,
@@ -249,33 +244,125 @@ async def upload_video(
             },
         }, 500
 
-    try:
-        compress_video(original_path, compressed_path)
-    except Exception as e:
-        compressed_path.unlink(missing_ok=True)
-        return {
-            "success": False,
-            "status": 500,
-            "message": "Failed to compress video.",
-            "error": {
-                "code": "COMPRESS_FAILED",
-                "details": str(e),
-            },
-        }, 500
-
-    try:
-        compressed_meta = probe_video(compressed_path)
-    except Exception:
-        compressed_meta = None
-
     with Session(engine) as session:
-        original_asset = Asset(
-            asset_id=original_asset_id,
+        asset = Asset(
+            asset_id=asset_id,
             user_id=current_user.user_id,
-            path=str(original_path),
+            path=str(filepath),
             type="video",
         )
-        session.add(original_asset)
+        session.add(asset)
+        session.commit()
+
+    return {
+        "success": True,
+        "status": 201,
+        "message": "Video uploaded successfully.",
+        "data": {
+            "asset_id": asset_id,
+            "type": "video",
+            "path": str(filepath),
+            "metadata": meta.to_dict(),
+        },
+    }
+
+
+@app.post("/compress")
+async def compress_video_endpoint(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    data = await request.json()
+    asset_id = data.get("asset_id")
+
+    if not asset_id:
+        return {
+            "success": False,
+            "status": 400,
+            "message": "asset_id is required.",
+            "error": {
+                "code": "MISSING_ASSET_ID",
+                "details": "The asset_id of the source video must be provided.",
+            },
+        }, 400
+
+    with Session(engine) as session:
+        statement = select(Asset).where(Asset.asset_id == asset_id)
+        source_asset = session.exec(statement).first()
+
+        if not source_asset:
+            return {
+                "success": False,
+                "status": 404,
+                "message": f"Asset with id '{asset_id}' not found.",
+                "error": {
+                    "code": "ASSET_NOT_FOUND",
+                    "details": f"No asset found with asset_id '{asset_id}'.",
+                },
+            }, 404
+
+        source_path = Path(source_asset.path)
+        if not source_path.exists():
+            return {
+                "success": False,
+                "status": 500,
+                "message": "Source file not found on disk.",
+                "error": {
+                    "code": "FILE_MISSING",
+                    "details": f"Asset record exists but file is missing at '{source_asset.path}'.",
+                },
+            }, 500
+
+        compressed_asset_id = str(uuid.uuid4())
+        compressed_filename = f"{compressed_asset_id}_compressed.mp4"
+        compressed_path = VIDEO_STORAGE_DIR / compressed_filename
+        VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+        vcodec = data.get("vcodec", "libx264")
+        crf = data.get("crf", 32)
+        target_v_bitrate = data.get("target_v_bitrate")
+        scale_width = data.get("scale_width")
+        max_fps = data.get("max_fps", 30)
+        acodec = data.get("acodec", "aac")
+        target_a_bitrate = data.get("target_a_bitrate", "96k")
+
+        try:
+            compress_video(
+                source_path,
+                compressed_path,
+                vcodec=vcodec,
+                crf=crf,
+                target_v_bitrate=target_v_bitrate,
+                scale_width=scale_width,
+                max_fps=max_fps,
+                acodec=acodec,
+                target_a_bitrate=target_a_bitrate,
+            )
+        except Exception as e:
+            compressed_path.unlink(missing_ok=True)
+            return {
+                "success": False,
+                "status": 500,
+                "message": "Failed to compress video.",
+                "error": {
+                    "code": "COMPRESS_FAILED",
+                    "details": str(e),
+                },
+            }, 500
+
+        try:
+            compressed_meta = probe_video(compressed_path)
+        except Exception as e:
+            compressed_path.unlink(missing_ok=True)
+            return {
+                "success": False,
+                "status": 500,
+                "message": "Failed to probe compressed video metadata.",
+                "error": {
+                    "code": "PROBE_FAILED",
+                    "details": str(e),
+                },
+            }, 500
 
         compressed_asset = Asset(
             asset_id=compressed_asset_id,
@@ -284,25 +371,18 @@ async def upload_video(
             type="video",
         )
         session.add(compressed_asset)
-
         session.commit()
 
     return {
         "success": True,
         "status": 201,
-        "message": "Video uploaded and compressed successfully.",
+        "message": "Video compressed successfully.",
         "data": {
-            "video_id": video_id,
-            "original": {
-                "asset_id": original_asset_id,
-                "path": str(original_path),
-                **original_meta.to_dict(),
-            },
-            "compressed": {
-                "asset_id": compressed_asset_id,
-                "path": str(compressed_path),
-                **(compressed_meta.to_dict() if compressed_meta else {}),
-            },
+            "asset_id": compressed_asset_id,
+            "source_asset_id": asset_id,
+            "type": "video",
+            "path": str(compressed_path),
+            "metadata": compressed_meta.to_dict(),
         },
     }
 
