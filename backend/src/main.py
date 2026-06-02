@@ -4,10 +4,12 @@ from datetime import timedelta
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
-from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
+from fastapi import Depends, FastAPI, File, Request, UploadFile
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from models import Asset, User, engine
 from utils import create_access_token, hash_password, verify_password
@@ -17,40 +19,62 @@ load_dotenv(find_dotenv())
 
 app = FastAPI()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="凭证已过期或无效，请重新登录",
-        headers={"WWW-Authenticate": "Bearer"},
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(
+    request: Request, exc: StarletteHTTPException
+):
+    if 400 <= exc.status_code < 500:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"status": "fail", "message": exc.detail},
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"status": "error", "message": exc.detail},
     )
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
+
+
+async def get_current_user(token: str | None = Depends(oauth2_scheme)):
+    if token is None:
+        raise StarletteHTTPException(
+            status_code=401, detail="未提供认证令牌"
+        )
+
     try:
         payload = jwt.decode(
             token,
             os.environ["SECRET_KEY"],
             algorithms=[os.getenv("ALGORITHM", "HS256")],
         )
-        user_id: str = payload.get("user_id", None)  # type: ignore
-        if user_id is None:
-            raise credentials_exception
-
-        with Session(engine) as session:
-            statement = select(User).where(User.user_id == user_id)
-            user = session.exec(statement).first()
-            if user is None:
-                raise credentials_exception
-
-            return user
-
     except JWTError:
-        raise credentials_exception
+        raise StarletteHTTPException(
+            status_code=401, detail="令牌已过期或无效"
+        )
+
+    user_id: str | None = payload.get("user_id", None)
+    if user_id is None:
+        raise StarletteHTTPException(
+            status_code=401, detail="令牌格式无效"
+        )
+
+    with Session(engine) as session:
+        statement = select(User).where(User.user_id == user_id)
+        user = session.exec(statement).first()
+        if user is None:
+            raise StarletteHTTPException(
+                status_code=401, detail="用户不存在或已注销"
+            )
+
+        return user
 
 
 @app.get("/")
 def index():
-    return {"status": "ok"}
+    return {"status": "success", "data": None}
 
 
 @app.post("/register")
@@ -59,33 +83,19 @@ async def register(request: Request):
     email = data.get("email")
     password = data.get("password")
 
-    if not email or not password:
-        return {
-            "success": False,
-            "status": 400,
-            "message": "Email and password are required.",
-            "error": {
-                "code": "MISSING_FIELDS",
-                "details": "Both email and password must be provided.",
-            },
-        }, 400
+    if not email:
+        raise StarletteHTTPException(status_code=400, detail="邮箱不能为空")
+    if not password:
+        raise StarletteHTTPException(status_code=400, detail="密码不能为空")
 
     with Session(engine) as session:
-        # CHECK IF USER EXISTS
         statement = select(User).where(User.email == data["email"])
         result = session.exec(statement).first()
         if result:
-            return {
-                "success": False,
-                "status": 400,
-                "message": f"User with email {email} already exists.",
-                "error": {
-                    "code": "USER_ALREADY_EXISTS",
-                    "details": f"Email {email} is already registered.",
-                },
-            }, 400
+            raise StarletteHTTPException(
+                status_code=400, detail=f"邮箱 {email} 已注册"
+            )
 
-        # CREATE USER
         user = User(
             user_id=str(uuid.uuid4()),
             email=email,
@@ -96,15 +106,16 @@ async def register(request: Request):
         session.commit()
         session.refresh(user)
 
-        return {
-            "success": True,
-            "status": 201,
-            "message": "User registered successfully.",
-            "data": {
-                "user_id": user.user_id,
-                "email": user.email,
+        return JSONResponse(
+            status_code=201,
+            content={
+                "status": "success",
+                "data": {
+                    "user_id": user.user_id,
+                    "email": user.email,
+                },
             },
-        }
+        )
 
 
 @app.post("/login")
@@ -112,55 +123,31 @@ async def login(request: Request):
     data = await request.json()
     email = data.get("email", None)
     password = data.get("password", None)
-    if not email or not password:
-        return {
-            "success": False,
-            "status": 400,
-            "message": "Email and password are required.",
-            "error": {
-                "code": "MISSING_CREDENTIALS",
-                "details": "Both email and password must be provided.",
-            },
-        }, 400
+
+    if not email:
+        raise StarletteHTTPException(status_code=400, detail="邮箱不能为空")
+    if not password:
+        raise StarletteHTTPException(status_code=400, detail="密码不能为空")
 
     with Session(engine) as session:
         statement = select(User).where(User.email == email)
-        # CHECK IF USER EXISTS
         user = session.exec(statement).first()
+
         if not user:
-            return {
-                "success": False,
-                "status": 404,
-                "message": f"User with email {email} not found.",
-                "error": {
-                    "code": "USER_NOT_FOUND",
-                    "details": f"No user registered with email {email}.",
-                },
-            }, 404
+            raise StarletteHTTPException(
+                status_code=404, detail=f"邮箱 {email} 未注册"
+            )
 
-        # CHECK IF USER LOGINS WITH GOOGLE OAUTH
         if user.password_hash is None:
-            return {
-                "success": False,
-                "status": 500,
-                "message": "User does not have a local password set. This account is likely registered via Google OAuth. Please use 'Login with Google' or reset your password to set a local password.",
-                "error": {
-                    "code": "PASSWORD_NOT_SET",
-                    "details": "User does not have a local password set. This account is likely registered via Google OAuth. Please use 'Login with Google' or reset your password to set a local password.",
-                },
-            }, 500
+            raise StarletteHTTPException(
+                status_code=400,
+                detail="该账号通过 Google 登录注册，请使用 Google 登录",
+            )
 
-        # INCORRECT PASSWORD
         if not verify_password(password, user.password_hash):
-            return {
-                "success": False,
-                "status": 401,
-                "message": "Invalid password.",
-                "error": {
-                    "code": "INVALID_PASSWORD",
-                    "details": "The provided password is incorrect.",
-                },
-            }, 401
+            raise StarletteHTTPException(
+                status_code=401, detail="密码错误"
+            )
 
         token = create_access_token(
             data={"user_id": user.user_id, "email": user.email},
@@ -170,9 +157,7 @@ async def login(request: Request):
         )
 
         return {
-            "success": True,
-            "status": 200,
-            "message": "Login successful.",
+            "status": "success",
             "data": {
                 "access_token": token,
                 "token_type": "bearer",
@@ -186,8 +171,7 @@ async def login(request: Request):
 
 @app.get("/protected")
 async def test(request: Request, current_user: User = Depends(get_current_user)):
-    print(current_user)
-    return {"status": "ok"}
+    return {"status": "success", "data": None}
 
 
 STORAGE_DIR = Path("storage")
@@ -211,15 +195,9 @@ async def upload_video(
 ):
     ext = Path(file.filename or "upload.mp4").suffix.lower()
     if ext not in ALLOWED_VIDEO_EXTENSIONS and file.content_type not in ALLOWED_VIDEO_MIME_TYPES:
-        return {
-            "success": False,
-            "status": 400,
-            "message": "Unsupported file type.",
-            "error": {
-                "code": "INVALID_FILE_TYPE",
-                "details": f"File type '{file.content_type}' (ext '{ext}') is not a supported video format.",
-            },
-        }, 400
+        raise StarletteHTTPException(
+            status_code=400, detail="不支持的文件类型"
+        )
 
     VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -234,15 +212,14 @@ async def upload_video(
         meta = probe_video(filepath)
     except Exception as e:
         filepath.unlink(missing_ok=True)
-        return {
-            "success": False,
-            "status": 500,
-            "message": "Failed to probe video metadata.",
-            "error": {
-                "code": "PROBE_FAILED",
-                "details": str(e),
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": "视频元数据探测失败",
+                "data": {"code": "PROBE_FAILED", "details": str(e)},
             },
-        }, 500
+        )
 
     with Session(engine) as session:
         asset = Asset(
@@ -254,17 +231,18 @@ async def upload_video(
         session.add(asset)
         session.commit()
 
-    return {
-        "success": True,
-        "status": 201,
-        "message": "Video uploaded successfully.",
-        "data": {
-            "asset_id": asset_id,
-            "type": "video",
-            "path": str(filepath),
-            "metadata": meta.to_dict(),
+    return JSONResponse(
+        status_code=201,
+        content={
+            "status": "success",
+            "data": {
+                "asset_id": asset_id,
+                "type": "video",
+                "path": str(filepath),
+                "metadata": meta.to_dict(),
+            },
         },
-    }
+    )
 
 
 @app.post("/compress")
@@ -276,42 +254,32 @@ async def compress_video_endpoint(
     asset_id = data.get("asset_id")
 
     if not asset_id:
-        return {
-            "success": False,
-            "status": 400,
-            "message": "asset_id is required.",
-            "error": {
-                "code": "MISSING_ASSET_ID",
-                "details": "The asset_id of the source video must be provided.",
-            },
-        }, 400
+        raise StarletteHTTPException(
+            status_code=400, detail="缺少 asset_id 参数"
+        )
 
     with Session(engine) as session:
         statement = select(Asset).where(Asset.asset_id == asset_id)
         source_asset = session.exec(statement).first()
 
         if not source_asset:
-            return {
-                "success": False,
-                "status": 404,
-                "message": f"Asset with id '{asset_id}' not found.",
-                "error": {
-                    "code": "ASSET_NOT_FOUND",
-                    "details": f"No asset found with asset_id '{asset_id}'.",
-                },
-            }, 404
+            raise StarletteHTTPException(
+                status_code=404, detail=f"素材 {asset_id} 不存在"
+            )
 
         source_path = Path(source_asset.path)
         if not source_path.exists():
-            return {
-                "success": False,
-                "status": 500,
-                "message": "Source file not found on disk.",
-                "error": {
-                    "code": "FILE_MISSING",
-                    "details": f"Asset record exists but file is missing at '{source_asset.path}'.",
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "error",
+                    "message": "源文件丢失",
+                    "data": {
+                        "code": "FILE_MISSING",
+                        "details": f"素材记录存在但文件丢失：{source_asset.path}",
+                    },
                 },
-            }, 500
+            )
 
         compressed_asset_id = str(uuid.uuid4())
         compressed_filename = f"{compressed_asset_id}_compressed.mp4"
@@ -340,29 +308,27 @@ async def compress_video_endpoint(
             )
         except Exception as e:
             compressed_path.unlink(missing_ok=True)
-            return {
-                "success": False,
-                "status": 500,
-                "message": "Failed to compress video.",
-                "error": {
-                    "code": "COMPRESS_FAILED",
-                    "details": str(e),
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "error",
+                    "message": "视频压缩失败",
+                    "data": {"code": "COMPRESS_FAILED", "details": str(e)},
                 },
-            }, 500
+            )
 
         try:
             compressed_meta = probe_video(compressed_path)
         except Exception as e:
             compressed_path.unlink(missing_ok=True)
-            return {
-                "success": False,
-                "status": 500,
-                "message": "Failed to probe compressed video metadata.",
-                "error": {
-                    "code": "PROBE_FAILED",
-                    "details": str(e),
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "error",
+                    "message": "压缩后视频元数据探测失败",
+                    "data": {"code": "PROBE_FAILED", "details": str(e)},
                 },
-            }, 500
+            )
 
         compressed_asset = Asset(
             asset_id=compressed_asset_id,
@@ -373,18 +339,19 @@ async def compress_video_endpoint(
         session.add(compressed_asset)
         session.commit()
 
-    return {
-        "success": True,
-        "status": 201,
-        "message": "Video compressed successfully.",
-        "data": {
-            "asset_id": compressed_asset_id,
-            "source_asset_id": asset_id,
-            "type": "video",
-            "path": str(compressed_path),
-            "metadata": compressed_meta.to_dict(),
+    return JSONResponse(
+        status_code=201,
+        content={
+            "status": "success",
+            "data": {
+                "asset_id": compressed_asset_id,
+                "source_asset_id": asset_id,
+                "type": "video",
+                "path": str(compressed_path),
+                "metadata": compressed_meta.to_dict(),
+            },
         },
-    }
+    )
 
 
 if __name__ == "__main__":

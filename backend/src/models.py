@@ -27,5 +27,5 @@ class Asset(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
 
-engine = create_engine("sqlite:///database.db", echo=True)
+engine = create_engine("sqlite:///database.db", echo=False)
 SQLModel.metadata.create_all(engine)
