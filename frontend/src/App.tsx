@@ -188,7 +188,7 @@ function App() {
                 <div
                     style={{
                         transform: `scale(${zoom})`,
-                        transformOrigin: "top left",
+                        transformOrigin: "center center",
                         width: "100vw",
                         height: "100vh",
                     }}

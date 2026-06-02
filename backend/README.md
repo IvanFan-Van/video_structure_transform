@@ -51,38 +51,33 @@ uv run src/main.py
 
 ## Schema 规范
 
-该应用采用 Standard REST Envelope 规范, 具体如下:
+该应用参考了 JSend 规范 [JSend 规范](./docs/JSend.md), 并重新设计了一个非常类似的 JSON specification
 
-成功响应
+### 成功响应
 ```json
 {
-  "success": true,
-  "status": 200,
-  "message": "OK",
-  "meta": {
-    "timestamp": "2026-05-28T12:08:00Z",
-    "pagination": {
-      "current_page": 1,
-      "total_pages": 5,
-      "limit": 25
+    "status": "success",
+    "data": {
+        "token": "xxx",
+        "path": "xxx",
+        "number": 123,
+        ...
     }
-  },
-  "data": {
-    "id": 105,
-    "name": "Widget A"
-  }
 }
 ```
 
-失败响应结果
+### 失败响应
 ```json
 {
-  "success": false,
-  "status": 400,
-  "message": "Validation Failed",
-  "error": {
-    "code": "INVALID_INPUT",
-    "details": "The 'email' field is required."
-  }
+    "status": "fail",
+    "message": "xxx"
+}
+```
+
+### 错误响应 
+```json
+{
+    "status": "error",
+    "message": "xxx"
 }
 ```

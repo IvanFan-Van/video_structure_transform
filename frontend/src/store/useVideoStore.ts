@@ -1,10 +1,13 @@
 import { create } from "zustand";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import {
     UploadResult,
     CompressResult,
     CompressConfig,
     NodeError,
+    ApiResponse,
+    VideoMeta,
+    ApiErrorResponse,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -93,7 +96,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
     uploadVideo: async (file) => {
         const token = useAuthStore.getState().token;
-        set({ isUploading: true, uploadProgress: 0, uploadResult: null, compressResult: null });
+        set({
+            isUploading: true,
+            uploadProgress: 0,
+            uploadResult: null,
+            compressResult: null,
+        });
 
         generateThumbnail(file).then((url) => set({ thumbnailUrl: url }));
 
@@ -101,48 +109,62 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         formData.append("file", file);
 
         try {
-            const res = await axios.post("/api/upload", formData, {
-                headers: { Authorization: `Bearer ${token}` },
-                onUploadProgress: (e) => {
-                    if (e.total) {
-                        set({
-                            uploadProgress: Math.round(
-                                (e.loaded / e.total) * 100,
-                            ),
-                        });
-                    }
+            const res = await axios.post<ApiResponse<UploadResult>>(
+                "/api/upload",
+                formData,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                    onUploadProgress: (e) => {
+                        if (e.total) {
+                            set({
+                                uploadProgress: Math.round(
+                                    (e.loaded / e.total) * 100,
+                                ),
+                            });
+                        }
+                    },
                 },
-            });
-            if (res.data.success) {
-                set((s) => ({
-                    uploadResult: res.data.data,
-                    isUploading: false,
-                    uploadProgress: 100,
-                    videoErrors: s.videoErrors.filter(
-                        (e) => e.nodeId !== "reference",
-                    ),
-                }));
-            } else {
-                const err = res.data.error || {
-                    code: "UNKNOWN",
-                    details: res.data.message,
-                };
-                set((s) => ({
-                    isUploading: false,
-                    videoErrors: [
-                        ...s.videoErrors.filter(
-                            (e) => e.nodeId !== "reference",
-                        ),
-                        makeError(
-                            "reference",
-                            res.data.message,
-                            err.code,
-                            err.details,
-                        ),
-                    ],
-                }));
+            );
+
+            const result = res.data;
+
+            if (result.status !== "success") {
+                throw new Error("服务器 status 字段与 status code 不一致");
             }
-        } catch {
+
+            set((s) => ({
+                uploadResult: result.data,
+                isUploading: false,
+                uploadProgress: 100,
+                videoErrors: s.videoErrors.filter(
+                    (e) => e.nodeId !== "reference",
+                ),
+            }));
+        } catch (error: any) {
+            if (axios.isAxiosError(error)) {
+                const axiosError = error as AxiosError<ApiErrorResponse>;
+                if (axiosError.response) {
+                    const res = axiosError.response;
+                    const result = res.data;
+
+                    let msg: string, code: string, details: string;
+                    msg = res.statusText;
+                    code = res.statusText;
+                    details = JSON.stringify(result);
+
+                    set((s) => ({
+                        isUploading: false,
+                        videoErrors: [
+                            ...s.videoErrors.filter(
+                                (e) => e.nodeId !== "reference",
+                            ),
+                            makeError("reference", msg, code, details),
+                        ],
+                    }));
+                    return;
+                }
+            }
+
             set((s) => ({
                 isUploading: false,
                 videoErrors: [
@@ -193,7 +215,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     },
                 },
             );
-            if (res.data.success) {
+            if (res.data.status === "success") {
                 set((s) => ({
                     compressResult: res.data.data,
                     isCompressing: false,
@@ -202,20 +224,25 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     ),
                 }));
             } else {
-                const err = res.data.error || {
-                    code: "UNKNOWN",
-                    details: res.data.message,
-                };
+                let msg: string, code: string, details: string;
+                if (res.data.status === "error") {
+                    msg = res.data.message || "Compress failed";
+                    code = res.data.code
+                        ? String(res.data.code)
+                        : "SERVER_ERROR";
+                    details = res.data.data
+                        ? JSON.stringify(res.data.data, null, 2)
+                        : res.data.message || "";
+                } else {
+                    msg = res.data.data?.message || "Compress failed";
+                    code = "VALIDATION_ERROR";
+                    details = JSON.stringify(res.data.data, null, 2);
+                }
                 set((s) => ({
                     isCompressing: false,
                     videoErrors: [
                         ...s.videoErrors.filter((e) => e.nodeId !== "compress"),
-                        makeError(
-                            "compress",
-                            res.data.message,
-                            err.code,
-                            err.details,
-                        ),
+                        makeError("compress", msg, code, details),
                     ],
                 }));
             }

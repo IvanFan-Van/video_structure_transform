@@ -29,8 +29,9 @@ export const useAuthStore = create<AuthState>()(
           body: JSON.stringify({ email, password }),
         });
         const json = await res.json();
-        if (!json.success) {
-          return { success: false, error: json.message || 'Login failed' };
+        if (json.status !== 'success') {
+          const msg = json.message || (json.data ? JSON.stringify(json.data) : null) || 'Login failed';
+          return { success: false, error: msg };
         }
         set({
           token: json.data.access_token,
@@ -47,8 +48,9 @@ export const useAuthStore = create<AuthState>()(
           body: JSON.stringify({ email, password }),
         });
         const json = await res.json();
-        if (!json.success) {
-          return { success: false, error: json.message || 'Registration failed' };
+        if (json.status !== 'success') {
+          const msg = json.message || (json.data ? JSON.stringify(json.data) : null) || 'Registration failed';
+          return { success: false, error: msg };
         }
         return { success: true };
       },
