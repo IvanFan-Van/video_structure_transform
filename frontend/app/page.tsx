@@ -1,14 +1,21 @@
 'use client';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
-const PRESETS = {
+interface Preset {
+  label: string;
+  desc: string;
+  file: string;
+  data: string | null;
+}
+
+const PRESETS: Record<string, Preset> = {
   ycstartups: { label: 'YC Startups', desc: '5,000+ startup names', file: '/datasets/ycstartups.txt', data: null },
   names: { label: 'Baby Names', desc: '2,000+ popular names', file: '/datasets/names.txt', data: null },
   dinos: { label: 'Dinosaurs', desc: '1,500+ species names', file: '/datasets/dinos.txt', data: null },
   words: { label: 'English Words', desc: '10,000 common words', file: '/datasets/words.txt', data: null },
 };
 
-const WIRES = [
+const WIRES: [string, string][] = [
   ['dataset', 'tokenizer'],
   ['tokenizer', 'config'],
   ['config', 'training'],
@@ -16,11 +23,18 @@ const WIRES = [
   ['training', 'generate'],
 ];
 
+interface Pos {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 // Position registry
 function useNodePositions() {
-  const pos = useRef({});
+  const pos = useRef<Record<string, Pos>>({});
   const [tick, setTick] = useState(0);
-  const update = useCallback((id, x, y, w, h) => {
+  const update = useCallback((id: string, x: number, y: number, w: number, h: number) => {
     pos.current[id] = { x, y, w, h };
     setTick(t => t + 1);
   }, []);
@@ -28,21 +42,21 @@ function useNodePositions() {
 }
 
 // Draggable
-function useDraggable(ix, iy, id, onPos) {
+function useDraggable(ix: number, iy: number, id: string, onPos: (id: string, x: number, y: number, w: number, h: number) => void) {
   const [p, setP] = useState({ x: ix, y: iy });
   const drag = useRef(false);
   const off = useRef({ x: 0, y: 0 });
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const onMouseDown = useCallback((e) => {
-    if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(e.target.tagName)) return;
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes((e.target as HTMLElement).tagName)) return;
     drag.current = true;
     off.current = { x: e.clientX - p.x, y: e.clientY - p.y };
     e.preventDefault();
   }, [p]);
 
   useEffect(() => {
-    const mv = (e) => { if (drag.current) setP({ x: e.clientX - off.current.x, y: e.clientY - off.current.y }); };
+    const mv = (e: MouseEvent) => { if (drag.current) setP({ x: e.clientX - off.current.x, y: e.clientY - off.current.y }); };
     const up = () => { drag.current = false; };
     window.addEventListener('mousemove', mv);
     window.addEventListener('mouseup', up);
@@ -60,7 +74,19 @@ function useDraggable(ix, iy, id, onPos) {
 }
 
 // Node
-function Node({ x, y, w, title, children, active, accent, id, onPosChange }) {
+interface NodeProps {
+  x: number;
+  y: number;
+  w: number;
+  title: string;
+  children: React.ReactNode;
+  active: boolean;
+  accent?: string;
+  id: string;
+  onPosChange: (id: string, x: number, y: number, w: number, h: number) => void;
+}
+
+function Node({ x, y, w, title, children, active, accent, id, onPosChange }: NodeProps) {
   const { p, onMouseDown, ref } = useDraggable(x, y, id, onPosChange);
   return (
     <div ref={ref} onMouseDown={onMouseDown} style={{
@@ -83,7 +109,13 @@ function Node({ x, y, w, title, children, active, accent, id, onPosChange }) {
 }
 
 // Wires
-function Wires({ positions, wires, tick }) {
+interface WiresProps {
+  positions: Record<string, Pos>;
+  wires: [string, string][];
+  tick: number;
+}
+
+function Wires({ positions, wires, tick }: WiresProps) {
   return (
     <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5 }}>
       {wires.map(([from, to], i) => {
@@ -93,7 +125,7 @@ function Wires({ positions, wires, tick }) {
         const aCx = a.x + a.w / 2, aCy = a.y + a.h / 2;
         const bCx = b.x + b.w / 2, bCy = b.y + b.h / 2;
         // Determine which edges to connect
-        let x1, y1, x2, y2;
+        let x1 = 0, y1 = 0, x2 = 0, y2 = 0;
         const dx = bCx - aCx, dy = bCy - aCy;
         if (Math.abs(dx) > Math.abs(dy)) {
           // Horizontal connection
@@ -124,13 +156,17 @@ function Wires({ positions, wires, tick }) {
 }
 
 // Loss chart (smoothed)
-function LossChart({ data, height = 70 }) {
+interface LossData {
+  step: number;
+  loss: number;
+}
+function LossChart({ data, height = 70 }: { data: LossData[], height?: number }) {
   if (!data.length) return null;
   const sm = []; let ema = data[0].loss;
   for (const d of data) { ema = 0.95 * ema + 0.05 * d.loss; sm.push(ema); }
   const mx = Math.max(...sm), mn = Math.min(...sm), rng = mx - mn || 1;
-  const toY = l => ((mx - l) / rng) * 90 + 5;
-  const toX = i => (i / Math.max(sm.length - 1, 1)) * 100;
+  const toY = (l: number) => ((mx - l) / rng) * 90 + 5;
+  const toX = (i: number) => (i / Math.max(sm.length - 1, 1)) * 100;
   return (
     <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }}>
       {data.length < 400 && data.map((d, i) => <circle key={i} cx={toX(i)} cy={toY(Math.max(mn, Math.min(mx, d.loss)))} r="0.3" fill="#e8e8e8" vectorEffect="non-scaling-stroke" />)}
@@ -143,7 +179,7 @@ function LossChart({ data, height = 70 }) {
 }
 
 // Step time bar chart
-function StepTimeChart({ data, height = 35 }) {
+function StepTimeChart({ data, height = 35 }: { data: number[], height?: number }) {
   if (!data.length) return null;
   const mx = Math.max(...data, 1);
   return (
@@ -156,33 +192,59 @@ function StepTimeChart({ data, height = 35 }) {
 // ============================================================================
 // Main App
 // ============================================================================
+interface DatasetInfo {
+  numDocs: number;
+  vocabSize: number;
+  chars: string[];
+  sampleDocs: string[];
+}
+
+interface ModelConfig {
+  n_embd: number;
+  n_head: number;
+  n_layer: number;
+  block_size: number;
+  num_steps: number;
+  learning_rate: number;
+  seed: number;
+  [key: string]: number;
+}
+
+interface RunHistoryItem {
+  id: number;
+  config: ModelConfig;
+  finalLoss: number;
+  totalTime: number;
+  samples: string[];
+}
+
 export default function TrainMyOwnGPT() {
-  const workerRef = useRef(null);
+  const workerRef = useRef<Worker | null>(null);
   const { positions, update: updatePos, tick: posTick } = useNodePositions();
 
-  const [dataset, setDataset] = useState(null);
+  const [dataset, setDataset] = useState<DatasetInfo | null>(null);
   const [selectedPreset, setSelectedPreset] = useState('');
-  const [config, setConfig] = useState({ n_embd: 16, n_head: 4, n_layer: 1, block_size: 16, num_steps: 1000, learning_rate: 0.01, seed: 42 });
+  const [config, setConfig] = useState<ModelConfig>({ n_embd: 16, n_head: 4, n_layer: 1, block_size: 16, num_steps: 1000, learning_rate: 0.01, seed: 42 });
   const [training, setTraining] = useState(false);
   const [modelReady, setModelReady] = useState(false);
-  const [lossHistory, setLossHistory] = useState([]);
-  const [stepTimes, setStepTimes] = useState([]);
+  const [lossHistory, setLossHistory] = useState<LossData[]>([]);
+  const [stepTimes, setStepTimes] = useState<number[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [currentLoss, setCurrentLoss] = useState(0);
   const [currentSample, setCurrentSample] = useState('');
   const [stepTime, setStepTime] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
-  const [finalSamples, setFinalSamples] = useState([]);
+  const [finalSamples, setFinalSamples] = useState<string[]>([]);
   const [genPrompt, setGenPrompt] = useState('');
   const [genTemp, setGenTemp] = useState(0.8);
-  const [genResults, setGenResults] = useState([]);
+  const [genResults, setGenResults] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
-  const [runHistory, setRunHistory] = useState([]);
+  const [runHistory, setRunHistory] = useState<RunHistoryItem[]>([]);
 
   useEffect(() => {
     const w = new Worker('/microgpt-worker.js');
     workerRef.current = w;
-    w.onmessage = (e) => {
+    w.onmessage = (e: MessageEvent) => {
       const { type, data } = e.data;
       if (type === 'dataset_loaded') {
         setDataset(data);
@@ -205,7 +267,7 @@ export default function TrainMyOwnGPT() {
     return () => w.terminate();
   }, []);
 
-  const loadPreset = useCallback(async (key) => {
+  const loadPreset = useCallback(async (key: string) => {
     setSelectedPreset(key);
     if (!key || !PRESETS[key]) return;
     setModelReady(false); setLossHistory([]); setStepTimes([]); setCurrentStep(0); setFinalSamples([]); setGenResults([]);
@@ -223,13 +285,13 @@ export default function TrainMyOwnGPT() {
     if (text) workerRef.current?.postMessage({ type: 'load_dataset', data: { text } });
   }, []);
 
-  const handleFileDrop = useCallback((e) => {
+  const handleFileDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer?.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       setSelectedPreset('custom'); setModelReady(false); setLossHistory([]); setStepTimes([]); setFinalSamples([]); setGenResults([]);
-      workerRef.current?.postMessage({ type: 'load_dataset', data: { text: ev.target.result } });
+      workerRef.current?.postMessage({ type: 'load_dataset', data: { text: ev.target?.result } });
     };
     reader.readAsText(file);
   }, []);
@@ -258,8 +320,8 @@ export default function TrainMyOwnGPT() {
 
   const flopsPerStep = paramCount * config.block_size * 2;
   const totalFlops = flopsPerStep * currentStep;
-  const fmt = (ms) => ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(1) + 's';
-  const fmtF = (f) => f > 1e9 ? (f / 1e9).toFixed(1) + 'G' : f > 1e6 ? (f / 1e6).toFixed(1) + 'M' : f > 1e3 ? (f / 1e3).toFixed(0) + 'K' : '' + f;
+  const fmt = (ms: number) => ms < 1000 ? ms + 'ms' : (ms / 1000).toFixed(1) + 's';
+  const fmtF = (f: number) => f > 1e9 ? (f / 1e9).toFixed(1) + 'G' : f > 1e6 ? (f / 1e6).toFixed(1) + 'M' : f > 1e3 ? (f / 1e3).toFixed(0) + 'K' : '' + f;
 
   // Center the layout based on viewport
   const [offset, setOffset] = useState(60);
@@ -280,6 +342,7 @@ export default function TrainMyOwnGPT() {
       const finalLoss = lossHistory[lossHistory.length - 1].loss;
       setRunHistory(prev => [...prev, { id: Date.now(), config: { ...config }, finalLoss, totalTime, samples: finalSamples.slice(0, 3) }]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelReady]);
 
   const sliderStyle = { flex: 1, accentColor: '#999', cursor: 'pointer', height: '2px' };
@@ -295,7 +358,7 @@ export default function TrainMyOwnGPT() {
         style={{ position: 'fixed', top: 16, right: 20, zIndex: 100, fontSize: '9px', letterSpacing: '1px', color: '#ccc', textDecoration: 'none', cursor: 'pointer' }}
         onMouseEnter={(e) => e.currentTarget.style.color = '#999'}
         onMouseLeave={(e) => e.currentTarget.style.color = '#ccc'}
-      >based on karpathy's microgpt · runs in your browser</a>
+      >based on karpathy&apos;s microgpt · runs in your browser</a>
 
       <Wires positions={positions} wires={WIRES} tick={posTick} />
 
@@ -313,7 +376,7 @@ export default function TrainMyOwnGPT() {
               const reader = new FileReader();
               reader.onload = (ev) => {
                 setSelectedPreset('custom'); setModelReady(false); setLossHistory([]); setStepTimes([]); setFinalSamples([]); setGenResults([]);
-                workerRef.current?.postMessage({ type: 'load_dataset', data: { text: ev.target.result } });
+                workerRef.current?.postMessage({ type: 'load_dataset', data: { text: ev.target?.result } });
               };
               reader.readAsText(file);
             }} />
