@@ -1,124 +1,236 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Wires } from './components/ui/Wires';
-import { useNodePositions } from './hooks/useNodePositions';
-import { useAppStore } from './store/useAppStore';
-import { useAuthStore } from './store/useAuthStore';
-import { WIRES } from './constants';
-import { DatasetNode } from './components/nodes/DatasetNode';
-import { TokenizerNode } from './components/nodes/TokenizerNode';
-import { ArchitectureNode } from './components/nodes/ArchitectureNode';
-import { TrainingNode } from './components/nodes/TrainingNode';
-import { MetricsNode } from './components/nodes/MetricsNode';
-import { GenerateNode } from './components/nodes/GenerateNode';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Wires } from "./components/ui/Wires";
+import { useNodePositions } from "./hooks/useNodePositions";
+import { useAppStore } from "./store/useAppStore";
+import { useAuthStore } from "./store/useAuthStore";
+import { WIRES } from "./constants";
+import { DatasetNode } from "./components/nodes/DatasetNode";
+import { TokenizerNode } from "./components/nodes/TokenizerNode";
+import { ArchitectureNode } from "./components/nodes/ArchitectureNode";
+import { TrainingNode } from "./components/nodes/TrainingNode";
+import { MetricsNode } from "./components/nodes/MetricsNode";
+import { GenerateNode } from "./components/nodes/GenerateNode";
+import { ReferenceNode } from "./components/nodes/ReferenceNode";
+import { CompressConfigNode } from "./components/nodes/CompressConfigNode";
+import { CompressNode } from "./components/nodes/CompressNode";
+import { NodeErrorToast } from "./components/ui/NodeErrorToast";
+import { useZoom } from "./hooks/useZoom";
+import { ZoomContext } from "./context/ZoomContext";
 
 function App() {
-  const { positions, update: updatePos, tick: posTick } = useNodePositions();
-  const initWorker = useAppStore((s) => s.initWorker);
-  const destroyWorker = useAppStore((s) => s.destroyWorker);
-  const modelReady = useAppStore((s) => s.modelReady);
-  const saveRunHistory = useAppStore((s) => s.saveRunHistory);
-  const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
-  const navigate = useNavigate();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+    const { positions, update: updatePos, tick: posTick } = useNodePositions();
+    const initWorker = useAppStore((s) => s.initWorker);
+    const destroyWorker = useAppStore((s) => s.destroyWorker);
+    const modelReady = useAppStore((s) => s.modelReady);
+    const saveRunHistory = useAppStore((s) => s.saveRunHistory);
+    const user = useAuthStore((s) => s.user);
+    const logout = useAuthStore((s) => s.logout);
+    const navigate = useNavigate();
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    initWorker();
-    return () => destroyWorker();
-  }, []);
+    useEffect(() => {
+        initWorker();
+        return () => destroyWorker();
+    }, []);
 
-  useEffect(() => {
-    if (modelReady) saveRunHistory();
-  }, [modelReady, saveRunHistory]);
+    useEffect(() => {
+        if (modelReady) saveRunHistory();
+    }, [modelReady, saveRunHistory]);
 
-  useEffect(() => {
-    const onClick = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, []);
+    useEffect(() => {
+        const onClick = (e: MouseEvent) => {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(e.target as Node)
+            ) {
+                setDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", onClick);
+        return () => document.removeEventListener("mousedown", onClick);
+    }, []);
+    const zoom = useZoom();
 
-  const [offset, setOffset] = useState(60);
-  useEffect(() => {
-    const calcOffset = () => {
-      const totalWidth = 1140;
-      const ox = Math.max(60, Math.floor((window.innerWidth - totalWidth) / 2));
-      setOffset(ox);
-    };
-    calcOffset();
-    window.addEventListener('resize', calcOffset);
-    return () => window.removeEventListener('resize', calcOffset);
-  }, []);
+    const [offset, setOffset] = useState(60);
+    useEffect(() => {
+        const calcOffset = () => {
+            const totalWidth = 1140;
+            const ox = Math.max(
+                60,
+                Math.floor((window.innerWidth - totalWidth) / 2),
+            );
+            setOffset(ox);
+        };
+        calcOffset();
+        window.addEventListener("resize", calcOffset);
+        return () => window.removeEventListener("resize", calcOffset);
+    }, []);
 
-  return (
-    <div style={{
-      width: '100vw', height: '100vh', overflow: 'auto', position: 'relative',
-      fontFamily: "'JetBrains Mono', monospace", background: '#fafafa',
-      backgroundImage: 'radial-gradient(circle, #e0e0e0 0.8px, transparent 0.8px)', backgroundSize: '20px 20px',
-    }}>
-      <div style={{ position: 'fixed', top: 16, left: 20, zIndex: 100, fontSize: '10px', fontWeight: 700, letterSpacing: '3px', color: '#ccc' }}>TRAIN MY OWN GPT</div>
-      {user && (
-        <div ref={dropdownRef} style={{ position: 'fixed', top: 12, right: 20, zIndex: 100 }}>
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+    return (
+        <div
             style={{
-              fontSize: '10px', fontFamily: 'inherit', color: '#555',
-              background: '#fff', border: '1px solid #e0e0e0', borderRadius: '20px',
-              padding: '5px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                width: "100vw",
+                height: "100vh",
+                overflow: "auto",
+                position: "relative",
+                fontFamily: "'JetBrains Mono', monospace",
+                background: "#fafafa",
+                backgroundImage:
+                    "radial-gradient(circle, #e0e0e0 0.8px, transparent 0.8px)",
+                backgroundSize: "20px 20px",
             }}
-          >
-            <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</span>
-            <span style={{ fontSize: '8px', color: '#bbb' }}>▼</span>
-          </button>
-          {dropdownOpen && (
-            <div style={{
-              position: 'absolute', top: '110%', right: 0,
-              background: '#fff', border: '1px solid #e8e8e8', borderRadius: '6px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.06)', overflow: 'hidden',
-              minWidth: '120px',
-            }}>
-              <button
-                onClick={() => { logout(); setDropdownOpen(false); navigate('/login'); }}
+        >
+            <div
                 style={{
-                  width: '100%', padding: '8px 16px', textAlign: 'left',
-                  fontSize: '10px', fontFamily: 'inherit', color: '#666',
-                  background: 'transparent', border: 'none', cursor: 'pointer',
+                    position: "fixed",
+                    top: 16,
+                    left: 20,
+                    zIndex: 100,
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    letterSpacing: "3px",
+                    color: "#ccc",
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                Log out
-              </button>
+            >
+                TRAIN MY OWN GPT
             </div>
-          )}
-        </div>
-      )}
+            {user && (
+                <div
+                    ref={dropdownRef}
+                    style={{
+                        position: "fixed",
+                        top: 12,
+                        right: 20,
+                        zIndex: 100,
+                    }}
+                >
+                    <button
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        style={{
+                            fontSize: "10px",
+                            fontFamily: "inherit",
+                            color: "#555",
+                            background: "#fff",
+                            border: "1px solid #e0e0e0",
+                            borderRadius: "20px",
+                            padding: "5px 14px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                        }}
+                    >
+                        <span
+                            style={{
+                                maxWidth: "180px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            {user.email}
+                        </span>
+                        <span style={{ fontSize: "8px", color: "#bbb" }}>
+                            ▼
+                        </span>
+                    </button>
+                    {dropdownOpen && (
+                        <div
+                            style={{
+                                position: "absolute",
+                                top: "110%",
+                                right: 0,
+                                background: "#fff",
+                                border: "1px solid #e8e8e8",
+                                borderRadius: "6px",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                                overflow: "hidden",
+                                minWidth: "120px",
+                            }}
+                        >
+                            <button
+                                onClick={() => {
+                                    logout();
+                                    setDropdownOpen(false);
+                                    navigate("/login");
+                                }}
+                                style={{
+                                    width: "100%",
+                                    padding: "8px 16px",
+                                    textAlign: "left",
+                                    fontSize: "10px",
+                                    fontFamily: "inherit",
+                                    color: "#666",
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                }}
+                                onMouseEnter={(e) =>
+                                    (e.currentTarget.style.background =
+                                        "#f5f5f5")
+                                }
+                                onMouseLeave={(e) =>
+                                    (e.currentTarget.style.background =
+                                        "transparent")
+                                }
+                            >
+                                Log out
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
-      <Wires positions={positions} wires={WIRES} tick={posTick} />
+            <ZoomContext.Provider value={zoom}>
+                <div
+                    style={{
+                        transform: `scale(${zoom})`,
+                        transformOrigin: "top left",
+                        width: "100vw",
+                        height: "100vh",
+                    }}
+                >
+                    <Wires positions={positions} wires={WIRES} tick={posTick} />
 
-      <DatasetNode x={offset} y={80} onPosChange={updatePos} />
-      <TokenizerNode x={offset} y={380} onPosChange={updatePos} />
+                    {/* <DatasetNode x={offset} y={80} onPosChange={updatePos} />
+            <TokenizerNode x={offset} y={380} onPosChange={updatePos} />
 
-      <ArchitectureNode x={offset + 310} y={80} onPosChange={updatePos} />
-      <TrainingNode x={offset + 310} y={440} onPosChange={updatePos} />
+            <ArchitectureNode x={offset + 310} y={80} onPosChange={updatePos} />
+            <TrainingNode x={offset + 310} y={440} onPosChange={updatePos} />
 
-      <MetricsNode x={offset + 640} y={80} onPosChange={updatePos} />
-      <GenerateNode x={offset + 640} y={440} onPosChange={updatePos} />
+            <MetricsNode x={offset + 640} y={80} onPosChange={updatePos} />
+            <GenerateNode x={offset + 640} y={440} onPosChange={updatePos} /> */}
 
-      <style dangerouslySetInnerHTML={{ __html: `
+                    <ReferenceNode x={offset} y={30} onPosChange={updatePos} />
+                    <CompressConfigNode
+                        x={offset + 310}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <CompressNode
+                        x={offset + 640}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+
+                    <style
+                        dangerouslySetInnerHTML={{
+                            __html: `
         * { box-sizing: border-box; }
         input[type=range] { -webkit-appearance: none; background: #e8e8e8; border-radius: 2px; outline: none; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #999; cursor: pointer; }
         ::selection { background: #dbeafe; }
-      `}} />
-    </div>
-  );
+      `,
+                        }}
+                    />
+                </div>
+            </ZoomContext.Provider>
+            <NodeErrorToast />
+        </div>
+    );
 }
 
 export default App;
