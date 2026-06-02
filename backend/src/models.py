@@ -18,5 +18,14 @@ class UserOAuth(SQLModel, table=True):
     provider_id: str = Field(index=True)
 
 
+class Asset(SQLModel, table=True):
+    id: int = Field(default=None, primary_key=True)
+    asset_id: str = Field(index=True, unique=True)
+    user_id: str = Field(index=True, foreign_key="user.user_id")
+    path: str = Field()
+    type: str = Field()
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
 engine = create_engine("sqlite:///database.db", echo=True)
 SQLModel.metadata.create_all(engine)
