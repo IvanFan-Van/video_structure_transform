@@ -11,6 +11,7 @@ from jose import JWTError, jwt
 from sqlmodel import Session, select
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from core import analyze_video_structure
 from models import Asset, User, engine
 from utils import create_access_token, hash_password, verify_password
 from video import compress_video, probe_video
@@ -332,6 +333,67 @@ async def compress_video_endpoint(
                 "path": str(compressed_path),
                 "metadata": compressed_meta.to_dict(),
             },
+        },
+    )
+
+
+@app.post("/extract-transcript")
+async def extract_transcript_endpoint(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    data = await request.json()
+    asset_id = data.get("asset_id")
+
+    if not asset_id:
+        raise StarletteHTTPException(status_code=400, detail="缺少 asset_id 参数")
+
+    with Session(engine) as session:
+        statement = select(Asset).where(Asset.asset_id == asset_id)
+        asset = session.exec(statement).first()
+
+        if not asset:
+            raise StarletteHTTPException(
+                status_code=404, detail=f"素材 {asset_id} 不存在"
+            )
+
+        if asset.user_id != current_user.user_id:
+            raise StarletteHTTPException(status_code=403, detail="无权访问该素材")
+
+        video_path = Path(asset.path)
+        if not video_path.exists():
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "error",
+                    "message": "源文件丢失",
+                    "data": {
+                        "code": "FILE_MISSING",
+                        "details": str(asset.path),
+                    },
+                },
+            )
+
+    try:
+        structure = analyze_video_structure(video_path)
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": "视频文字提取失败",
+                "data": {
+                    "code": "EXTRACT_FAILED",
+                    "details": str(e),
+                },
+            },
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success",
+            "data": structure.model_dump(),
         },
     )
 
