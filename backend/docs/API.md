@@ -6,16 +6,43 @@ Base URL: `http://127.0.0.1:8000`
 
 ## 目录
 
-- [通用说明](#通用说明)
-- [1. GET / — 健康检查](#1-get----健康检查)
-- [2. POST /register — 用户注册](#2-post-register--用户注册)
-- [3. POST /login — 用户登录](#3-post-login--用户登录)
-- [4. GET /protected — 受保护路由](#4-get-protected--受保护路由)
-- [5. POST /upload — 上传视频](#5-post-upload--上传视频)
-- [6. POST /compress — 压缩视频](#6-post-compress--压缩视频)
-- [附录 A: VideoMeta 元数据字段](#附录-a-videometa-元数据字段)
-- [附录 B: 错误码参考](#附录-b-错误码参考)
-- [附录 C: 支持的视频格式](#附录-c-支持的视频格式)
+- [API 接口文档](#api-接口文档)
+  - [目录](#目录)
+  - [通用说明](#通用说明)
+    - [响应格式](#响应格式)
+    - [认证](#认证)
+  - [1. GET / — 健康检查](#1-get---健康检查)
+    - [请求参数](#请求参数)
+    - [响应示例](#响应示例)
+  - [2. POST /register — 用户注册](#2-post-register--用户注册)
+    - [请求参数](#请求参数-1)
+    - [请求示例](#请求示例)
+    - [成功响应 (201)](#成功响应-201)
+    - [错误响应](#错误响应)
+  - [3. POST /login — 用户登录](#3-post-login--用户登录)
+    - [请求参数](#请求参数-2)
+    - [请求示例](#请求示例-1)
+    - [成功响应 (200)](#成功响应-200)
+    - [错误响应](#错误响应-1)
+  - [4. POST /upload — 上传视频](#4-post-upload--上传视频)
+    - [请求参数](#请求参数-3)
+    - [请求示例 (curl)](#请求示例-curl)
+    - [成功响应 (201)](#成功响应-201-1)
+    - [错误响应](#错误响应-2)
+  - [5. POST /compress — 压缩视频](#5-post-compress--压缩视频)
+    - [请求参数](#请求参数-4)
+    - [请求示例](#请求示例-2)
+    - [成功响应 (201)](#成功响应-201-2)
+    - [错误响应](#错误响应-3)
+  - [6. POST /extract-transcript — 提取视频叙事结构](#6-post-extract-transcript--提取视频叙事结构)
+    - [请求参数](#请求参数-5)
+    - [请求示例](#请求示例-3)
+    - [成功响应 (200)](#成功响应-200-2)
+    - [响应字段说明](#响应字段说明)
+    - [错误响应](#错误响应-4)
+  - [附录 A: VideoMeta 元数据字段](#附录-a-videometa-元数据字段)
+  - [附录 B: 错误码参考](#附录-b-错误码参考)
+  - [附录 C: 支持的视频格式](#附录-c-支持的视频格式)
 
 ---
 
@@ -23,27 +50,42 @@ Base URL: `http://127.0.0.1:8000`
 
 ### 响应格式
 
-所有接口统一返回 JSON，结构如下：
+所有接口统一返回 JSON，遵循 JSend 规范：
 
 **成功响应：**
 
 ```json
 {
-  "success": true,
-  "status": 200,
-  "message": "操作描述",
+  "status": "success",
   "data": { ... }
 }
 ```
 
-**失败响应：**
+**客户端错误响应 (4xx)：**
 
 ```json
 {
-  "success": false,
-  "status": 400,
+  "status": "fail",
+  "message": "错误描述"
+}
+```
+
+**服务端错误响应 (5xx)：**
+
+```json
+{
+  "status": "error",
+  "message": "错误描述"
+}
+```
+
+部分 5xx 错误会附带额外的错误码和详情：
+
+```json
+{
+  "status": "error",
   "message": "错误描述",
-  "error": {
+  "data": {
     "code": "ERROR_CODE",
     "details": "详细错误信息"
   }
@@ -58,7 +100,7 @@ Base URL: `http://127.0.0.1:8000`
 Authorization: Bearer <access_token>
 ```
 
-Token 通过 `/login` 接口获取。
+Token 通过 `/login` 接口获取，默认有效期为 15 分钟（可通过环境变量 `ACCESS_TOKEN_EXPIRE_MINUTES` 配置）。
 
 ---
 
@@ -79,7 +121,8 @@ Token 通过 `/login` 接口获取。
 
 ```json
 {
-  "status": "ok"
+  "status": "success",
+  "data": "ok"
 }
 ```
 
@@ -100,7 +143,7 @@ Token 通过 `/login` 接口获取。
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `email` | string | 是 | 用户邮箱 |
-| `password` | string | 是 | 用户密码（明文，服务端 bcrypt 加密） |
+| `password` | string | 是 | 用户密码（明文，服务端 bcrypt 加密存储） |
 
 ### 请求示例
 
@@ -115,9 +158,7 @@ Token 通过 `/login` 接口获取。
 
 ```json
 {
-  "success": true,
-  "status": 201,
-  "message": "User registered successfully.",
+  "status": "success",
   "data": {
     "user_id": "550e8400-e29b-41d4-a716-446655440000",
     "email": "user@example.com"
@@ -125,12 +166,13 @@ Token 通过 `/login` 接口获取。
 }
 ```
 
-### 错误码
+### 错误响应
 
-| code | 说明 |
-|---|---|
-| `MISSING_FIELDS` | email 或 password 未提供 |
-| `USER_ALREADY_EXISTS` | 该邮箱已被注册 |
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 400 | `邮箱不能为空` | email 未提供 |
+| 400 | `密码不能为空` | password 未提供 |
+| 400 | `邮箱 xxx@example.com 已注册` | 该邮箱已被注册 |
 
 ---
 
@@ -164,12 +206,11 @@ Token 通过 `/login` 接口获取。
 
 ```json
 {
-  "success": true,
-  "status": 200,
-  "message": "Login successful.",
+  "status": "success",
   "data": {
     "access_token": "eyJhbGciOiJIUzI1NiIs...",
     "token_type": "bearer",
+    "expires_at": "2025-01-01 12:15:00",
     "user": {
       "user_id": "550e8400-e29b-41d4-a716-446655440000",
       "email": "user@example.com"
@@ -178,51 +219,27 @@ Token 通过 `/login` 接口获取。
 }
 ```
 
-### 错误码
-
-| code | 说明 |
+| 字段 | 说明 |
 |---|---|
-| `MISSING_CREDENTIALS` | email 或 password 未提供 |
-| `USER_NOT_FOUND` | 该邮箱未注册 |
-| `PASSWORD_NOT_SET` | 该用户通过 Google OAuth 注册，未设置本地密码 |
-| `INVALID_PASSWORD` | 密码不正确 |
+| `access_token` | JWT 访问令牌 |
+| `token_type` | 令牌类型，固定为 `"bearer"` |
+| `expires_at` | 令牌过期时间，格式 `YYYY-MM-DD HH:MM:SS`（UTC） |
+| `user.user_id` | 用户唯一标识 |
+| `user.email` | 用户邮箱 |
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 400 | `邮箱不能为空` | email 未提供 |
+| 400 | `密码不能为空` | password 未提供 |
+| 404 | `邮箱 xxx@example.com 未注册` | 该邮箱未注册 |
+| 400 | `该账号通过 Google 登录注册，请使用 Google 登录` | 用户通过 Google OAuth 注册，未设置本地密码 |
+| 401 | `密码错误` | 密码不正确 |
 
 ---
 
-## 4. GET /protected — 受保护路由
-
-测试认证是否生效的调试接口。
-
-| 属性 | 值 |
-|---|---|
-| **方法** | `GET` |
-| **认证** | 需要（Bearer Token） |
-
-### 请求头
-
-```
-Authorization: Bearer <access_token>
-```
-
-### 成功响应 (200)
-
-```json
-{
-  "status": "ok"
-}
-```
-
-### 认证失败 (401)
-
-```json
-{
-  "detail": "凭证已过期或无效，请重新登录"
-}
-```
-
----
-
-## 5. POST /upload — 上传视频
+## 4. POST /upload — 上传视频
 
 将视频文件上传到服务器，保存到本地并记录到数据库。
 
@@ -231,12 +248,6 @@ Authorization: Bearer <access_token>
 | **方法** | `POST` |
 | **认证** | 需要（Bearer Token） |
 | **Content-Type** | `multipart/form-data` |
-
-### 请求头
-
-```
-Authorization: Bearer <access_token>
-```
 
 ### 请求参数
 
@@ -256,9 +267,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ```json
 {
-  "success": true,
-  "status": 201,
-  "message": "Video uploaded successfully.",
+  "status": "success",
   "data": {
     "asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "type": "video",
@@ -281,16 +290,25 @@ curl -X POST http://127.0.0.1:8000/upload \
 }
 ```
 
-### 错误码
+### 错误响应
 
-| code | 说明 |
-|---|---|
-| `INVALID_FILE_TYPE` | 文件类型不支持（不是视频格式） |
-| `PROBE_FAILED` | 视频元数据提取失败 |
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 401 | `令牌格式无效` | JWT 缺少 user_id |
+| 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
+| 400 | `不支持的文件类型` | 文件扩展名或 MIME 类型不在允许列表中 |
+
+**服务端错误（附带 error code）：**
+
+| HTTP 状态码 | data.code | 说明 |
+|---|---|---|
+| 500 | `PROBE_FAILED` | 视频元数据探测失败 |
 
 ---
 
-## 6. POST /compress — 压缩视频
+## 5. POST /compress — 压缩视频
 
 对已上传的视频执行压缩，所有压缩参数均为可选。
 
@@ -306,10 +324,10 @@ curl -X POST http://127.0.0.1:8000/upload \
 |---|---|---|---|---|
 | `asset_id` | string | **是** | — | 源视频的 asset_id（由 /upload 返回） |
 | `vcodec` | string | 否 | `"libx264"` | 视频编码器：`libx264` / `libx265` |
-| `crf` | int \| null | 否 | `32` | 恒定质量因子（0-51，值越小质量越高体积越大）。设为 `null` 且设置 `target_v_bitrate` 时使用固定码率模式 |
-| `target_v_bitrate` | string \| null | 否 | `null` | 目标视频码率，如 `"2M"`、`"1500k"`。设置后忽略 `crf`，使用固定码率编码 |
-| `scale_width` | int \| null | 否 | `null` | 缩放目标宽度（像素），高度等比缩放。如 `720` 缩放到 720p |
-| `max_fps` | int \| null | 否 | `30` | 最大帧率限制，设为 `null` 保持原始帧率 |
+| `crf` | int | 否 | `32` | 恒定质量因子（0-51，值越小质量越高体积越大）。若设置 `target_v_bitrate` 则忽略此项 |
+| `target_v_bitrate` | string | 否 | `null` | 目标视频码率，如 `"2M"`、`"1500k"`。设置后忽略 `crf`，使用固定码率编码 |
+| `scale_width` | int | 否 | `null` | 缩放目标宽度（像素），高度等比缩放 |
+| `max_fps` | int | 否 | `30` | 最大帧率限制 |
 | `acodec` | string | 否 | `"aac"` | 音频编码器：`aac` / `libmp3lame` |
 | `target_a_bitrate` | string | 否 | `"96k"` | 目标音频码率，如 `"128k"`、`"64k"` |
 
@@ -352,9 +370,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ```json
 {
-  "success": true,
-  "status": 201,
-  "message": "Video compressed successfully.",
+  "status": "success",
   "data": {
     "asset_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
     "source_asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -378,15 +394,130 @@ curl -X POST http://127.0.0.1:8000/upload \
 }
 ```
 
-### 错误码
+### 错误响应
 
-| code | 说明 |
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 401 | `令牌格式无效` | JWT 缺少 user_id |
+| 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
+| 400 | `缺少 asset_id 参数` | 请求体未提供 asset_id |
+| 404 | `素材 xxx 不存在` | 该 asset_id 对应的记录不存在 |
+
+**服务端错误（附带 error code）：**
+
+| HTTP 状态码 | data.code | 说明 |
+|---|---|---|
+| 500 | `FILE_MISSING` | 数据库记录存在但磁盘文件已丢失 |
+| 500 | `COMPRESS_FAILED` | 视频压缩过程失败 |
+| 500 | `PROBE_FAILED` | 压缩后视频的元数据提取失败 |
+
+---
+
+## 6. POST /extract-transcript — 提取视频叙事结构
+
+使用 AI 多模态模型对已上传的短视频进行叙事结构拆解，提取每个阶段（hook / setup / story / insight / cta / outro）的画面文字、音频文字和时间戳。
+
+| 属性 | 值 |
 |---|---|
-| `MISSING_ASSET_ID` | 未提供 asset_id |
-| `ASSET_NOT_FOUND` | 该 asset_id 对应的记录不存在 |
-| `FILE_MISSING` | 数据库中记录存在但磁盘文件已丢失 |
-| `COMPRESS_FAILED` | 视频压缩过程失败（如编码器不支持、参数异常） |
-| `PROBE_FAILED` | 压缩后视频的元数据提取失败 |
+| **方法** | `POST` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | `application/json` |
+
+### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `asset_id` | string | **是** | 源视频的 asset_id（由 /upload 返回） |
+
+### 请求示例
+
+```json
+{
+  "asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+### 成功响应 (200)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "hook": {
+      "visual_text": "你知道吗？90%的人都做错了这件事",
+      "audio_text": "",
+      "start_time": 0.0,
+      "end_time": 5.2
+    },
+    "setup": {
+      "visual_text": "我花了三年时间研究这个问题",
+      "audio_text": "",
+      "start_time": 5.2,
+      "end_time": 10.0
+    },
+    "story": {
+      "visual_text": "第一天...\n第二天...\n第三天...",
+      "audio_text": "",
+      "start_time": 10.0,
+      "end_time": 38.5
+    },
+    "insight": {
+      "visual_text": "人生最大的智慧，就是活在当下",
+      "audio_text": "",
+      "start_time": 38.5,
+      "end_time": 45.0
+    },
+    "cta": {
+      "visual_text": "点赞收藏，转发给你关心的人",
+      "audio_text": "",
+      "start_time": 45.0,
+      "end_time": 50.0
+    },
+    "outro": null
+  }
+}
+```
+
+### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `hook` | object \| null | 钩子阶段：开头抛出问题/悬念，抓住观众注意力 |
+| `setup` | object \| null | 铺垫阶段：交代背景、设定情境 |
+| `story` | object \| null | 正文阶段：故事主体/事件叙述/观点展开 |
+| `insight` | object \| null | 金句阶段：核心观点/感悟/反转 |
+| `cta` | object \| null | 行动号召阶段：引导互动（点赞/关注/转发） |
+| `outro` | object \| null | 结尾阶段：收束/道别/落版文字 |
+
+每个阶段对象包含以下字段：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `visual_text` | string | 该阶段画面上的核心叙事文字（不含水印、UI等无关文字） |
+| `audio_text` | string | 该阶段的音频文本：旁白/台词/对话（纯 BGM 则为空字符串） |
+| `start_time` | float | 该阶段开始时间（秒） |
+| `end_time` | float | 该阶段结束时间（秒） |
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 401 | `令牌格式无效` | JWT 缺少 user_id |
+| 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
+| 400 | `缺少 asset_id 参数` | 请求体未提供 asset_id |
+| 404 | `素材 xxx 不存在` | 该 asset_id 对应的记录不存在 |
+| 403 | `无权访问该素材` | 素材不属于当前用户 |
+
+**服务端错误（附带 error code）：**
+
+| HTTP 状态码 | data.code | 说明 |
+|---|---|---|
+| 500 | `FILE_MISSING` | 数据库记录存在但磁盘文件已丢失 |
+| 500 | `EXTRACT_FAILED` | AI 模型调用失败 |
 
 ---
 
@@ -411,20 +542,33 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ## 附录 B: 错误码参考
 
-| 错误码 | HTTP 状态码 | 说明 |
+### 客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述
+
+| HTTP 状态码 | message | 触发场景 |
 |---|---|---|
-| `MISSING_FIELDS` | 400 | 必填字段缺失 |
-| `MISSING_CREDENTIALS` | 400 | 登录凭据缺失 |
-| `MISSING_ASSET_ID` | 400 | 压缩请求缺少 asset_id |
-| `USER_ALREADY_EXISTS` | 400 | 注册邮箱已存在 |
-| `USER_NOT_FOUND` | 404 | 登录邮箱未注册 |
-| `INVALID_PASSWORD` | 401 | 密码不正确 |
-| `INVALID_FILE_TYPE` | 400 | 上传文件类型不支持 |
-| `PASSWORD_NOT_SET` | 500 | 用户通过 OAuth 注册，无本地密码 |
-| `ASSET_NOT_FOUND` | 404 | Asset 记录不存在 |
+| 400 | `邮箱不能为空` | 注册/登录时未提供 email |
+| 400 | `密码不能为空` | 注册/登录时未提供 password |
+| 400 | `邮箱 xxx 已注册` | 注册时邮箱重复 |
+| 400 | `该账号通过 Google 登录注册，请使用 Google 登录` | OAuth 用户尝试密码登录 |
+| 400 | `不支持的文件类型` | 上传了非视频文件 |
+| 400 | `缺少 asset_id 参数` | 压缩/提取时未提供 asset_id |
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 401 | `令牌格式无效` | JWT payload 缺少 user_id |
+| 401 | `用户不存在或已注销` | 令牌对应用户已被删除 |
+| 401 | `密码错误` | 登录密码不匹配 |
+| 403 | `无权访问该素材` | 尝试操作不属于自己的素材 |
+| 404 | `邮箱 xxx 未注册` | 登录时邮箱不存在 |
+| 404 | `素材 xxx 不存在` | asset_id 对应记录不存在 |
+
+### 服务端错误 (5xx) — 附带 `data.code` 和 `data.details`
+
+| data.code | HTTP 状态码 | 说明 |
+|---|---|---|
+| `PROBE_FAILED` | 500 | 视频元数据探测失败（上传后或压缩后） |
 | `FILE_MISSING` | 500 | Asset 记录存在但磁盘文件丢失 |
-| `PROBE_FAILED` | 500 | 视频元数据探测失败 |
 | `COMPRESS_FAILED` | 500 | 视频压缩失败 |
+| `EXTRACT_FAILED` | 500 | AI 模型调用失败 |
 
 ## 附录 C: 支持的视频格式
 
