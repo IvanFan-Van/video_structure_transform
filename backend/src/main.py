@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -13,17 +13,29 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from models import Asset, User, engine
 from utils import create_access_token, hash_password, verify_password
-from video import VideoMeta, compress_video, probe_video
+from video import compress_video, probe_video
 
 load_dotenv(find_dotenv())
 
+STORAGE_DIR = Path("storage")
+VIDEO_STORAGE_DIR = STORAGE_DIR / "videos"
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv"}
+ALLOWED_VIDEO_MIME_TYPES = {
+    "video/mp4",
+    "video/quicktime",
+    "video/x-msvideo",
+    "video/x-matroska",
+    "video/webm",
+    "video/x-flv",
+    "video/x-ms-wmv",
+}
+
 app = FastAPI()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
 
 
 @app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(
-    request: Request, exc: StarletteHTTPException
-):
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     if 400 <= exc.status_code < 500:
         return JSONResponse(
             status_code=exc.status_code,
@@ -35,14 +47,9 @@ async def http_exception_handler(
     )
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
-
-
 async def get_current_user(token: str | None = Depends(oauth2_scheme)):
     if token is None:
-        raise StarletteHTTPException(
-            status_code=401, detail="未提供认证令牌"
-        )
+        raise StarletteHTTPException(status_code=401, detail="未提供认证令牌")
 
     try:
         payload = jwt.decode(
@@ -51,30 +58,24 @@ async def get_current_user(token: str | None = Depends(oauth2_scheme)):
             algorithms=[os.getenv("ALGORITHM", "HS256")],
         )
     except JWTError:
-        raise StarletteHTTPException(
-            status_code=401, detail="令牌已过期或无效"
-        )
+        raise StarletteHTTPException(status_code=401, detail="令牌已过期或无效")
 
     user_id: str | None = payload.get("user_id", None)
     if user_id is None:
-        raise StarletteHTTPException(
-            status_code=401, detail="令牌格式无效"
-        )
+        raise StarletteHTTPException(status_code=401, detail="令牌格式无效")
 
     with Session(engine) as session:
         statement = select(User).where(User.user_id == user_id)
         user = session.exec(statement).first()
         if user is None:
-            raise StarletteHTTPException(
-                status_code=401, detail="用户不存在或已注销"
-            )
+            raise StarletteHTTPException(status_code=401, detail="用户不存在或已注销")
 
         return user
 
 
 @app.get("/")
 def index():
-    return {"status": "success", "data": None}
+    return JSONResponse(status_code=200, content={"status": "success", "data": "ok"})
 
 
 @app.post("/register")
@@ -92,9 +93,7 @@ async def register(request: Request):
         statement = select(User).where(User.email == data["email"])
         result = session.exec(statement).first()
         if result:
-            raise StarletteHTTPException(
-                status_code=400, detail=f"邮箱 {email} 已注册"
-            )
+            raise StarletteHTTPException(status_code=400, detail=f"邮箱 {email} 已注册")
 
         user = User(
             user_id=str(uuid.uuid4()),
@@ -134,9 +133,7 @@ async def login(request: Request):
         user = session.exec(statement).first()
 
         if not user:
-            raise StarletteHTTPException(
-                status_code=404, detail=f"邮箱 {email} 未注册"
-            )
+            raise StarletteHTTPException(status_code=404, detail=f"邮箱 {email} 未注册")
 
         if user.password_hash is None:
             raise StarletteHTTPException(
@@ -145,47 +142,33 @@ async def login(request: Request):
             )
 
         if not verify_password(password, user.password_hash):
-            raise StarletteHTTPException(
-                status_code=401, detail="密码错误"
-            )
+            raise StarletteHTTPException(status_code=401, detail="密码错误")
 
+        expires_delta = timedelta(
+            minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
+        )
         token = create_access_token(
             data={"user_id": user.user_id, "email": user.email},
-            expires_delta=timedelta(
-                minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
-            ),
+            expires_delta=expires_delta,
         )
 
-        return {
-            "status": "success",
-            "data": {
-                "access_token": token,
-                "token_type": "bearer",
-                "user": {
-                    "user_id": user.user_id,
-                    "email": user.email,
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "success",
+                "data": {
+                    "access_token": token,
+                    "token_type": "bearer",
+                    "expires_at": (datetime.now(UTC) + expires_delta).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                    "user": {
+                        "user_id": user.user_id,
+                        "email": user.email,
+                    },
                 },
             },
-        }
-
-
-@app.get("/protected")
-async def test(request: Request, current_user: User = Depends(get_current_user)):
-    return {"status": "success", "data": None}
-
-
-STORAGE_DIR = Path("storage")
-VIDEO_STORAGE_DIR = STORAGE_DIR / "videos"
-ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv"}
-ALLOWED_VIDEO_MIME_TYPES = {
-    "video/mp4",
-    "video/quicktime",
-    "video/x-msvideo",
-    "video/x-matroska",
-    "video/webm",
-    "video/x-flv",
-    "video/x-ms-wmv",
-}
+        )
 
 
 @app.post("/upload")
@@ -194,10 +177,11 @@ async def upload_video(
     current_user: User = Depends(get_current_user),
 ):
     ext = Path(file.filename or "upload.mp4").suffix.lower()
-    if ext not in ALLOWED_VIDEO_EXTENSIONS and file.content_type not in ALLOWED_VIDEO_MIME_TYPES:
-        raise StarletteHTTPException(
-            status_code=400, detail="不支持的文件类型"
-        )
+    if (
+        ext not in ALLOWED_VIDEO_EXTENSIONS
+        and file.content_type not in ALLOWED_VIDEO_MIME_TYPES
+    ):
+        raise StarletteHTTPException(status_code=400, detail="不支持的文件类型")
 
     VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -254,9 +238,7 @@ async def compress_video_endpoint(
     asset_id = data.get("asset_id")
 
     if not asset_id:
-        raise StarletteHTTPException(
-            status_code=400, detail="缺少 asset_id 参数"
-        )
+        raise StarletteHTTPException(status_code=400, detail="缺少 asset_id 参数")
 
     with Session(engine) as session:
         statement = select(Asset).where(Asset.asset_id == asset_id)
