@@ -1,8 +1,20 @@
 import { useState, useRef, useCallback, useEffect, useContext } from 'react';
 import { ZoomContext } from '../context/ZoomContext';
+import { SESSION_KEYS } from '../constants';
 
 export function useDraggable(ix: number, iy: number, id: string, onPos: (id: string, x: number, y: number, w: number, h: number) => void) {
-  const [p, setP] = useState({ x: ix, y: iy });
+  const [p, setP] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEYS.NODE_POSITIONS);
+      if (saved) {
+        const positions = JSON.parse(saved);
+        if (positions[id]) {
+          return { x: positions[id].x, y: positions[id].y };
+        }
+      }
+    } catch {}
+    return { x: ix, y: iy };
+  });
   const drag = useRef(false);
   const off = useRef({ x: 0, y: 0 });
   const ref = useRef<HTMLDivElement>(null);
