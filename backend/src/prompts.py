@@ -1,82 +1,137 @@
 DESIGN_SYSTEM_PROMPT = (
-    "你是一位顶尖的品牌视觉设计师和 Hyperframes 视频生产专家。"
-    "根据所提供的爆款短视频，输出一份符合 Hyperframes DESIGN.md 规范的品牌设计文档。"
-    "请直接输出 Markdown 文本，不要添加任何额外解释或代码块标记。"
+    "你是一位顶尖的品牌视觉设计师和 Hyperframes 视频生产专家。\n"
+    "你的任务是根据所提供的爆款短视频，输出一份完整、符合 Hyperframes DESIGN.md 规范的品牌设计文档。\n"
+    "\n"
+    "【核心要求】\n"
+    "1. 必须包含完整的 YAML Front Matter（colors/typography/rounded/spacing/motion/elevation）\n"
+    "2. 必须包含 6 个散文章节（Overview/Colors/Typography/Components/Imagery/Do's and Don'ts）\n"
+    "3. motion 部分是剪辑手法的核心，必须详细定义 energy/easing/duration/atmosphere/transition\n"
+    "4. 字体必须使用 Google Fonts 英文名称（如 Noto Serif SC、Noto Sans SC、Inter、Cinzel）\n"
+    "5. Do's and Don'ts 必须各有 5-7 条具体规则\n"
+    "\n"
+    "【关键理解】\n"
+    '- DESIGN.md 定义"品牌是什么"，不是"视频怎么做"\n'
+    "- colors 定义配色方案，所有 hex 值必须在此声明\n"
+    "- typography 定义文字层级，必须跨界配对（serif+sans 或 sans+mono）\n"
+    "- motion.energy 控制整体节奏（calm/moderate/high）\n"
+    "- motion.easing 控制动画感觉（entry/exit/ambient 三种缓动）\n"
+    "- motion.atmosphere 定义背景装饰层（必须 2-5 个）\n"
+    "- motion.transition 定义主要转场类型\n"
+    "\n"
+    "请直接输出 Markdown 文本，从 --- 开始，不要添加任何代码块标记或额外解释。"
 )
 
-DESIGN_MD_TEMPLATE = """
-请仔细观看这段爆款短视频，结合以下数据，生成一份完整的 DESIGN.md 文件。
+DESIGN_MD_TEMPLATE = """请仔细观看这段爆款短视频，结合以下数据，生成一份完整的 DESIGN.md 文件。
+
+【视频基础数据】
+- 时长：{duration:.1f}s | 切换点：{cuts_str}
+
+【台词】
+{total_text}
+
+【台词时间戳】
+{segs}
+
 【输出格式】严格按此结构输出，包含 YAML frontmatter + 6个章节：
 
 ---
 colors:
-  primary: "#xxxxxx"
-  on-primary: "#xxxxxx"
-  accent: "#xxxxxx"
-  surface: "#xxxxxx"
-  muted: "#xxxxxx"
+  primary: "#xxxxxx"        # 主色（通常是背景色或主要文字色）
+  on-primary: "#xxxxxx"     # 主色上的内容颜色
+  accent: "#xxxxxx"         # 强调色（用于高亮关键元素）
+  surface: "#xxxxxx"        # 表面色（卡片/容器背景）
+  muted: "#xxxxxx"          # 柔和色（次要背景）
+  secondary-accent: "#xxxxxx"  # 可选：次要强调色
+  
 typography:
   headline:
-    fontFamily: "Noto Serif SC"
-    fontSize: "5rem"
-    fontWeight: 700
-    textTransform: "none"
+    fontFamily: "Noto Serif SC"  # 必须是 Google Fonts 英文名
+    fontSize: "5rem"             # 视频用大尺寸（60px+）
+    fontWeight: 700              # 粗字重
+    textTransform: "none"        # 可选：uppercase/none
+    letterSpacing: "0.05em"      # 可选：字间距
   body:
-    fontFamily: "Noto Sans SC"
-    fontSize: "1.5rem"
+    fontFamily: "Noto Sans SC"   # 必须跨界配对（serif+sans 或 sans+mono）
+    fontSize: "1.5rem"           # 最小 20px
     fontWeight: 400
     lineHeight: 1.6
   label:
     fontFamily: "Noto Sans SC"
-    fontSize: "1rem"
+    fontSize: "1rem"             # 最小 16px
     fontWeight: 500
+    
 rounded:
   sm: "8px"
   md: "16px"
   lg: "32px"
+  
 spacing:
   sm: "16px"
   md: "32px"
   lg: "64px"
+  
 motion:
-  energy: "high"
+  energy: "high"               # calm / moderate / high（控制整体节奏）
   easing:
-    entry: "power3.out"
-    exit: "power2.in"
-    ambient: "sine.inOut"
+    entry: "power3.out"        # 入场缓动（元素进入画面）
+    exit: "power2.in"          # 出场缓动（元素离开画面）
+    ambient: "sine.inOut"      # 环境动效缓动（呼吸、漂浮）
   duration:
-    entrance: 0.4
-    hold: 2.0
-    transition: 0.5
-  atmosphere:
-    - "radial-glow"
-    - "ghost-type"
-  transition: "velocity-matched-upward"
+    entrance: 0.4              # 入场动画时长（秒）
+    hold: 2.0                  # 画面停留时长（秒）
+    transition: 0.5            # 转场时长（秒）
+  atmosphere:                  # 装饰元素类型（必须 2-5 个）
+    - "radial-glow"            # 径向光晕
+    - "ghost-type"             # 幽灵文字（大字低透明度）
+  transition: "velocity-matched-upward"  # 主要转场类型
+  
+elevation:                     # 可选：深度/阴影系统
+  flat: "none"
+  subtle: "0 2px 8px rgba(0,0,0,0.08)"
+  layered: "0 8px 24px rgba(0,0,0,0.15)"
 ---
 
 ## Overview
-（3-4句话）
+（3-4 句话描述整体视觉概念、目标情绪、视觉风格核心理念、时长和格式）
 
 ## Colors
-（5-8个颜色含十六进制）
+（详细解释每个颜色的使用场景、情感表达、使用限制。必须包含所有会用到的 hex 值。5-8 个颜色的详细说明，每个颜色 2-3 句话）
 
 ## Typography
-（字体层级说明，字体名只能使用 Google Fonts 中存在的英文名称，如 Noto Serif SC、Noto Sans SC、Inter 等，不要使用中文字体名）
+（详细解释字体配对的张力、层级关系、可读性保证、特殊处理。说明为什么选这两个字体，如何区分重要性，最小尺寸要求，深色背景的光学补偿）
 
 ## Components
-（视频中的视觉组件）
+（列出视频中使用的核心视觉组件，每个组件的视觉处理方式、动效规则、使用场景。如：底部品牌水印、悬挂标签、标题文字块、故障效果元素等）
 
 ## Imagery
-（画面素材类型）
+（说明使用的视觉素材类型、处理风格、视觉一致性。如：纯文字/照片/插画/视频素材，滤镜处理，如何与品牌配色融合）
 
 ## Do's and Don'ts
 **Do:**
-- （3-5条）
-**Don't:**
-- （3-5条）
+- （5-7 条必须遵守的具体规则，每条要具体、可执行）
+- 示例：保持所有中心标题文字完美居中，径向光晕强度一致
+- 示例：将每个文字转场动作精确对齐背景音轨节拍
+- 示例：所有装饰元素必须有环境动效（breathe/drift/pulse）
 
-重要：字体名必须是 Google Fonts 可用的英文名称，严禁使用"思源黑体"、"思源宋体"等中文名。
+**Don't:**
+- （5-7 条必须避免的具体做法，每条要明确、可检查）
+- 示例：绝不添加额外的装饰性摄影或插画元素
+- 示例：避免在任何单个帧上同时使用多个强调色
+- 示例：禁止使用未在 colors 部分声明的颜色
+
+【重要约束】
+1. 字体名只能使用 Google Fonts 中存在的英文名称（Noto Serif SC、Noto Sans SC、Inter、Cinzel 等），严禁使用"思源黑体"、"思源宋体"等中文名
+2. motion.atmosphere 必须从以下列表选择 2-5 个：radial-glow / ghost-type / hairline-rules / grain-overlay / grid-lines / registration-marks / scan-lines / particle-field / confetti-burst
+3. motion.transition 必须从以下列表选择一个：
+   - CSS 转场：velocity-matched-upward / blur-crossfade / push-slide / zoom-through / hard-cut
+   - Shader 转场：cross-warp-morph / cinematic-zoom / glitch / gravitational-lens / ridged-burn / thermal-distortion / swirl-vortex / domain-warp
+4. motion.energy 根据视频节奏选择：
+   - calm：慢节奏（0.8-1.2s 入场），适合奢侈品/品牌故事
+   - moderate：中等节奏（0.4-0.6s 入场），适合企业/教程
+   - high：快节奏（0.2-0.4s 入场），适合产品发布/社交媒体
+5. typography 必须跨界配对，禁止两个 sans-serif
 """
+
 
 SCRIPT_SYSTEM_PROMPT = (
     "你是一位精通短视频创作的脚本策划专家和 Hyperframes 视频生产专家。"
