@@ -32,17 +32,19 @@ Base URL: `http://127.0.0.1:8000`
   - [5. POST /compress — 压缩视频](#5-post-compress--压缩视频)
     - [请求参数](#请求参数-4)
     - [请求示例](#请求示例-2)
-    - [成功响应 (201)](#成功响应-201-2)
+    - [成功响应 (202)](#成功响应-202-2)
     - [错误响应](#错误响应-3)
-  - [6. POST /extract-transcript — 提取视频叙事结构](#6-post-extract-transcript--提取视频叙事结构)
+  - [6. POST /analyze-script — 提取视频叙事结构](#6-post-analyze-script--提取视频叙事结构)
     - [请求参数](#请求参数-5)
     - [请求示例](#请求示例-3)
-    - [成功响应 (200)](#成功响应-200-2)
-    - [响应字段说明](#响应字段说明)
+    - [成功响应 (202)](#成功响应-202-2)
     - [错误响应](#错误响应-4)
+  - [7. GET /task/{task_id} — 查询异步任务状态](#7-get-tasktask_id--查询异步任务状态)
+  - [8. POST /task/{task_id}/cancel — 取消异步任务](#8-post-tasktask_idcancel--取消异步任务)
   - [附录 A: VideoMeta 元数据字段](#附录-a-videometa-元数据字段)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
   - [附录 C: 支持的视频格式](#附录-c-支持的视频格式)
+  - [附录 D: 异步任务与取消](#附录-d-异步任务与取消)
 
 ---
 
@@ -366,31 +368,28 @@ curl -X POST http://127.0.0.1:8000/upload \
 }
 ```
 
-### 成功响应 (201)
+### 成功响应 (202)
+
+压缩任务已提交，通过 `GET /task/{task_id}` 轮询结果。
 
 ```json
 {
   "status": "success",
   "data": {
-    "asset_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-    "source_asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "type": "video",
-    "path": "storage\\videos\\b2c3d4e5-f6a7-8901-bcde-f12345678901_compressed.mp4",
-    "metadata": {
-      "filepath": "D:\\HKU\\...\\storage\\videos\\b2c3d4e5....mp4",
-      "codec": "h264",
-      "width": 720,
-      "height": 404,
-      "fps": 24.0,
-      "v_bitrate": 800,
-      "total_bitrate": 900,
-      "audio_sample_rate": 44100,
-      "audio_channels": 2,
-      "a_bitrate": 128,
-      "size": 3145728,
-      "duration": 15.5
-    }
+    "task_id": "cccccccc-cccc-cccc-cccc-cccccccccccc"
   }
+}
+```
+
+任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下结构：
+
+```json
+{
+  "asset_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "source_asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "type": "video",
+  "path": "storage\\videos\\b2c3d4e5-f6a7-8901-bcde-f12345678901_compressed.mp4",
+  "metadata": { ... }
 }
 ```
 
@@ -415,7 +414,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ---
 
-## 6. POST /extract-transcript — 提取视频叙事结构
+## 6. POST /analyze-script — 提取视频叙事结构
 
 使用 AI 多模态模型对已上传的短视频进行叙事结构拆解，提取每个阶段（hook / setup / story / insight / cta / outro）的画面文字、音频文字和时间戳。
 
@@ -439,44 +438,34 @@ curl -X POST http://127.0.0.1:8000/upload \
 }
 ```
 
-### 成功响应 (200)
+### 成功响应 (202)
+
+分析任务已提交，通过 `GET /task/{task_id}` 轮询结果。
 
 ```json
 {
   "status": "success",
   "data": {
-    "hook": {
-      "visual_text": "你知道吗？90%的人都做错了这件事",
-      "audio_text": "",
-      "start_time": 0.0,
-      "end_time": 5.2
-    },
-    "setup": {
-      "visual_text": "我花了三年时间研究这个问题",
-      "audio_text": "",
-      "start_time": 5.2,
-      "end_time": 10.0
-    },
-    "story": {
-      "visual_text": "第一天...\n第二天...\n第三天...",
-      "audio_text": "",
-      "start_time": 10.0,
-      "end_time": 38.5
-    },
-    "insight": {
-      "visual_text": "人生最大的智慧，就是活在当下",
-      "audio_text": "",
-      "start_time": 38.5,
-      "end_time": 45.0
-    },
-    "cta": {
-      "visual_text": "点赞收藏，转发给你关心的人",
-      "audio_text": "",
-      "start_time": 45.0,
-      "end_time": 50.0
-    },
-    "outro": null
+    "task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd"
   }
+}
+```
+
+任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下叙事结构：
+
+```json
+{
+  "hook": {
+    "visual_text": "你知道吗？90%的人都做错了这件事",
+    "audio_text": "",
+    "start_time": 0.0,
+    "end_time": 5.2
+  },
+  "setup": { ... },
+  "story": { ... },
+  "insight": { ... },
+  "cta": { ... },
+  "outro": null
 }
 ```
 
@@ -517,7 +506,157 @@ curl -X POST http://127.0.0.1:8000/upload \
 | HTTP 状态码 | data.code | 说明 |
 |---|---|---|
 | 500 | `FILE_MISSING` | 数据库记录存在但磁盘文件已丢失 |
-| 500 | `EXTRACT_FAILED` | AI 模型调用失败 |
+| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 GET /task/{task_id} 查询 status: "failed" 获取详情） |
+
+---
+
+## 7. GET /task/{task_id} — 查询异步任务状态
+
+查询由 `/compress` 或 `/analyze-script` 提交的异步任务的当前状态和结果。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `GET` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | —（无请求体） |
+
+### 路径参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `task_id` | string | **是** | 任务 ID（由发起接口返回） |
+
+### 成功响应 (200)
+
+**任务运行中：**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    "type": "analyze-script",
+    "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "running",
+    "created_at": "2025-01-01T12:00:00+00:00"
+  }
+}
+```
+
+**任务已完成：**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    "type": "analyze-script",
+    "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "completed",
+    "created_at": "2025-01-01T12:00:00+00:00",
+    "result": { ... }
+  }
+}
+```
+
+**任务失败：**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    "type": "compress",
+    "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "failed",
+    "created_at": "2025-01-01T12:00:00+00:00",
+    "error": "ffmpeg exited with code 1: ..."
+  }
+}
+```
+
+**任务已取消：**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    "type": "compress",
+    "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "status": "cancelled",
+    "created_at": "2025-01-01T12:00:00+00:00"
+  }
+}
+```
+
+### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `task_id` | string | 任务唯一标识 |
+| `type` | string | 任务类型：`compress` / `analyze-script` |
+| `resource_id` | string | 关联的资源 ID（如 asset_id） |
+| `status` | string | 任务状态：`running` / `completed` / `failed` / `cancelled` |
+| `created_at` | string | 任务创建时间（ISO 8601） |
+| `result` | any | （仅 `completed`）任务执行结果 |
+| `error` | string | （仅 `failed`）错误描述 |
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 401 | `令牌格式无效` | JWT 缺少 user_id |
+| 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
+| 403 | `无权访问该任务` | 试图查询其他用户的任务 |
+| 404 | `任务 xxx 不存在` | task_id 不在注册表中 |
+
+---
+
+## 8. POST /task/{task_id}/cancel — 取消异步任务
+
+取消一个正在执行的异步任务。取消后通过 `GET /task/{task_id}` 查询将返回 `status: "cancelled"`。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `POST` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | —（无需请求体） |
+
+### 路径参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `task_id` | string | **是** | 任务 ID（由发起接口返回） |
+
+### 请求示例
+
+```bash
+curl -X POST http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/cancel \
+  -H "Authorization: Bearer <token>"
+```
+
+### 成功响应 (200)
+
+```json
+{
+  "status": "success",
+  "data": "任务 dddddddd-dddd-dddd-dddd-dddddddddddd 已发起取消"
+}
+```
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 401 | `令牌格式无效` | JWT 缺少 user_id |
+| 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
+| 403 | `无权操作该任务` | 试图取消其他用户的任务 |
+| 404 | `任务 xxx 不存在` | task_id 不在注册表中 |
 
 ---
 
@@ -558,8 +697,10 @@ curl -X POST http://127.0.0.1:8000/upload \
 | 401 | `用户不存在或已注销` | 令牌对应用户已被删除 |
 | 401 | `密码错误` | 登录密码不匹配 |
 | 403 | `无权访问该素材` | 尝试操作不属于自己的素材 |
+| 403 | `无权操作该任务` | 试图取消其他用户的任务 |
 | 404 | `邮箱 xxx 未注册` | 登录时邮箱不存在 |
 | 404 | `素材 xxx 不存在` | asset_id 对应记录不存在 |
+| 404 | `任务 xxx 不存在` | task_id 不在注册表中 |
 
 ### 服务端错误 (5xx) — 附带 `data.code` 和 `data.details`
 
@@ -581,3 +722,40 @@ curl -X POST http://127.0.0.1:8000/upload \
 | `.webm` | `video/webm` | WebM 视频 |
 | `.flv` | `video/x-flv` | Flash 视频 |
 | `.wmv` | `video/x-ms-wmv` | Windows Media 视频 |
+
+## 附录 D: 异步任务与取消
+
+### 概述
+
+视频压缩 (`/compress`) 和 AI 分析 (`/analyze-script`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端通过轮询 `GET /task/{task_id}` 获取进度和结果。
+
+### 工作流程
+
+```
+POST /compress       → 202 { task_id }     ← 立即返回
+GET  /task/{id}      → 200 { status: "running" }
+GET  /task/{id}      → 200 { status: "completed", result: {...} }  ← 结果就绪
+POST /task/{id}/cancel  → 200 "已发起取消"   ← 中途取消
+GET  /task/{id}      → 200 { status: "cancelled" }
+```
+
+### 任务状态
+
+| 状态 | 说明 |
+|---|---|
+| `running` | 任务正在执行 |
+| `completed` | 任务成功完成，`result` 字段包含结果数据 |
+| `failed` | 任务执行失败，`error` 字段包含错误详情 |
+| `cancelled` | 任务已被取消 |
+
+### 取消机制
+
+- **`/compress`**: 底层 `ffmpeg` 子进程被 `SIGKILL` 杀死，部分压缩文件被清理
+- **`/analyze-script`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
+
+### 注意事项
+
+- 发起接口仅做参数校验（asset 是否存在、归属等），通过校验后立即返回 202
+- 任务记录在服务内存中持久保存，服务重启后丢失
+- 取消操作是尽力而为的——AI 模型可能已经消耗了部分 token
+- 建议客户端以 1-2 秒间隔轮询 `GET /task/{task_id}`

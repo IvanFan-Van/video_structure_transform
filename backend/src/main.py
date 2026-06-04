@@ -1,3 +1,4 @@
+import asyncio
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -11,10 +12,11 @@ from jose import JWTError, jwt
 from sqlmodel import Session, select
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from core import analyze_video_structure
+from core import analyze_video_script_async
 from models import Asset, User, engine
+from task_registry import task_registry
 from utils import create_access_token, hash_password, verify_password
-from video import compress_video, probe_video
+from video import compress_video_async, probe_video
 
 load_dotenv(find_dotenv())
 
@@ -241,6 +243,19 @@ async def compress_video_endpoint(
     if not asset_id:
         raise StarletteHTTPException(status_code=400, detail="缺少 asset_id 参数")
 
+    compressed_asset_id = str(uuid.uuid4())
+    compressed_filename = f"{compressed_asset_id}_compressed.mp4"
+    compressed_path = VIDEO_STORAGE_DIR / compressed_filename
+    VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    vcodec = data.get("vcodec", "libx264")
+    crf = data.get("crf", 32)
+    target_v_bitrate = data.get("target_v_bitrate")
+    scale_width = data.get("scale_width")
+    max_fps = data.get("max_fps", 30)
+    acodec = data.get("acodec", "aac")
+    target_a_bitrate = data.get("target_a_bitrate", "96k")
+
     with Session(engine) as session:
         statement = select(Asset).where(Asset.asset_id == asset_id)
         source_asset = session.exec(statement).first()
@@ -264,22 +279,15 @@ async def compress_video_endpoint(
                 },
             )
 
-        compressed_asset_id = str(uuid.uuid4())
-        compressed_filename = f"{compressed_asset_id}_compressed.mp4"
-        compressed_path = VIDEO_STORAGE_DIR / compressed_filename
-        VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+        source_path_str = str(source_path)
 
-        vcodec = data.get("vcodec", "libx264")
-        crf = data.get("crf", 32)
-        target_v_bitrate = data.get("target_v_bitrate")
-        scale_width = data.get("scale_width")
-        max_fps = data.get("max_fps", 30)
-        acodec = data.get("acodec", "aac")
-        target_a_bitrate = data.get("target_a_bitrate", "96k")
+    task_id = str(uuid.uuid4())
+    user_id = current_user.user_id
 
+    async def _run_compress():
         try:
-            compress_video(
-                source_path,
+            output = await compress_video_async(
+                source_path_str,
                 compressed_path,
                 vcodec=vcodec,
                 crf=crf,
@@ -289,56 +297,51 @@ async def compress_video_endpoint(
                 acodec=acodec,
                 target_a_bitrate=target_a_bitrate,
             )
-        except Exception as e:
-            compressed_path.unlink(missing_ok=True)
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "status": "error",
-                    "message": "视频压缩失败",
-                    "data": {"code": "COMPRESS_FAILED", "details": str(e)},
-                },
-            )
+            compressed_meta = probe_video(output)
 
-        try:
-            compressed_meta = probe_video(compressed_path)
-        except Exception as e:
-            compressed_path.unlink(missing_ok=True)
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "status": "error",
-                    "message": "压缩后视频元数据探测失败",
-                    "data": {"code": "PROBE_FAILED", "details": str(e)},
-                },
-            )
+            with Session(engine) as session:
+                compressed_asset = Asset(
+                    asset_id=compressed_asset_id,
+                    user_id=user_id,
+                    path=str(compressed_path),
+                    type="video",
+                )
+                session.add(compressed_asset)
+                session.commit()
 
-        compressed_asset = Asset(
-            asset_id=compressed_asset_id,
-            user_id=current_user.user_id,
-            path=str(compressed_path),
-            type="video",
-        )
-        session.add(compressed_asset)
-        session.commit()
-
-    return JSONResponse(
-        status_code=201,
-        content={
-            "status": "success",
-            "data": {
+            task_registry.set_result(task_id, {
                 "asset_id": compressed_asset_id,
                 "source_asset_id": asset_id,
                 "type": "video",
                 "path": str(compressed_path),
                 "metadata": compressed_meta.to_dict(),
-            },
+            })
+        except asyncio.CancelledError:
+            compressed_path.unlink(missing_ok=True)
+        except Exception as e:
+            compressed_path.unlink(missing_ok=True)
+            task_registry.set_error(task_id, str(e))
+
+    asyncio_task = asyncio.create_task(_run_compress())
+    task_registry.register(
+        task_id=task_id,
+        user_id=user_id,
+        type="compress",
+        resource_id=asset_id,
+        task=asyncio_task,
+    )
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "success",
+            "data": {"task_id": task_id},
         },
     )
 
 
-@app.post("/extract-transcript")
-async def extract_transcript_endpoint(
+@app.post("/analyze-script")
+async def analyze_script_endpoint(
     request: Request,
     current_user: User = Depends(get_current_user),
 ):
@@ -374,26 +377,93 @@ async def extract_transcript_endpoint(
                 },
             )
 
-    try:
-        structure = analyze_video_structure(video_path)
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "status": "error",
-                "message": "视频文字提取失败",
-                "data": {
-                    "code": "EXTRACT_FAILED",
-                    "details": str(e),
-                },
-            },
+        video_path_str = str(video_path)
+
+    task_id = str(uuid.uuid4())
+
+    async def _run_analyze():
+        try:
+            structure = await analyze_video_script_async(video_path_str)
+            task_registry.set_result(task_id, structure.model_dump())
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            task_registry.set_error(task_id, str(e))
+
+    asyncio_task = asyncio.create_task(_run_analyze())
+    task_registry.register(
+        task_id=task_id,
+        user_id=current_user.user_id,
+        type="analyze-script",
+        resource_id=asset_id,
+        task=asyncio_task,
+    )
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "success",
+            "data": {"task_id": task_id},
+        },
+    )
+
+
+@app.get("/task/{task_id}")
+async def get_task_endpoint(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    task_info = task_registry.get(task_id)
+    if task_info is None:
+        raise StarletteHTTPException(
+            status_code=404, detail=f"任务 {task_id} 不存在"
+        )
+
+    if task_info.user_id != current_user.user_id:
+        raise StarletteHTTPException(
+            status_code=403, detail="无权访问该任务"
         )
 
     return JSONResponse(
         status_code=200,
         content={
             "status": "success",
-            "data": structure.model_dump(),
+            "data": task_info.to_dict(),
+        },
+    )
+
+
+@app.post("/task/{task_id}/cancel")
+async def cancel_task_endpoint(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    task_info = task_registry.get(task_id)
+    if task_info is None:
+        raise StarletteHTTPException(
+            status_code=404, detail=f"任务 {task_id} 不存在"
+        )
+
+    if task_info.user_id != current_user.user_id:
+        raise StarletteHTTPException(
+            status_code=403, detail="无权操作该任务"
+        )
+
+    if task_info.status != "running":
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "success",
+                "data": "任务已完成，无需取消",
+            },
+        )
+
+    task_registry.cancel(task_id)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success",
+            "data": f"任务 {task_id} 已发起取消",
         },
     )
 
