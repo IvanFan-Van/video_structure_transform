@@ -91,6 +91,22 @@ export interface NodeError {
     details: string;
 }
 
+export interface TranscriptStage {
+    visual_text: string;
+    audio_text: string;
+    start_time: number;
+    end_time: number;
+}
+
+export interface TranscriptResult {
+    hook: TranscriptStage | null;
+    setup: TranscriptStage | null;
+    story: TranscriptStage | null;
+    insight: TranscriptStage | null;
+    cta: TranscriptStage | null;
+    outro: TranscriptStage | null;
+}
+
 export interface ApiSuccessResponse<T> {
     status: "success";
     data: T;

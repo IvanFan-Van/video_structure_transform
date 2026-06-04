@@ -35,4 +35,6 @@ export const WIRES: [string, string][] = [
     // ['training', 'generate'],
     ["reference", "compress_config"],
     ["compress_config", "compress"],
+    ["compress", "extracting"],
+    ["extracting", "script_analysis"],
 ];

@@ -14,6 +14,8 @@ import { GenerateNode } from "./components/nodes/GenerateNode";
 import { ReferenceNode } from "./components/nodes/ReferenceNode";
 import { CompressConfigNode } from "./components/nodes/CompressConfigNode";
 import { CompressNode } from "./components/nodes/CompressNode";
+import { ExtractingNode } from "./components/nodes/ExtractingNode";
+import { ScriptAnalysisNode } from "./components/nodes/ScriptAnalysisNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { useZoom } from "./hooks/useZoom";
 import { ZoomContext } from "./context/ZoomContext";
@@ -56,7 +58,7 @@ function App() {
     const [offset, setOffset] = useState(60);
     useEffect(() => {
         const calcOffset = () => {
-            const totalWidth = 1140;
+            const totalWidth = 1760;
             const ox = Math.max(
                 60,
                 Math.floor((window.innerWidth - totalWidth) / 2),
@@ -212,6 +214,16 @@ function App() {
                     />
                     <CompressNode
                         x={offset + 640}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <ExtractingNode
+                        x={offset + 950}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <ScriptAnalysisNode
+                        x={offset + 1260}
                         y={30}
                         onPosChange={updatePos}
                     />
