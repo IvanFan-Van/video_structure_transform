@@ -283,65 +283,116 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                 <div
                                                     style={{
                                                         display: "flex",
-                                                        gap: "4px",
-                                                        flexWrap: "wrap",
+                                                        flexDirection: "column",
+                                                        gap: "3px",
                                                     }}
                                                 >
                                                     {data.emotional_tone && (
-                                                        <span
+                                                        <div
                                                             style={{
-                                                                fontSize: "7px",
-                                                                padding:
-                                                                    "1px 5px",
-                                                                borderRadius:
-                                                                    "2px",
-                                                                background:
-                                                                    "#f3f4f6",
-                                                                color: "#888",
+                                                                display: "flex",
+                                                                justifyContent:
+                                                                    "space-between",
+                                                                alignItems:
+                                                                    "center",
                                                             }}
                                                         >
-                                                            {EMOTIONAL_TONE_LABELS[
-                                                                data
-                                                                    .emotional_tone
-                                                            ] ||
-                                                                data.emotional_tone}
-                                                        </span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize:
+                                                                        "7px",
+                                                                    fontWeight: 600,
+                                                                    letterSpacing:
+                                                                        "1px",
+                                                                    color: "#bbb",
+                                                                }}
+                                                            >
+                                                                EMOTIONAL TONE
+                                                            </span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize:
+                                                                        "7px",
+                                                                    color: "#555",
+                                                                }}
+                                                            >
+                                                                {EMOTIONAL_TONE_LABELS[
+                                                                    data
+                                                                        .emotional_tone
+                                                                ] ||
+                                                                    data.emotional_tone}
+                                                            </span>
+                                                        </div>
                                                     )}
                                                     {data.hook_type && (
-                                                        <span
+                                                        <div
                                                             style={{
-                                                                fontSize: "7px",
-                                                                padding:
-                                                                    "1px 5px",
-                                                                borderRadius:
-                                                                    "2px",
-                                                                background:
-                                                                    "#ede9fe",
-                                                                color: "#7c3aed",
+                                                                display: "flex",
+                                                                justifyContent:
+                                                                    "space-between",
+                                                                alignItems:
+                                                                    "center",
                                                             }}
                                                         >
-                                                            {HOOK_TYPE_LABELS[
-                                                                data.hook_type
-                                                            ] || data.hook_type}
-                                                        </span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize:
+                                                                        "7px",
+                                                                    fontWeight: 600,
+                                                                    letterSpacing:
+                                                                        "1px",
+                                                                    color: "#bbb",
+                                                                }}
+                                                            >
+                                                                HOOK TYPE
+                                                            </span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize:
+                                                                        "7px",
+                                                                    color: "#555",
+                                                                }}
+                                                            >
+                                                                {HOOK_TYPE_LABELS[
+                                                                    data.hook_type
+                                                                ] || data.hook_type}
+                                                            </span>
+                                                        </div>
                                                     )}
                                                     {data.cta_type && (
-                                                        <span
+                                                        <div
                                                             style={{
-                                                                fontSize: "7px",
-                                                                padding:
-                                                                    "1px 5px",
-                                                                borderRadius:
-                                                                    "2px",
-                                                                background:
-                                                                    "#fce7f3",
-                                                                color: "#db2777",
+                                                                display: "flex",
+                                                                justifyContent:
+                                                                    "space-between",
+                                                                alignItems:
+                                                                    "center",
                                                             }}
                                                         >
-                                                            {CTA_TYPE_LABELS[
-                                                                data.cta_type
-                                                            ] || data.cta_type}
-                                                        </span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize:
+                                                                        "7px",
+                                                                    fontWeight: 600,
+                                                                    letterSpacing:
+                                                                        "1px",
+                                                                    color: "#bbb",
+                                                                }}
+                                                            >
+                                                                CTA TYPE
+                                                            </span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize:
+                                                                        "7px",
+                                                                    color: "#555",
+                                                                }}
+                                                            >
+                                                                {CTA_TYPE_LABELS[
+                                                                    data.cta_type
+                                                                ] || data.cta_type}
+                                                            </span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             )}
