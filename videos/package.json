@@ -7,11 +7,23 @@
   "private": true,
   "dependencies": {
     "@remotion/cli": "4.0.470",
+    "@remotion/google-fonts": "4.0.470",
+    "@remotion/light-leaks": "4.0.470",
+    "@remotion/media": "4.0.470",
+    "@remotion/noise": "4.0.470",
+    "@remotion/paths": "4.0.470",
+    "@remotion/shapes": "4.0.470",
+    "@remotion/tailwind-v4": "4.0.470",
+    "@remotion/transitions": "4.0.470",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.475.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "remotion": "4.0.470",
-    "@remotion/tailwind-v4": "4.0.470",
-    "tailwindcss": "4.0.0"
+    "tailwind-merge": "^3.0.2",
+    "tailwindcss": "4.0.0",
+    "tw-animate-css": "^1.3.0"
   },
   "devDependencies": {
     "@remotion/eslint-config-flat": "4.0.470",
@@ -29,6 +41,5 @@
   },
   "sideEffects": [
     "*.css"
-  ],
-  "packageManager": "pnpm@11.5.0+sha512.dbfcc4f81cf48597afd4bc391ffdf12c11f1a9fb83a395bfa6b0a2d9cc2fd8ffebafdb1ccbd529632153f793904c2615b7f09fe1a345473fd1c35845172a8eb1"
+  ]
 }

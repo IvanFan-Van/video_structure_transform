@@ -10,4 +10,16 @@ import { enableTailwind } from '@remotion/tailwind-v4';
 
 Config.setVideoImageFormat("jpeg");
 Config.setOverwriteOutput(true);
-Config.overrideWebpackConfig(enableTailwind);
+Config.overrideWebpackConfig((currentConfig) => {
+  const config = enableTailwind(currentConfig);
+  return {
+    ...config,
+    resolve: {
+      ...config.resolve,
+      alias: {
+        ...config.resolve?.alias,
+        '@': require('path').resolve(__dirname, 'src'),
+      },
+    },
+  };
+});
