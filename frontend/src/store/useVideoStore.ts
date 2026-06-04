@@ -8,6 +8,7 @@ import {
     ApiResponse,
     VideoMeta,
     ApiErrorResponse,
+    TranscriptResult,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -22,6 +23,10 @@ interface VideoState {
     isCompressing: boolean;
     compressResult: CompressResult | null;
 
+    scriptStatus: string;
+    isExtractingFlow: boolean;
+    transcriptResult: TranscriptResult | null;
+
     videoErrors: NodeError[];
 }
 
@@ -31,6 +36,7 @@ interface VideoActions {
         updater: CompressConfig | ((c: CompressConfig) => CompressConfig),
     ) => void;
     startCompress: () => Promise<void>;
+    startExtractScript: () => Promise<void>;
     dismissError: (id: number) => void;
 }
 
@@ -92,6 +98,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     isCompressing: false,
     compressResult: null,
 
+    scriptStatus: "idle",
+    isExtractingFlow: false,
+    transcriptResult: null,
+
     videoErrors: [],
 
     uploadVideo: async (file) => {
@@ -101,6 +111,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             uploadProgress: 0,
             uploadResult: null,
             compressResult: null,
+            transcriptResult: null,
+            scriptStatus: "idle",
+            isExtractingFlow: false,
         });
 
         generateThumbnail(file).then((url) => set({ thumbnailUrl: url }));
@@ -253,6 +266,80 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     ...s.videoErrors.filter((e) => e.nodeId !== "compress"),
                     makeError(
                         "compress",
+                        "Network error",
+                        "NETWORK_ERROR",
+                        "Unable to reach the server. Check your connection and try again.",
+                    ),
+                ],
+            }));
+        }
+    },
+
+    startExtractScript: async () => {
+        const { compressResult } = get();
+        if (!compressResult) return;
+        const token = useAuthStore.getState().token;
+        set({
+            isExtractingFlow: true,
+            scriptStatus: "loading",
+            transcriptResult: null,
+        });
+
+        try {
+            const res = await axios.post(
+                "/api/extract-transcript",
+                { asset_id: compressResult.asset_id },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+            if (res.data.status === "success") {
+                set((s) => ({
+                    transcriptResult: res.data.data,
+                    scriptStatus: "done",
+                    videoErrors: s.videoErrors.filter(
+                        (e) => e.nodeId !== "extracting",
+                    ),
+                }));
+            } else {
+                let msg: string, code: string, details: string;
+                if (res.data.status === "error") {
+                    msg = res.data.message || "Extract failed";
+                    code = res.data.code
+                        ? String(res.data.code)
+                        : "SERVER_ERROR";
+                    details = res.data.data
+                        ? JSON.stringify(res.data.data, null, 2)
+                        : res.data.message || "";
+                } else {
+                    msg = res.data.data?.message || "Extract failed";
+                    code = "VALIDATION_ERROR";
+                    details = JSON.stringify(res.data.data, null, 2);
+                }
+                set((s) => ({
+                    transcriptResult: null,
+                    scriptStatus: "error",
+                    videoErrors: [
+                        ...s.videoErrors.filter(
+                            (e) => e.nodeId !== "extracting",
+                        ),
+                        makeError("extracting", msg, code, details),
+                    ],
+                }));
+            }
+        } catch {
+            set((s) => ({
+                transcriptResult: null,
+                scriptStatus: "error",
+                videoErrors: [
+                    ...s.videoErrors.filter(
+                        (e) => e.nodeId !== "extracting",
+                    ),
+                    makeError(
+                        "extracting",
                         "Network error",
                         "NETWORK_ERROR",
                         "Unable to reach the server. Check your connection and try again.",
