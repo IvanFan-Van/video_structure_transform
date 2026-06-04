@@ -75,7 +75,7 @@ function App() {
             style={{
                 width: "100vw",
                 height: "100vh",
-                overflow: "auto",
+                overflow: "hidden",
                 position: "relative",
                 fontFamily: "'JetBrains Mono', monospace",
                 background: "#fafafa",
@@ -190,9 +190,9 @@ function App() {
                 <div
                     style={{
                         transform: `scale(${zoom})`,
-                        transformOrigin: "center center",
-                        width: "100vw",
-                        height: "100vh",
+                        transformOrigin: "top left",
+                        width: `calc(100% / ${zoom})`,
+                        height: `calc(100% / ${zoom})`,
                     }}
                 >
                     <Wires positions={positions} wires={WIRES} tick={posTick} />
