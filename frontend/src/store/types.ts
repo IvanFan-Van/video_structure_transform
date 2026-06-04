@@ -96,15 +96,22 @@ export interface TranscriptStage {
     audio_text: string;
     start_time: number;
     end_time: number;
+    emotional_tone: string | null;
+    hook_type: string | null;
+    cta_type: string | null;
 }
 
 export interface TranscriptResult {
-    hook: TranscriptStage | null;
-    setup: TranscriptStage | null;
-    story: TranscriptStage | null;
-    insight: TranscriptStage | null;
-    cta: TranscriptStage | null;
-    outro: TranscriptStage | null;
+    narrator_perspective: string | null;
+    narrator_perspective_note: string | null;
+    stages: {
+        hook: TranscriptStage | null;
+        setup: TranscriptStage | null;
+        story: TranscriptStage | null;
+        insight: TranscriptStage | null;
+        cta: TranscriptStage | null;
+        outro: TranscriptStage | null;
+    };
 }
 
 export type TaskStatus = 'running' | 'completed' | 'failed' | 'cancelled';
