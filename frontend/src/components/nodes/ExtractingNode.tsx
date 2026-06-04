@@ -48,10 +48,20 @@ function injectStyles() {
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-    @keyframes extractSpin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
+    .extract-loader {
+      width: 14px;
+      --b: 2px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      padding: 1px;
+      background: conic-gradient(#0000 10%, var(--loader-color)) content-box;
+      -webkit-mask: repeating-conic-gradient(#0000 0deg, #000 1deg 20deg, #0000 21deg 36deg),
+                    radial-gradient(farthest-side, #0000 calc(100% - var(--b) - 1px), #000 calc(100% - var(--b)));
+      -webkit-mask-composite: destination-in;
+      mask-composite: intersect;
+      animation: extractLoaderSpin 1s infinite steps(10);
     }
+    @keyframes extractLoaderSpin { to { transform: rotate(1turn) } }
     @keyframes extractShimmer {
       0% { background-position: -200% 0; }
       100% { background-position: 200% 0; }
@@ -161,22 +171,32 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                                             : undefined,
                                     }}
                                 >
-                  <span
-                    style={{
-                      color: cfg.color,
-                      fontSize: '10px',
-                      marginRight: '8px',
-                      fontWeight: 700,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '14px',
-                      height: '14px',
-                      ...(cfg.spin ? { animation: 'extractSpin 1s linear infinite' } : {}),
-                    }}
-                  >
-                    {cfg.icon}
-                  </span>
+                                    {cfg.spin ? (
+                                        <div
+                                            className="extract-loader"
+                                            style={{
+                                                ["--loader-color" as any]:
+                                                    cfg.color,
+                                                marginRight: "8px",
+                                            }}
+                                        />
+                                    ) : (
+                                        <span
+                                            style={{
+                                                color: cfg.color,
+                                                fontSize: "10px",
+                                                marginRight: "8px",
+                                                fontWeight: 700,
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                width: "14px",
+                                                height: "14px",
+                                            }}
+                                        >
+                                            {cfg.icon}
+                                        </span>
+                                    )}
                                     <span
                                         style={{
                                             flex: 1,
