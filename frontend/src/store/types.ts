@@ -107,6 +107,18 @@ export interface TranscriptResult {
     outro: TranscriptStage | null;
 }
 
+export type TaskStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface TaskInfo {
+    task_id: string;
+    type: string;
+    resource_id: string;
+    status: string;
+    created_at: string;
+    result?: any;
+    error?: string;
+}
+
 export interface ApiSuccessResponse<T> {
     status: "success";
     data: T;

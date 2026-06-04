@@ -18,6 +18,7 @@ export function CompressNode({ x, y, onPosChange }: Props) {
   const isCompressing = useVideoStore((s) => s.isCompressing);
   const compressResult = useVideoStore((s) => s.compressResult);
   const startCompress = useVideoStore((s) => s.startCompress);
+  const stopCompress = useVideoStore((s) => s.stopCompress);
   const videoErrors = useVideoStore((s) => s.videoErrors);
   const hasError = videoErrors.some((e) => e.nodeId === 'compress');
 
@@ -37,12 +38,18 @@ export function CompressNode({ x, y, onPosChange }: Props) {
             }}>▶ COMPRESS</button>
         )}
         {isCompressing && (
-          <div style={{ textAlign: 'center' }}>
-            <button disabled
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+            <div style={{
+              fontSize: '10px', fontWeight: 600, color: '#06b6d4', letterSpacing: '1px',
+            }}>Compressing...</div>
+            <button
+              onClick={stopCompress}
               style={{
-                padding: '10px', fontSize: '11px', fontWeight: 600, fontFamily: 'inherit', letterSpacing: '1px',
-                background: '#e8e8e8', color: '#bbb', border: 'none', borderRadius: '3px', cursor: 'not-allowed', width: '100%',
-              }}>Compressing...</button>
+                padding: '5px', fontSize: '9px', fontFamily: 'inherit',
+                background: 'transparent', border: '1px solid #e0e0e0',
+                borderRadius: '3px', color: '#999', cursor: 'pointer',
+              }}
+            >■ STOP</button>
           </div>
         )}
         {compressResult && (

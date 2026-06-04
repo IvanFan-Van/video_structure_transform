@@ -1,3 +1,4 @@
+import asyncio
 import base64
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -125,6 +126,71 @@ def compress_video(
         if e.stderr:
             print(e.stderr.decode("utf-8"))
         raise e
+
+    return output_path
+
+
+async def compress_video_async(
+    input_path: str | Path,
+    output_path: str | Path,
+    vcodec: str = "libx264",
+    crf: int | None = 32,
+    target_v_bitrate: str | None = None,
+    scale_width: int | None = None,
+    max_fps: int | None = 30,
+    acodec: str = "aac",
+    target_a_bitrate: str = "96k",
+) -> Path:
+    """异步压缩视频，可通过 asyncio.CancelledError 中途取消。"""
+    input_path = str(Path(input_path).resolve())
+    output_path = Path(output_path).resolve()
+
+    stream = ffmpeg.input(input_path)
+    v_stream = stream.video
+    a_stream = stream.audio
+
+    if scale_width:
+        v_stream = v_stream.filter("scale", scale_width, -2)
+    if max_fps:
+        v_stream = v_stream.filter("fps", fps=max_fps)
+
+    output_kwargs: dict = {
+        "vcodec": vcodec,
+        "acodec": acodec,
+        "audio_bitrate": target_a_bitrate,
+    }
+
+    if target_v_bitrate:
+        output_kwargs["video_bitrate"] = target_v_bitrate
+    elif crf is not None:
+        output_kwargs["crf"] = crf
+
+    if vcodec == "libx265":
+        output_kwargs["preset"] = "medium"
+
+    output = ffmpeg.output(v_stream, a_stream, str(output_path), **output_kwargs)
+    args = output.compile()
+    if "-y" not in args:
+        args = args[:1] + ["-y"] + args[1:]
+
+    process = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    try:
+        await process.wait()
+    except asyncio.CancelledError:
+        process.kill()
+        await process.wait()
+        raise
+
+    if process.returncode != 0:
+        stderr = await process.stderr.read()
+        raise RuntimeError(
+            f"ffmpeg exited with code {process.returncode}: {stderr.decode()}"
+        )
 
     return output_path
 

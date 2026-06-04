@@ -13,24 +13,53 @@ const TODO_ITEMS = [
   { key: 'features', label: 'Analyze Video Features' },
 ] as const;
 
-const STATUS_CONFIG: Record<string, { icon: string; color: string; text: string; blink?: boolean }> = {
+const STATUS_CONFIG: Record<string, { icon: string; color: string; text: string; spin?: boolean; shimmer?: boolean }> = {
   pending: { icon: '○', color: '#ccc', text: 'pending' },
-  loading: { icon: '○', color: '#555', text: 'in progress', blink: true },
+  loading: { icon: '◌', color: '#555', text: 'in progress', spin: true, shimmer: true },
   done:    { icon: '●', color: '#22c55e', text: 'completed' },
   error:   { icon: '✕', color: '#ef4444', text: 'failed' },
 };
+
+const STYLE_ID = 'extracting-node-animations';
+
+function injectStyles() {
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = `
+    @keyframes extractSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes extractShimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 export function ExtractingNode({ x, y, onPosChange }: Props) {
   const compressResult = useVideoStore((s) => s.compressResult);
   const isExtractingFlow = useVideoStore((s) => s.isExtractingFlow);
   const scriptStatus = useVideoStore((s) => s.scriptStatus);
+  const scriptTime = useVideoStore((s) => s.scriptTime);
   const startExtractScript = useVideoStore((s) => s.startExtractScript);
+  const stopExtractScript = useVideoStore((s) => s.stopExtractScript);
   const videoErrors = useVideoStore((s) => s.videoErrors);
   const hasError = videoErrors.some((e) => e.nodeId === 'extracting');
 
+  injectStyles();
+
   const getStatus = (key: string) => {
     if (key === 'script') return scriptStatus;
+    if (key === 'features') return 'error';
     return 'pending';
+  };
+
+  const formatTime = (t: number | null) => {
+    if (t == null) return '';
+    return ` (${t.toFixed(2)}s)`;
   };
 
   return (
@@ -66,23 +95,12 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
         )}
 
         {isExtractingFlow && (
-          <style
-            dangerouslySetInnerHTML={{
-              __html: `
-              @keyframes extractPulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.3; }
-              }
-              `,
-            }}
-          />
-        )}
-
-        {isExtractingFlow && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {TODO_ITEMS.map((item) => {
               const status = getStatus(item.key);
               const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+              const timeLabel = item.key === 'script' ? formatTime(scriptTime) : '';
+
               return (
                 <div
                   key={item.key}
@@ -93,8 +111,12 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                     fontSize: '9px',
                     padding: '6px 8px',
                     borderRadius: '3px',
-                    background: status === 'loading' ? '#fafafa' : 'transparent',
-                    border: status === 'loading' ? '1px solid #f0f0f0' : '1px solid transparent',
+                    border: status === 'loading' ? '1px solid #e0e0e0' : '1px solid transparent',
+                    background: cfg.shimmer
+                      ? 'linear-gradient(90deg, #fafafa 0%, #f0f0f0 40%, #fafafa 70%)'
+                      : 'transparent',
+                    backgroundSize: cfg.shimmer ? '400% 100%' : undefined,
+                    animation: cfg.shimmer ? 'extractShimmer 1.8s ease-in-out infinite' : undefined,
                   }}
                 >
                   <span
@@ -103,7 +125,9 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                       fontSize: '10px',
                       marginRight: '8px',
                       fontWeight: 700,
-                      ...(cfg.blink ? { animation: 'extractPulse 1.2s ease-in-out infinite' } : {}),
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      ...(cfg.spin ? { animation: 'extractSpin 1s linear infinite' } : {}),
                     }}
                   >
                     {cfg.icon}
@@ -118,11 +142,28 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                     {item.label}
                   </span>
                   <span style={{ color: cfg.color, fontSize: '8px' }}>
-                    {cfg.text}
+                    {cfg.text}{timeLabel}
                   </span>
                 </div>
               );
             })}
+
+            <button
+              onClick={stopExtractScript}
+              style={{
+                padding: '5px',
+                fontSize: '9px',
+                fontFamily: 'inherit',
+                background: 'transparent',
+                border: '1px solid #e0e0e0',
+                borderRadius: '3px',
+                color: '#999',
+                cursor: 'pointer',
+                marginTop: '2px',
+              }}
+            >
+              ■ STOP
+            </button>
           </div>
         )}
       </div>
