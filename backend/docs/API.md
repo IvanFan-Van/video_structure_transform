@@ -32,19 +32,42 @@ Base URL: `http://127.0.0.1:8000`
   - [5. POST /compress — 压缩视频](#5-post-compress--压缩视频)
     - [请求参数](#请求参数-4)
     - [请求示例](#请求示例-2)
-    - [成功响应 (202)](#成功响应-202-2)
+    - [成功响应 (202)](#成功响应-202)
     - [错误响应](#错误响应-3)
   - [6. POST /analyze-script — 提取视频叙事结构](#6-post-analyze-script--提取视频叙事结构)
     - [请求参数](#请求参数-5)
     - [请求示例](#请求示例-3)
-    - [成功响应 (202)](#成功响应-202-2)
+    - [成功响应 (202)](#成功响应-202-1)
+    - [响应字段说明](#响应字段说明)
     - [错误响应](#错误响应-4)
-  - [7. GET /task/{task_id} — 查询异步任务状态](#7-get-tasktask_id--查询异步任务状态)
-  - [8. POST /task/{task_id}/cancel — 取消异步任务](#8-post-tasktask_idcancel--取消异步任务)
+  - [7. GET /task/{task\_id} — 查询异步任务状态](#7-get-tasktask_id--查询异步任务状态)
+    - [路径参数](#路径参数)
+    - [成功响应 (200)](#成功响应-200-1)
+    - [响应字段说明](#响应字段说明-1)
+    - [错误响应](#错误响应-5)
+  - [8. POST /task/{task\_id}/cancel — 取消异步任务](#8-post-tasktask_idcancel--取消异步任务)
+    - [路径参数](#路径参数-1)
+    - [请求示例](#请求示例-4)
+    - [成功响应 (200)](#成功响应-200-2)
+    - [错误响应](#错误响应-6)
+  - [9. GET /analyze-audio — 流式音频分析](#9-get-analyze-audio--流式音频分析)
+    - [查询参数](#查询参数-1)
+    - [请求示例 (curl)](#请求示例-curl-1)
+    - [响应格式 (SSE)](#响应格式-sse)
+    - [SSE 事件说明](#sse-事件说明)
+    - [前端集成示例](#前端集成示例)
+    - [错误响应](#错误响应-7)
   - [附录 A: VideoMeta 元数据字段](#附录-a-videometa-元数据字段)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
+    - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
+    - [服务端错误 (5xx) — 附带 `data.code` 和 `data.details`](#服务端错误-5xx--附带-datacode-和-datadetails)
   - [附录 C: 支持的视频格式](#附录-c-支持的视频格式)
   - [附录 D: 异步任务与取消](#附录-d-异步任务与取消)
+    - [概述](#概述)
+    - [工作流程](#工作流程)
+    - [任务状态](#任务状态)
+    - [取消机制](#取消机制)
+    - [注意事项](#注意事项)
 
 ---
 
@@ -455,21 +478,70 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ```json
 {
-  "hook": {
-    "visual_text": "你知道吗？90%的人都做错了这件事",
-    "audio_text": "",
-    "start_time": 0.0,
-    "end_time": 5.2
-  },
-  "setup": { ... },
-  "story": { ... },
-  "insight": { ... },
-  "cta": { ... },
-  "outro": null
+  "narrator_perspective": "first_person",
+  "narrator_perspective_note": null,
+  "stages": {
+    "hook": {
+      "visual_text": "你知道吗？90%的人都做错了这件事",
+      "audio_text": "",
+      "start_time": 0.0,
+      "end_time": 5.2,
+      "emotional_tone": "suspenseful",
+      "hook_type": "pain_point",
+      "cta_type": null
+    },
+    "setup": {
+      "visual_text": "我花了三年时间研究这个问题",
+      "audio_text": "",
+      "start_time": 5.2,
+      "end_time": 10.0,
+      "emotional_tone": "neutral",
+      "hook_type": null,
+      "cta_type": null
+    },
+    "story": {
+      "visual_text": "第一天...\n第二天...\n第三天...",
+      "audio_text": "",
+      "start_time": 10.0,
+      "end_time": 38.5,
+      "emotional_tone": "positive",
+      "hook_type": null,
+      "cta_type": null
+    },
+    "insight": {
+      "visual_text": "人生最大的智慧，就是活在当下",
+      "audio_text": "",
+      "start_time": 38.5,
+      "end_time": 45.0,
+      "emotional_tone": "positive",
+      "hook_type": null,
+      "cta_type": null
+    },
+    "cta": {
+      "visual_text": "点赞收藏，转发给你关心的人",
+      "audio_text": "",
+      "start_time": 45.0,
+      "end_time": 50.0,
+      "emotional_tone": "positive",
+      "hook_type": null,
+      "cta_type": "share_spread"
+    },
+    "outro": null
+  }
 }
 ```
 
 ### 响应字段说明
+
+**顶层字段：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `narrator_perspective` | string \| null | 全局叙述视角：`first_person` / `second_person` / `third_person` / `mixed` |
+| `narrator_perspective_note` | string \| null | 仅 `mixed` 时的视角切换说明，其余为 `null` |
+| `stages` | object | 6 个叙事阶段的容器 |
+
+**`stages` 的 6 个阶段字段：**
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
@@ -480,7 +552,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | `cta` | object \| null | 行动号召阶段：引导互动（点赞/关注/转发） |
 | `outro` | object \| null | 结尾阶段：收束/道别/落版文字 |
 
-每个阶段对象包含以下字段：
+**每个阶段对象包含以下字段：**
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
@@ -488,6 +560,9 @@ curl -X POST http://127.0.0.1:8000/upload \
 | `audio_text` | string | 该阶段的音频文本：旁白/台词/对话（纯 BGM 则为空字符串） |
 | `start_time` | float | 该阶段开始时间（秒） |
 | `end_time` | float | 该阶段结束时间（秒） |
+| `emotional_tone` | string \| null | 情绪基调：`positive` / `negative` / `neutral` / `suspenseful` |
+| `hook_type` | string \| null | 钩子类型（仅 hook 阶段）：`pain_point` / `suspense` / `result_first` / `counter_intuitive` / `number_shock` / `identity_lock` / `scene_immersion` / `contrast_flip` |
+| `cta_type` | string \| null | 行动号召类型（仅 cta 阶段）：`follow` / `like_collect` / `comment` / `purchase` / `discount_hook` / `dm_funnel` / `share_spread` / `challenge` |
 
 ### 错误响应
 
@@ -657,6 +732,155 @@ curl -X POST http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/can
 | 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
 | 403 | `无权操作该任务` | 试图取消其他用户的任务 |
 | 404 | `任务 xxx 不存在` | task_id 不在注册表中 |
+
+---
+
+## 9. GET /analyze-audio — 流式音频分析
+
+接收已上传的 mp4 视频，自动提取背景音乐（BGM）并以 **Server-Sent Events (SSE)** 方式逐帧流式返回音频特征。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `GET` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | —（无请求体） |
+| **响应类型** | `text/event-stream`（SSE 流式推送） |
+
+> **BGM 自动提取**：每次请求都会使用 `ffmpeg` 从 mp4 中提取音轨，再用 `audio_separator` (UVR-MDX-NET-Inst_HQ_3) 分离人声与伴奏，仅保留伴奏（bgm.mp3）用于分析。分离后的 bgm.mp3 以 `type="audio"` 存入数据库。
+
+### 查询参数
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `asset_id` | string | **是** | — | 已上传的 mp4 视频 asset_id（由 `/upload` 返回，**必须是 .mp4**） |
+
+认证通过标准 `Authorization: Bearer <token>` 请求头传递。
+
+### 请求示例 (curl)
+
+```bash
+curl -N "http://127.0.0.1:8000/analyze-audio?asset_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  -H "Authorization: Bearer <token>"
+```
+
+> **浏览器 EventSource 限制**：浏览器原生 `EventSource` API 不支持自定义请求头（如 `Authorization`）。在浏览器端使用时，需通过以下方式之一解决：
+> - 使用 `fetch()` + ReadableStream 模拟 SSE 并手动添加 `Authorization` 头
+> - 使用 `EventSource` polyfill（支持 `headers` 配置）
+> - 调整服务端 `get_current_user` 以额外从 URL query string 或 cookie 中读取 token
+
+### 响应格式 (SSE)
+
+每一帧以 `data: {json}\n\n` 格式推送：
+
+```
+data: {"time": 0.0, "frame_index": 0, "is_last_frame": false, "local": {...}, "running_global": {...}}
+
+data: {"time": 0.023, "frame_index": 1, "is_last_frame": false, "local": {...}, "running_global": {...}}
+
+...
+
+data: {"time": 30.0, "frame_index": 1293, "is_last_frame": true, "local": {...}, "running_global": {...}}
+```
+
+### SSE 事件说明
+
+每帧数据结构如下：
+
+```json
+{
+  "time": 0.023,
+  "asset_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "frame_index": 1,
+  "is_last_frame": false,
+  "local": {
+    "rms": 0.0456,
+    "spectral_centroid": 1256.3,
+    "spectral_flux": 8.92,
+    "onset_envelope": 0.0012
+  },
+  "running_global": {
+    "duration": 30.8,
+    "genre": "pop",
+    "average_spectral_centroid": 1256.3,
+    "overall_brightness_hz": 1256.3,
+    "dynamic_range": 0.0023,
+    "estimated_bpm": 121.3
+  }
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `time` | float | 当前帧在音频中的绝对时间（秒） |
+| `asset_id` | string \| null | BGM 音频在数据库中的 asset_id，所有帧相同；客户端可据此下载原始 bgm.mp3 |
+| `frame_index` | int | 从 0 开始的帧序号 |
+| `is_last_frame` | bool | 是否为最后一帧，客户端可据此关闭 EventSource |
+| `local.rms` | float | 当前帧的 RMS 能量（线性幅度） |
+| `local.spectral_centroid` | float | 当前帧的频谱质心（Hz），反映亮度 |
+| `local.spectral_flux` | float | 当前帧的频谱变化率，反映新声音出现 |
+| `local.onset_envelope` | float | 当前帧的 onset 强度包络值 |
+| `running_global.duration` | float | 音频总时长（秒），所有帧中该值相同 |
+| `running_global.genre` | string | 音乐流派（HuggingFace 分类），所有帧中该值相同 |
+| `running_global.average_spectral_centroid` | float | 从开始到当前帧的平均频谱质心 |
+| `running_global.overall_brightness_hz` | float | 同 `average_spectral_centroid`，表示整体明亮度 |
+| `running_global.dynamic_range` | float | 从开始到当前帧的动态范围（max-min RMS） |
+| `running_global.estimated_bpm` | float | aubio 在线 BPM 估计（实时收敛） |
+
+**错误事件**（`event: error`）：
+
+若分析过程中发生异常，将推送一条 `event: error` 消息后关闭连接：
+
+```
+event: error
+data: {"error": true, "message": "错误描述"}
+```
+
+### 前端集成示例
+
+```javascript
+// 浏览器端：使用 fetch + ReadableStream（支持自定义 Authorization 头）
+const response = await fetch(
+  "http://127.0.0.1:8000/analyze-audio?asset_id=xxx",
+  { headers: { Authorization: "Bearer <token>" } }
+);
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+let buffer = "";
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  buffer += decoder.decode(value, { stream: true });
+
+  const parts = buffer.split("\n\n");
+  buffer = parts.pop(); // 保留未完成的部分
+  for (const part of parts) {
+    const line = part.trim();
+    if (line.startsWith("data: ")) {
+      const frame = JSON.parse(line.slice(6));
+      updateWaveform(frame.time, frame.local.rms);
+      updateBPMDisplay(frame.running_global.estimated_bpm);
+      if (frame.is_last_frame) {
+        console.log("分析完成:", frame.running_global);
+      }
+    } else if (line.startsWith("event: error")) {
+      // 下一行 data: 中携带错误详情
+    }
+  }
+}
+```
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 400 | `缺少 asset_id 参数` | 未提供 asset_id 查询参数 |
+| 400 | `仅支持 mp4 格式` | asset_id 指向的文件不是 .mp4 |
+| 404 | `素材 xxx 不存在` | 该 asset_id 对应的记录不存在 |
+| 403 | `无权访问该素材` | 素材不属于当前用户 |
+| 500 | `源文件丢失` | 数据库记录存在但磁盘文件已丢失 |
+
+若分析开始后发生运行时错误，将发送 SSE `event: error` 消息（详见上方的"错误事件"）。
 
 ---
 

@@ -1,17 +1,19 @@
 import asyncio
+import json
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
-from fastapi import Depends, FastAPI, File, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, File, Query, Request, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from audio import extract_bgm, stream_audio_features
 from core import analyze_video_script_async
 from models import Asset, User, engine
 from task_registry import task_registry
@@ -22,6 +24,7 @@ load_dotenv(find_dotenv())
 
 STORAGE_DIR = Path("storage")
 VIDEO_STORAGE_DIR = STORAGE_DIR / "videos"
+AUDIO_STORAGE_DIR = STORAGE_DIR / "audios"
 ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv"}
 ALLOWED_VIDEO_MIME_TYPES = {
     "video/mp4",
@@ -175,7 +178,7 @@ async def login(request: Request):
 
 
 @app.post("/upload")
-async def upload_video(
+async def upload_video_endpoint(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
@@ -309,13 +312,16 @@ async def compress_video_endpoint(
                 session.add(compressed_asset)
                 session.commit()
 
-            task_registry.set_result(task_id, {
-                "asset_id": compressed_asset_id,
-                "source_asset_id": asset_id,
-                "type": "video",
-                "path": str(compressed_path),
-                "metadata": compressed_meta.to_dict(),
-            })
+            task_registry.set_result(
+                task_id,
+                {
+                    "asset_id": compressed_asset_id,
+                    "source_asset_id": asset_id,
+                    "type": "video",
+                    "path": str(compressed_path),
+                    "metadata": compressed_meta.to_dict(),
+                },
+            )
         except asyncio.CancelledError:
             compressed_path.unlink(missing_ok=True)
         except Exception as e:
@@ -351,6 +357,7 @@ async def analyze_script_endpoint(
     if not asset_id:
         raise StarletteHTTPException(status_code=400, detail="缺少 asset_id 参数")
 
+    # 检查素材存在性和访问权限，并获取文件路径
     with Session(engine) as session:
         statement = select(Asset).where(Asset.asset_id == asset_id)
         asset = session.exec(statement).first()
@@ -408,6 +415,12 @@ async def analyze_script_endpoint(
     )
 
 
+# TODO: SSE 替代轮询 — 新增 GET /task/{task_id}/stream
+#       await task_info._event.wait()
+#       首次连接立即发送当前状态，状态变更后推送 finished 状态并关闭连接
+#       保留 GET /task/{task_id} 作为一次性查询/降级回退
+
+
 @app.get("/task/{task_id}")
 async def get_task_endpoint(
     task_id: str,
@@ -415,14 +428,10 @@ async def get_task_endpoint(
 ):
     task_info = task_registry.get(task_id)
     if task_info is None:
-        raise StarletteHTTPException(
-            status_code=404, detail=f"任务 {task_id} 不存在"
-        )
+        raise StarletteHTTPException(status_code=404, detail=f"任务 {task_id} 不存在")
 
     if task_info.user_id != current_user.user_id:
-        raise StarletteHTTPException(
-            status_code=403, detail="无权访问该任务"
-        )
+        raise StarletteHTTPException(status_code=403, detail="无权访问该任务")
 
     return JSONResponse(
         status_code=200,
@@ -440,14 +449,10 @@ async def cancel_task_endpoint(
 ):
     task_info = task_registry.get(task_id)
     if task_info is None:
-        raise StarletteHTTPException(
-            status_code=404, detail=f"任务 {task_id} 不存在"
-        )
+        raise StarletteHTTPException(status_code=404, detail=f"任务 {task_id} 不存在")
 
     if task_info.user_id != current_user.user_id:
-        raise StarletteHTTPException(
-            status_code=403, detail="无权操作该任务"
-        )
+        raise StarletteHTTPException(status_code=403, detail="无权操作该任务")
 
     if task_info.status != "running":
         return JSONResponse(
@@ -464,6 +469,77 @@ async def cancel_task_endpoint(
         content={
             "status": "success",
             "data": f"任务 {task_id} 已发起取消",
+        },
+    )
+
+
+@app.get("/analyze-audio")
+async def analyze_audio_endpoint(  # noqa: C901
+    asset_id: str = Query(..., description="素材 ID"),
+    current_user: User = Depends(get_current_user),
+):
+    if not asset_id:
+        raise StarletteHTTPException(status_code=400, detail="缺少 asset_id 参数")
+
+    with Session(engine) as session:
+        statement = select(Asset).where(Asset.asset_id == asset_id)
+        video_asset = session.exec(statement).first()
+        if not video_asset:
+            raise StarletteHTTPException(
+                status_code=404, detail=f"素材 {asset_id} 不存在"
+            )
+        if video_asset.user_id != current_user.user_id:
+            raise StarletteHTTPException(status_code=403, detail="无权访问该素材")
+        video_path = Path(video_asset.path)
+        if not video_path.exists():
+            raise StarletteHTTPException(status_code=500, detail="源文件丢失")
+
+    if video_path.suffix.lower() != ".mp4":
+        raise StarletteHTTPException(status_code=400, detail="仅支持 mp4 格式")
+
+    AUDIO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    audio_asset_id = str(uuid.uuid4())
+    bgm_path = extract_bgm(str(video_path), AUDIO_STORAGE_DIR, audio_asset_id)
+
+    with Session(engine) as session:
+        bgm_asset = Asset(
+            asset_id=audio_asset_id,
+            user_id=current_user.user_id,
+            path=str(bgm_path),
+            type="audio",
+        )
+        session.add(bgm_asset)
+        session.commit()
+
+    async def event_stream():
+        _sentinel = object()
+        loop = asyncio.get_running_loop()
+        gen = stream_audio_features(str(bgm_path), audio_asset_id=audio_asset_id)
+
+        try:
+            while True:
+                frame = await loop.run_in_executor(None, next, gen, _sentinel)
+                if frame is _sentinel:
+                    break
+                payload = json.dumps(frame, ensure_ascii=False)
+                yield f"data: {payload}\n\n"
+        except asyncio.CancelledError:
+            return
+        except Exception as exc:
+            error_payload = json.dumps(
+                {"error": True, "message": str(exc)}, ensure_ascii=False
+            )
+            yield f"event: error\ndata: {error_payload}\n\n"
+        finally:
+            gen.close()  # type: ignore[attr-defined]
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
         },
     )
 

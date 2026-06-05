@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlmodel import Field, SQLModel, create_engine
 
 
@@ -47,35 +48,56 @@ class ElementContent(BaseModel):
         default=0,
         description="该阶段在视频中的结束时间（秒）",
     )
+    emotional_tone: str | None = Field(
+        default=None,
+        description="情绪基调：positive / negative / neutral / suspenseful",
+    )
+    hook_type: str | None = Field(
+        default=None,
+        description="钩子类型（仅 hook）：pain_point/suspense/result_first"
+        "/counter_intuitive/number_shock/identity_lock/scene_immersion/contrast_flip",
+    )
+    cta_type: str | None = Field(
+        default=None,
+        description="行动号召类型（仅 cta）：follow/like_collect/comment/"
+        "purchase/discount_hook/dm_funnel/share_spread/challenge",
+    )
+
+
+class StageContainer(BaseModel):
+    """6 个叙事阶段的容器"""
+
+    hook: ElementContent | None = Field(default=None)
+    setup: ElementContent | None = Field(default=None)
+    story: ElementContent | None = Field(default=None)
+    insight: ElementContent | None = Field(default=None)
+    cta: ElementContent | None = Field(default=None)
+    outro: ElementContent | None = Field(default=None)
 
 
 class VideoStructure(BaseModel):
     """视频按叙事结构的完整拆解结果"""
 
-    hook: ElementContent | None = Field(
+    narrator_perspective: (
+        Literal["first_person", "second_person", "third_person", "mixed"] | None
+    ) = Field(
         default=None,
-        description="钩子：开头抛出问题/悬念/冲突，抓住观众注意力（通常在前 5-8 秒）",
+        description="全局叙述视角：first_person / second_person / third_person / mixed",
     )
-    setup: ElementContent | None = Field(
+    narrator_perspective_note: str | None = Field(
         default=None,
-        description="铺垫：交代背景、设定情境、介绍前提",
+        description="仅 mixed 时的视角切换说明，其余为 null",
     )
-    story: ElementContent | None = Field(
-        default=None,
-        description="正文：故事主体/事件叙述/观点展开，通常占据视频最大篇幅",
+    stages: StageContainer = Field(
+        default_factory=StageContainer,
+        description="6 个叙事阶段的拆解内容",
     )
-    insight: ElementContent | None = Field(
-        default=None,
-        description="金句：核心观点/感悟/反转，点睛之笔和传播核心",
-    )
-    cta: ElementContent | None = Field(
-        default=None,
-        description="行动号召：引导点赞/关注/转发/评论等互动",
-    )
-    outro: ElementContent | None = Field(
-        default=None,
-        description="结尾：收束/道别或落版文字",
-    )
+
+    @model_validator(mode="after")
+    def coerce_null_narrator_perspective_note(self):
+        if self.narrator_perspective_note == "null":
+            object.__setattr__(self, "narrator_perspective_note", None)
+        return self
 
 
 engine = create_engine("sqlite:///database.db", echo=False)
