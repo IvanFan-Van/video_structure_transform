@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wires } from "./components/ui/Wires";
+import { useNodePositions } from "./hooks/useNodePositions";
 import { useAppStore } from "./store/useAppStore";
 import { useAuthStore } from "./store/useAuthStore";
-import { useUIStore } from "./store/useUIStore";
 import { WIRES } from "./constants";
 import { DatasetNode } from "./components/nodes/DatasetNode";
 import { TokenizerNode } from "./components/nodes/TokenizerNode";
@@ -18,8 +18,12 @@ import { ExtractingNode } from "./components/nodes/ExtractingNode";
 import { ScriptAnalysisNode } from "./components/nodes/ScriptAnalysisNode";
 import { AudioAnalysisNode } from "./components/nodes/AudioAnalysisNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
+import { useZoom } from "./hooks/useZoom";
+import { usePan } from "./hooks/usePan";
+import { ZoomContext } from "./context/ZoomContext";
 
 function App() {
+    const { positions, update: updatePos } = useNodePositions();
     const initWorker = useAppStore((s) => s.initWorker);
     const destroyWorker = useAppStore((s) => s.destroyWorker);
     const modelReady = useAppStore((s) => s.modelReady);
@@ -29,59 +33,6 @@ function App() {
     const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
-
-    const zoom = useUIStore((s) => s.zoom);
-    const panX = useUIStore((s) => s.panX);
-    const panY = useUIStore((s) => s.panY);
-    const positions = useUIStore((s) => s.nodePositions);
-    const postionsTick = useUIStore((s) => s.positionTick);
-    const updatePos = useUIStore((s) => s.updateNodePosition);
-
-    const panDrag = useRef(false);
-    const panLast = useRef({ x: 0, y: 0 });
-
-    const onPanMouseDown = useCallback((e: React.MouseEvent) => {
-        if (
-            ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(
-                (e.target as HTMLElement).tagName,
-            )
-        )
-            return;
-        panDrag.current = true;
-        panLast.current = { x: e.clientX, y: e.clientY };
-        e.preventDefault();
-    }, []);
-
-    useEffect(() => {
-        const mv = (e: MouseEvent) => {
-            if (!panDrag.current) return;
-            const dx = e.clientX - panLast.current.x;
-            const dy = e.clientY - panLast.current.y;
-            panLast.current = { x: e.clientX, y: e.clientY };
-            useUIStore.getState().addPanDelta(dx, dy);
-        };
-        const up = () => {
-            panDrag.current = false;
-        };
-        window.addEventListener("mousemove", mv);
-        window.addEventListener("mouseup", up);
-        return () => {
-            window.removeEventListener("mousemove", mv);
-            window.removeEventListener("mouseup", up);
-        };
-    }, []);
-
-    useEffect(() => {
-        const onWheel = (e: WheelEvent) => {
-            if (!e.ctrlKey && !e.metaKey) return;
-            e.preventDefault();
-            const z = useUIStore.getState().zoom;
-            const next = z - e.deltaY * 0.001;
-            useUIStore.getState().setZoom(next);
-        };
-        window.addEventListener("wheel", onWheel, { passive: false });
-        return () => window.removeEventListener("wheel", onWheel);
-    }, []);
 
     useEffect(() => {
         initWorker();
@@ -104,6 +55,8 @@ function App() {
         document.addEventListener("mousedown", onClick);
         return () => document.removeEventListener("mousedown", onClick);
     }, []);
+    const zoom = useZoom();
+    const { panX, panY, onMouseDown: onPanMouseDown } = usePan(zoom);
 
     const [offset, setOffset] = useState(60);
     useEffect(() => {
@@ -237,23 +190,23 @@ function App() {
                 </div>
             )}
 
-            <Wires
-                wires={WIRES}
-                zoom={zoom}
-                panX={panX}
-                panY={panY}
-                positions={positions}
-                tick={postionsTick}
-            />
-            <div
-                style={{
-                    transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
-                    transformOrigin: "top left",
-                    width: `calc(100% / ${zoom})`,
-                    height: `calc(100% / ${zoom})`,
-                }}
-            >
-                {/* <DatasetNode x={offset} y={80} onPosChange={updatePos} />
+            <ZoomContext.Provider value={zoom}>
+                <Wires
+                    positions={positions}
+                    wires={WIRES}
+                    zoom={zoom}
+                    panX={panX}
+                    panY={panY}
+                />
+                <div
+                    style={{
+                        transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
+                        transformOrigin: "top left",
+                        width: `calc(100% / ${zoom})`,
+                        height: `calc(100% / ${zoom})`,
+                    }}
+                >
+                    {/* <DatasetNode x={offset} y={80} onPosChange={updatePos} />
             <TokenizerNode x={offset} y={380} onPosChange={updatePos} />
 
             <ArchitectureNode x={offset + 310} y={80} onPosChange={updatePos} />
@@ -262,40 +215,45 @@ function App() {
             <MetricsNode x={offset + 640} y={80} onPosChange={updatePos} />
             <GenerateNode x={offset + 640} y={440} onPosChange={updatePos} /> */}
 
-                <ReferenceNode x={offset} y={30} onPosChange={updatePos} />
-                <CompressConfigNode
-                    x={offset + 310}
-                    y={30}
-                    onPosChange={updatePos}
-                />
-                <CompressNode x={offset + 640} y={30} onPosChange={updatePos} />
-                <ExtractingNode
-                    x={offset + 950}
-                    y={30}
-                    onPosChange={updatePos}
-                />
-                <ScriptAnalysisNode
-                    x={offset + 1260}
-                    y={30}
-                    onPosChange={updatePos}
-                />
-                <AudioAnalysisNode
-                    x={offset + 1570}
-                    y={30}
-                    onPosChange={updatePos}
-                />
+                    <ReferenceNode x={offset} y={30} onPosChange={updatePos} />
+                    <CompressConfigNode
+                        x={offset + 310}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <CompressNode
+                        x={offset + 640}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <ExtractingNode
+                        x={offset + 950}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <ScriptAnalysisNode
+                        x={offset + 1260}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <AudioAnalysisNode
+                        x={offset + 1570}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
 
-                <style
-                    dangerouslySetInnerHTML={{
-                        __html: `
+                    <style
+                        dangerouslySetInnerHTML={{
+                            __html: `
         * { box-sizing: border-box; }
         input[type=range] { -webkit-appearance: none; background: #e8e8e8; border-radius: 2px; outline: none; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #999; cursor: pointer; }
         ::selection { background: #dbeafe; }
       `,
-                    }}
-                />
-            </div>
+                        }}
+                    />
+                </div>
+            </ZoomContext.Provider>
             <NodeErrorToast />
         </div>
     );

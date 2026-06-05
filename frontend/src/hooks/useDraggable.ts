@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { useUIStore } from "../store/useUIStore";
+import { useState, useRef, useCallback, useEffect, useContext } from "react";
+import { ZoomContext } from "../context/ZoomContext";
+import { useCanvasStore } from "../store/useCanvasStore";
 
 export function useDraggable(
     ix: number,
@@ -7,15 +8,17 @@ export function useDraggable(
     id: string,
     onPos: (id: string, x: number, y: number, w: number, h: number) => void,
 ) {
-    const [p, setP] = useState(() => {
-        const saved = useUIStore.getState().nodePositions[id];
-        if (saved) return { x: saved.x, y: saved.y };
-        return { x: ix, y: iy };
-    });
+    const zoom = useContext(ZoomContext);
+
+    // 优先用 store 里的持久化坐标，没有则用传入的初始值
+    const savedPos = useCanvasStore.getState().positions[id];
+    const [p, setP] = useState(() =>
+        savedPos ? { x: savedPos.x, y: savedPos.y } : { x: ix, y: iy },
+    );
+
     const drag = useRef(false);
     const off = useRef({ x: 0, y: 0 });
     const ref = useRef<HTMLDivElement>(null);
-    const zoom = useUIStore((s) => s.zoom);
 
     const onMouseDown = useCallback(
         (e: React.MouseEvent) => {
