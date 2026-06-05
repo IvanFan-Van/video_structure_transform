@@ -17,6 +17,7 @@ import { CompressNode } from "./components/nodes/CompressNode";
 import { ExtractingNode } from "./components/nodes/ExtractingNode";
 import { ScriptAnalysisNode } from "./components/nodes/ScriptAnalysisNode";
 import { AudioAnalysisNode } from "./components/nodes/AudioAnalysisNode";
+import { VisualAnalysisNode } from "./components/nodes/VisualAnalysisNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
@@ -238,6 +239,11 @@ function App() {
                     />
                     <AudioAnalysisNode
                         x={offset + 1570}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <VisualAnalysisNode
+                        x={offset + 1880}
                         y={30}
                         onPosChange={updatePos}
                     />

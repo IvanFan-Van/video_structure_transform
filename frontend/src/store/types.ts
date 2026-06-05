@@ -132,6 +132,50 @@ export interface AudioGlobalFeatures {
     estimated_bpm: number;
 }
 
+export interface VisualPacing {
+    avg_shot_duration: number;
+    pacing_category: string;
+    acceleration_points: number[];
+}
+
+export interface VisualShot {
+    shot_index: number;
+    start_time: number;
+    end_time: number;
+    camera_movement: string | null;
+    is_text_frame: boolean;
+    description: string;
+}
+
+export interface VisualTransition {
+    after_shot_index: number;
+    type: string;
+    duration: number;
+}
+
+export interface VisualTextElement {
+    text: string;
+    position: string | null;
+    appear_style: string | null;
+    appear_time: number;
+    disappear_time: number;
+    emphasis: string | null;
+}
+
+export interface VisualTextDensityPoint {
+    time: number;
+    text_count: number;
+}
+
+export interface VisualResult {
+    total_duration: number;
+    pacing: VisualPacing;
+    shots: VisualShot[];
+    transitions: VisualTransition[];
+    text_elements: VisualTextElement[];
+    text_density_curve: VisualTextDensityPoint[];
+}
+
 export type TaskStatus = 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface TaskInfo {

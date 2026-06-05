@@ -78,6 +78,11 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
     const startExtractScript = useVideoStore((s) => s.startExtractScript);
     const stopExtractScript = useVideoStore((s) => s.stopExtractScript);
     const startAnalyzeAudio = useVideoStore((s) => s.startAnalyzeAudio);
+    const startAnalyzeVisual = useVideoStore((s) => s.startAnalyzeVisual);
+    const visualStatus = useVideoStore((s) => s.visualStatus);
+    const visualTime = useVideoStore((s) => s.visualTime);
+    const stopAnalyzeVisual = useVideoStore((s) => s.stopAnalyzeVisual);
+    const stopAnalyzeAudio = useVideoStore((s) => s.stopAnalyzeAudio);
     const audioStatus = useVideoStore((s) => s.audioStatus);
     const videoErrors = useVideoStore((s) => s.videoErrors);
     const hasError = videoErrors.some((e) => e.nodeId === "extracting");
@@ -87,13 +92,19 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
     const getStatus = (key: string) => {
         if (key === "script") return scriptStatus;
         if (key === "bgm") return audioStatus;
-        if (key === "features") return "error";
+        if (key === "features") return visualStatus;
         return "pending";
     };
 
     const formatTime = (t: number | null) => {
         if (t == null) return "";
         return ` (${t.toFixed(2)}s)`;
+    };
+
+    const getTimeLabel = (key: string) => {
+        if (key === "script") return formatTime(scriptTime);
+        if (key === "features") return formatTime(visualTime);
+        return "";
     };
 
     return (
@@ -113,7 +124,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
             >
                 {!isExtractingFlow && (
                     <button
-                        onClick={() => { startExtractScript(); startAnalyzeAudio(); }}
+                        onClick={() => { startExtractScript(); startAnalyzeAudio(); startAnalyzeVisual(); }}
                         disabled={!compressResult}
                         style={{
                             padding: "10px",
@@ -144,10 +155,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                             const status = getStatus(item.key);
                             const cfg =
                                 STATUS_CONFIG[status] || STATUS_CONFIG.pending;
-                            const timeLabel =
-                                item.key === "script"
-                                    ? formatTime(scriptTime)
-                                    : "";
+                            const timeLabel = getTimeLabel(item.key);
 
                             return (
                                 <div
@@ -233,7 +241,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                         })}
 
                         <button
-                            onClick={stopExtractScript}
+                            onClick={() => { stopExtractScript(); stopAnalyzeAudio(); stopAnalyzeVisual(); }}
                             style={{
                                 padding: "5px",
                                 fontSize: "9px",

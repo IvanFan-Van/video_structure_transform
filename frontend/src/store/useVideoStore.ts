@@ -13,6 +13,7 @@ import {
     TaskInfo,
     AudioStreamChunk,
     AudioGlobalFeatures,
+    VisualResult,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -91,6 +92,12 @@ interface VideoState {
     audioGlobal: AudioGlobalFeatures | null;
     audioBgmAssetId: string | null;
 
+    visualStatus: string;
+    visualTime: number | null;
+    isAnalyzingVisual: boolean;
+    visualTaskId: string | null;
+    visualResult: VisualResult | null;
+
     videoErrors: NodeError[];
 }
 
@@ -105,6 +112,8 @@ interface VideoActions {
     stopExtractScript: () => Promise<void>;
     startAnalyzeAudio: () => Promise<void>;
     stopAnalyzeAudio: () => void;
+    startAnalyzeVisual: () => Promise<void>;
+    stopAnalyzeVisual: () => void;
     dismissError: (id: number) => void;
 }
 
@@ -176,6 +185,11 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     streamArr: [],
     audioGlobal: null,
     audioBgmAssetId: null,
+    visualStatus: "idle",
+    visualTime: null,
+    visualResult: null,
+    isAnalyzingVisual: false,
+    visualTaskId: null,
 
     videoErrors: [],
 
@@ -712,6 +726,177 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             streamArr: [],
             audioGlobal: null,
             audioBgmAssetId: null,
+        });
+    },
+
+    startAnalyzeVisual: async () => {
+        const { compressResult } = get();
+        if (!compressResult) return;
+        const token = useAuthStore.getState().token;
+        const t0 = Date.now();
+        set({
+            isAnalyzingVisual: true,
+            visualStatus: "loading",
+            visualTime: null,
+            visualTaskId: null,
+            visualResult: null,
+        });
+
+        try {
+            const res = await axios.post(
+                "/api/analyze-visual",
+                { asset_id: compressResult.asset_id },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (res.data.status !== "success") {
+                const elapsed = (Date.now() - t0) / 1000;
+                let msg: string, code: string, details: string;
+                if (res.data.status === "error") {
+                    msg = res.data.message || "Visual analysis failed";
+                    code = res.data.code
+                        ? String(res.data.code)
+                        : "SERVER_ERROR";
+                    details = res.data.data
+                        ? JSON.stringify(res.data.data, null, 2)
+                        : res.data.message || "";
+                } else {
+                    msg = res.data.data?.message || "Visual analysis failed";
+                    code = "VALIDATION_ERROR";
+                    details = JSON.stringify(res.data.data, null, 2);
+                }
+                set((s) => ({
+                    visualResult: null,
+                    visualStatus: "error",
+                    visualTime: elapsed,
+                    isAnalyzingVisual: false,
+                    videoErrors: [
+                        ...s.videoErrors.filter((e) => e.nodeId !== "visual"),
+                        makeError("visual", msg, code, details),
+                    ],
+                }));
+                return;
+            }
+
+            const taskId: string = res.data.data.task_id;
+            set({ visualTaskId: taskId });
+
+            pollTask(
+                taskId,
+                token,
+                (info) => {
+                    const elapsed = (Date.now() - t0) / 1000;
+                    if (info.status === "completed") {
+                        set((s) => ({
+                            visualResult: info.result,
+                            visualStatus: "done",
+                            visualTime: elapsed,
+                            isAnalyzingVisual: false,
+                            visualTaskId: null,
+                            videoErrors: s.videoErrors.filter(
+                                (e) => e.nodeId !== "visual",
+                            ),
+                        }));
+                    } else if (info.status === "failed") {
+                        set((s) => ({
+                            visualResult: null,
+                            visualStatus: "error",
+                            visualTime: elapsed,
+                            isAnalyzingVisual: false,
+                            visualTaskId: null,
+                            videoErrors: [
+                                ...s.videoErrors.filter(
+                                    (e) => e.nodeId !== "visual",
+                                ),
+                                makeError(
+                                    "visual",
+                                    "Visual analysis failed",
+                                    "EXTRACT_FAILED",
+                                    info.error || "",
+                                ),
+                            ],
+                        }));
+                    } else {
+                        set({
+                            visualStatus: "idle",
+                            visualTaskId: null,
+                            isAnalyzingVisual: false,
+                        });
+                    }
+                },
+                () => {
+                    const elapsed = (Date.now() - t0) / 1000;
+                    set((s) => ({
+                        visualResult: null,
+                        visualStatus: "error",
+                        visualTime: elapsed,
+                        isAnalyzingVisual: false,
+                        visualTaskId: null,
+                        videoErrors: [
+                            ...s.videoErrors.filter(
+                                (e) => e.nodeId !== "visual",
+                            ),
+                            makeError(
+                                "visual",
+                                "Network error",
+                                "NETWORK_ERROR",
+                                "Unable to reach the server. Check your connection and try again.",
+                            ),
+                        ],
+                    }));
+                },
+            );
+        } catch {
+            const elapsed = (Date.now() - t0) / 1000;
+            set((s) => ({
+                visualResult: null,
+                visualStatus: "error",
+                visualTime: elapsed,
+                isAnalyzingVisual: false,
+                visualTaskId: null,
+                videoErrors: [
+                    ...s.videoErrors.filter((e) => e.nodeId !== "visual"),
+                    makeError(
+                        "visual",
+                        "Network error",
+                        "NETWORK_ERROR",
+                        "Unable to reach the server. Check your connection and try again.",
+                    ),
+                ],
+            }));
+        }
+    },
+
+    stopAnalyzeVisual: async () => {
+        const { visualTaskId } = get();
+        if (!visualTaskId) return;
+        const token = useAuthStore.getState().token;
+        try {
+            await axios.post(
+                `/api/task/${visualTaskId}/cancel`,
+                {},
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+        } catch {
+            // best-effort cancel
+        }
+        clearPoll(visualTaskId);
+        set({
+            isAnalyzingVisual: false,
+            visualStatus: "idle",
+            visualTaskId: null,
+            visualResult: null,
+            visualTime: null,
         });
     },
 
