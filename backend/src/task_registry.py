@@ -17,6 +17,10 @@ class TaskInfo:
     task: asyncio.Task | None = None
     result: Any = None
     error: str | None = None
+    # TODO: SSE 替代轮询 — 添加 _event: asyncio.Event
+    #       field(default_factory=asyncio.Event)
+    #       状态变更为 completed/failed/cancelled 时 set event
+    #       SSE 端点 (GET /task/{task_id}/stream) await 此 event 后推送
 
     def to_dict(self) -> dict:
         base: dict = {
@@ -63,12 +67,14 @@ class TaskRegistry:
         if info:
             info.status = "completed"
             info.result = result
+            # TODO: SSE — info._event.set()
 
     def set_error(self, task_id: str, error: str) -> None:
         info = self._tasks.get(task_id)
         if info:
             info.status = "failed"
             info.error = error
+            # TODO: SSE — info._event.set()
 
     def cancel(self, task_id: str) -> bool:
         info = self._tasks.get(task_id)
@@ -76,6 +82,7 @@ class TaskRegistry:
             return False
         info.task.cancel()
         info.status = "cancelled"
+        # TODO: SSE — info._event.set()
         return True
 
     def remove(self, task_id: str) -> None:
