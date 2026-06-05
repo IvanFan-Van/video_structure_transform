@@ -22,6 +22,7 @@ export function useDraggable(ix: number, iy: number, id: string, onPos: (id: str
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     if (['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes((e.target as HTMLElement).tagName)) return;
+    e.stopPropagation();
     drag.current = true;
     off.current = { x: e.clientX - p.x * zoom, y: e.clientY - p.y * zoom };
     e.preventDefault();
