@@ -15,6 +15,7 @@ import {
     AudioGlobalFeatures,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
+import { useUIStore } from "./useUIStore";
 
 const pollTimers: Record<string, ReturnType<typeof setInterval> | null> = {};
 let sseAbortController: AbortController | null = null;
@@ -182,6 +183,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     uploadVideo: async (file) => {
         const token = useAuthStore.getState().token;
         clearAllPolls();
+        useUIStore.getState().resetNodePositions();
         set({
             isUploading: true,
             uploadProgress: 0,

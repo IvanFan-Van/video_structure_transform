@@ -39,8 +39,3 @@ export const WIRES: [string, string][] = [
     ["extracting", "script_analysis"],
     ["extracting", "audio_analysis"],
 ];
-
-export const SESSION_KEYS = {
-    NODE_POSITIONS: "hf-node-positions",
-    ZOOM: "hf-zoom",
-};
