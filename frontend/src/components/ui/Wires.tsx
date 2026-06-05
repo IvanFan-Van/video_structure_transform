@@ -3,7 +3,6 @@ import { Pos } from "../../store/types";
 interface WiresProps {
     positions: Record<string, Pos>;
     wires: [string, string][];
-    tick: number;
     zoom: number;
     panX: number;
     panY: number;
@@ -19,16 +18,7 @@ function toScreen(
     return { sx: lx * zoom + panX, sy: ly * zoom + panY };
 }
 
-export function Wires({
-    positions,
-    wires,
-    tick,
-    zoom,
-    panX,
-    panY,
-}: WiresProps) {
-    void tick;
-
+export function Wires({ positions, wires, zoom, panX, panY }: WiresProps) {
     return (
         <svg
             style={{

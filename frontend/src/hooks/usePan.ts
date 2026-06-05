@@ -1,7 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect } from "react";
+import { useCanvasStore } from "../store/useCanvasStore";
 
 export function usePan(zoom: number) {
-    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const panX = useCanvasStore((s) => s.panX);
+    const panY = useCanvasStore((s) => s.panY);
+    const setPan = useCanvasStore((s) => s.setPan);
+
     const dragging = useRef(false);
     const last = useRef({ x: 0, y: 0 });
 
@@ -24,8 +28,8 @@ export function usePan(zoom: number) {
             const dy = e.clientY - last.current.y;
             last.current = { x: e.clientX, y: e.clientY };
             setPan((prev) => ({
-                x: prev.x + dx,
-                y: prev.y + dy,
+                x: prev.x + dx / zoom,
+                y: prev.y + dy / zoom,
             }));
         };
         const up = () => {
@@ -37,7 +41,7 @@ export function usePan(zoom: number) {
             window.removeEventListener("mousemove", mv);
             window.removeEventListener("mouseup", up);
         };
-    }, [zoom]);
+    }, [zoom, setPan]);
 
-    return { panX: pan.x, panY: pan.y, onMouseDown };
+    return { panX, panY, onMouseDown };
 }

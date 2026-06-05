@@ -23,7 +23,7 @@ import { usePan } from "./hooks/usePan";
 import { ZoomContext } from "./context/ZoomContext";
 
 function App() {
-    const { positions, update: updatePos, tick: posTick } = useNodePositions();
+    const { positions, update: updatePos } = useNodePositions();
     const initWorker = useAppStore((s) => s.initWorker);
     const destroyWorker = useAppStore((s) => s.destroyWorker);
     const modelReady = useAppStore((s) => s.modelReady);
@@ -194,7 +194,6 @@ function App() {
                 <Wires
                     positions={positions}
                     wires={WIRES}
-                    tick={posTick}
                     zoom={zoom}
                     panX={panX}
                     panY={panY}

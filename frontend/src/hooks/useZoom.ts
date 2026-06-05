@@ -1,34 +1,19 @@
-import { useState, useEffect } from 'react';
-import { SESSION_KEYS } from '../constants';
+import { useEffect } from "react";
+import { useCanvasStore } from "../store/useCanvasStore";
 
-export function useZoom(initialZoom = 1) {
-  const [zoom, setZoom] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem(SESSION_KEYS.ZOOM);
-      return saved ? Number(saved) : initialZoom;
-    } catch {
-      return initialZoom;
-    }
-  });
+export function useZoom() {
+    const zoom = useCanvasStore((s) => s.zoom);
+    const setZoom = useCanvasStore((s) => s.setZoom);
 
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(SESSION_KEYS.ZOOM, String(zoom));
-    } catch {}
-  }, [zoom]);
+    useEffect(() => {
+        const onWheel = (e: WheelEvent) => {
+            if (!e.ctrlKey && !e.metaKey) return;
+            e.preventDefault();
+            setZoom((z) => z - e.deltaY * 0.001);
+        };
+        window.addEventListener("wheel", onWheel, { passive: false });
+        return () => window.removeEventListener("wheel", onWheel);
+    }, [setZoom]);
 
-  useEffect(() => {
-    const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      setZoom((z) => {
-        const next = z - e.deltaY * 0.001;
-        return Math.min(2, Math.max(0.2, next));
-      });
-    };
-    window.addEventListener('wheel', onWheel, { passive: false });
-    return () => window.removeEventListener('wheel', onWheel);
-  }, []);
-
-  return zoom;
+    return zoom;
 }
