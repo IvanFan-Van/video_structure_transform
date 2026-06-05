@@ -66,7 +66,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                 marginBottom: "2px",
                             }}
                         >
-                            {audioStatus === "done"
+                            {audioStatus === "success"
                                 ? "✓ ANALYZED"
                                 : "Analyzing..."}
                         </div>

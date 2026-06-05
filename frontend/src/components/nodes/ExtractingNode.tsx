@@ -1,5 +1,6 @@
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
+import { NodeStatus } from "../../store/types";
 
 interface Props {
     x: number;
@@ -20,7 +21,7 @@ const TODO_ITEMS = [
 ] as const;
 
 const STATUS_CONFIG: Record<
-    string,
+    NodeStatus,
     {
         icon: string;
         color: string;
@@ -29,7 +30,7 @@ const STATUS_CONFIG: Record<
         shimmer?: boolean;
     }
 > = {
-    pending: { icon: "○", color: "#ccc", text: "pending" },
+    idle: { icon: "○", color: "#ccc", text: "idle" },
     loading: {
         icon: "◌",
         color: "#555",
@@ -37,8 +38,9 @@ const STATUS_CONFIG: Record<
         spin: true,
         shimmer: true,
     },
-    done: { icon: "●", color: "#22c55e", text: "completed" },
+    success: { icon: "●", color: "#22c55e", text: "completed" },
     error: { icon: "✕", color: "#ef4444", text: "failed" },
+    cancelled: { icon: "⊘", color: "#999", text: "cancelled" },
 };
 
 const STYLE_ID = "extracting-node-animations";
@@ -75,8 +77,8 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
     const isExtractingFlow = useVideoStore((s) => s.isExtractingFlow);
     const scriptStatus = useVideoStore((s) => s.scriptStatus);
     const scriptTime = useVideoStore((s) => s.scriptTime);
-    const startExtractScript = useVideoStore((s) => s.startExtractScript);
-    const stopExtractScript = useVideoStore((s) => s.stopExtractScript);
+    const startAnalyzeScript = useVideoStore((s) => s.startAnalyzeScript);
+    const stopAnalyzeScript = useVideoStore((s) => s.stopAnalyzeScript);
     const startAnalyzeAudio = useVideoStore((s) => s.startAnalyzeAudio);
     const startAnalyzeVisual = useVideoStore((s) => s.startAnalyzeVisual);
     const visualStatus = useVideoStore((s) => s.visualStatus);
@@ -93,7 +95,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
         if (key === "script") return scriptStatus;
         if (key === "bgm") return audioStatus;
         if (key === "features") return visualStatus;
-        return "pending";
+        return "idle";
     };
 
     const formatTime = (t: number | null) => {
@@ -106,6 +108,17 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
         if (key === "features") return formatTime(visualTime);
         return "";
     };
+
+    const allSettled =
+        (scriptStatus === "success" ||
+            scriptStatus === "error" ||
+            scriptStatus === "cancelled") &&
+        (audioStatus === "success" ||
+            audioStatus === "error" ||
+            audioStatus === "cancelled") &&
+        (visualStatus === "success" ||
+            visualStatus === "error" ||
+            visualStatus === "cancelled");
 
     return (
         <BaseNode
@@ -124,7 +137,11 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
             >
                 {!isExtractingFlow && (
                     <button
-                        onClick={() => { startExtractScript(); startAnalyzeAudio(); startAnalyzeVisual(); }}
+                        onClick={() => {
+                            startAnalyzeScript();
+                            startAnalyzeAudio();
+                            startAnalyzeVisual();
+                        }}
                         disabled={!compressResult}
                         style={{
                             padding: "10px",
@@ -154,7 +171,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                         {TODO_ITEMS.map((item) => {
                             const status = getStatus(item.key);
                             const cfg =
-                                STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+                                STATUS_CONFIG[status] || STATUS_CONFIG.idle;
                             const timeLabel = getTimeLabel(item.key);
 
                             return (
@@ -212,7 +229,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                                         style={{
                                             flex: 1,
                                             color:
-                                                status === "done"
+                                                status === "success"
                                                     ? "#555"
                                                     : status === "error"
                                                       ? "#ef4444"
@@ -240,22 +257,49 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                             );
                         })}
 
-                        <button
-                            onClick={() => { stopExtractScript(); stopAnalyzeAudio(); stopAnalyzeVisual(); }}
-                            style={{
-                                padding: "5px",
-                                fontSize: "9px",
-                                fontFamily: "inherit",
-                                background: "transparent",
-                                border: "1px solid #e0e0e0",
-                                borderRadius: "3px",
-                                color: "#999",
-                                cursor: "pointer",
-                                marginTop: "2px",
-                            }}
-                        >
-                            ■ STOP
-                        </button>
+                        {allSettled ? (
+                            <button
+                                onClick={() => {
+                                    startAnalyzeScript();
+                                    startAnalyzeAudio();
+                                    startAnalyzeVisual();
+                                }}
+                                style={{
+                                    padding: "5px",
+                                    fontSize: "9px",
+                                    fontFamily: "inherit",
+                                    background: "transparent",
+                                    border: "1px solid #e0e0e0",
+                                    borderRadius: "3px",
+                                    color: "#999",
+                                    cursor: "pointer",
+                                    marginTop: "2px",
+                                }}
+                            >
+                                ↻ RESTART
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => {
+                                    stopAnalyzeScript();
+                                    stopAnalyzeAudio();
+                                    stopAnalyzeVisual();
+                                }}
+                                style={{
+                                    padding: "5px",
+                                    fontSize: "9px",
+                                    fontFamily: "inherit",
+                                    background: "transparent",
+                                    border: "1px solid #e0e0e0",
+                                    borderRadius: "3px",
+                                    color: "#999",
+                                    cursor: "pointer",
+                                    marginTop: "2px",
+                                }}
+                            >
+                                ■ STOP
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

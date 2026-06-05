@@ -43,6 +43,8 @@ export interface Pos {
     h: number;
 }
 
+export type NodeStatus = "idle" | "loading" | "success" | "error" | "cancelled";
+
 export interface VideoMeta {
     filepath: string;
     codec: string | null;
@@ -176,7 +178,7 @@ export interface VisualResult {
     text_density_curve: VisualTextDensityPoint[];
 }
 
-export type TaskStatus = 'running' | 'completed' | 'failed' | 'cancelled';
+export type TaskStatus = "running" | "completed" | "failed" | "cancelled";
 
 export interface TaskInfo {
     task_id: string;

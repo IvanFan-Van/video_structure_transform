@@ -14,6 +14,7 @@ import {
     AudioStreamChunk,
     AudioGlobalFeatures,
     VisualResult,
+    NodeStatus,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -80,19 +81,19 @@ interface VideoState {
     compressTaskId: string | null;
     compressResult: CompressResult | null;
 
-    scriptStatus: string;
+    scriptStatus: NodeStatus;
     scriptTime: number | null;
     isExtractingFlow: boolean;
     extractTaskId: string | null;
     transcriptResult: TranscriptResult | null;
 
-    audioStatus: string;
+    audioStatus: NodeStatus;
     audioTime: number | null;
     streamArr: AudioStreamChunk[];
     audioGlobal: AudioGlobalFeatures | null;
     audioBgmAssetId: string | null;
 
-    visualStatus: string;
+    visualStatus: NodeStatus;
     visualTime: number | null;
     isAnalyzingVisual: boolean;
     visualTaskId: string | null;
@@ -108,8 +109,8 @@ interface VideoActions {
     ) => void;
     startCompress: () => Promise<void>;
     stopCompress: () => Promise<void>;
-    startExtractScript: () => Promise<void>;
-    stopExtractScript: () => Promise<void>;
+    startAnalyzeScript: () => Promise<void>;
+    stopAnalyzeScript: () => Promise<void>;
     startAnalyzeAudio: () => Promise<void>;
     stopAnalyzeAudio: () => void;
     startAnalyzeVisual: () => Promise<void>;
@@ -456,7 +457,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
     },
 
-    startExtractScript: async () => {
+    startAnalyzeScript: async () => {
         const { compressResult } = get();
         if (!compressResult) return;
         const token = useAuthStore.getState().token;
@@ -522,7 +523,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     if (info.status === "completed") {
                         set((s) => ({
                             transcriptResult: info.result,
-                            scriptStatus: "done",
+                            scriptStatus: "success",
                             scriptTime: elapsed,
                             extractTaskId: null,
                             videoErrors: s.videoErrors.filter(
@@ -595,12 +596,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         }
     },
 
-    stopExtractScript: async () => {
+    stopAnalyzeScript: async () => {
         const { extractTaskId } = get();
         if (!extractTaskId) return;
         const token = useAuthStore.getState().token;
         try {
-            await axios.post(
+            await axios.post<ApiResponse<String>>(
                 `/api/task/${extractTaskId}/cancel`,
                 {},
                 {
@@ -610,17 +611,29 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     },
                 },
             );
-        } catch {
-            // best-effort cancel
+            set({
+                scriptStatus: "cancelled",
+                extractTaskId: null,
+                transcriptResult: null,
+                scriptTime: null,
+            });
+            clearPoll(extractTaskId);
+        } catch (error: any) {
+            if (axios.isAxiosError(error)) {
+                const axiosError = error as AxiosError<ApiErrorResponse>;
+                const msg = axiosError.message || "Failed to cancel analysis";
+                const code = error.response?.statusText || "CANCEL_FAILED";
+                const details = axiosError.response?.data.message || "";
+                set((s) => ({
+                    videoErrors: [
+                        ...s.videoErrors.filter(
+                            (e) => e.nodeId !== "extracting",
+                        ),
+                        makeError("extracting", msg, code, details),
+                    ],
+                }));
+            }
         }
-        clearPoll(extractTaskId);
-        set({
-            isExtractingFlow: false,
-            scriptStatus: "idle",
-            extractTaskId: null,
-            transcriptResult: null,
-            scriptTime: null,
-        });
     },
 
     startAnalyzeAudio: async () => {
@@ -680,7 +693,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                             if (frame.is_last_frame) {
                                 const elapsed = (Date.now() - t0) / 1000;
                                 set((s) => ({
-                                    audioStatus: "done",
+                                    audioStatus: "success",
                                     audioTime: elapsed,
                                     videoErrors: s.videoErrors.filter(
                                         (e) => e.nodeId !== "audio",
@@ -721,7 +734,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             sseAbortController = null;
         }
         set({
-            audioStatus: "idle",
+            audioStatus: "cancelled",
             audioTime: null,
             streamArr: [],
             audioGlobal: null,
@@ -794,7 +807,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     if (info.status === "completed") {
                         set((s) => ({
                             visualResult: info.result,
-                            visualStatus: "done",
+                            visualStatus: "success",
                             visualTime: elapsed,
                             isAnalyzingVisual: false,
                             visualTaskId: null,
@@ -893,7 +906,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         clearPoll(visualTaskId);
         set({
             isAnalyzingVisual: false,
-            visualStatus: "idle",
+            visualStatus: "cancelled",
             visualTaskId: null,
             visualResult: null,
             visualTime: null,
