@@ -201,6 +201,23 @@ function App() {
                 </div>
             )}
 
+            <div
+                style={{
+                    position: "fixed",
+                    bottom: 16,
+                    left: 20,
+                    zIndex: 100,
+                    fontSize: "10px",
+                    color: "#bbb",
+                    lineHeight: "1.8",
+                    pointerEvents: "none",
+                }}
+            >
+                <div>Ctrl + Scroll &mdash; Zoom</div>
+                <div>Drag background &mdash; Pan</div>
+                <div>Drag nodes &mdash; Move</div>
+            </div>
+
             <ZoomContext.Provider value={zoom}>
                 <Wires
                     positions={positions}
