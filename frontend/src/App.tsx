@@ -18,6 +18,7 @@ import { ExtractingNode } from "./components/nodes/ExtractingNode";
 import { ScriptAnalysisNode } from "./components/nodes/ScriptAnalysisNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { useZoom } from "./hooks/useZoom";
+import { usePan } from "./hooks/usePan";
 import { ZoomContext } from "./context/ZoomContext";
 
 function App() {
@@ -54,6 +55,7 @@ function App() {
         return () => document.removeEventListener("mousedown", onClick);
     }, []);
     const zoom = useZoom();
+    const { panX, panY, onMouseDown: onPanMouseDown } = usePan(zoom);
 
     const [offset, setOffset] = useState(60);
     useEffect(() => {
@@ -188,8 +190,9 @@ function App() {
 
             <ZoomContext.Provider value={zoom}>
                 <div
+                    onMouseDown={onPanMouseDown}
                     style={{
-                        transform: `scale(${zoom})`,
+                        transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
                         transformOrigin: "top left",
                         width: `calc(100% / ${zoom})`,
                         height: `calc(100% / ${zoom})`,
