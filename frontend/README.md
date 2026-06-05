@@ -5,4 +5,7 @@
 - src/components/ui: 存储公共组件, 例如 (e.g. BaseNode, Wires)
 - src/components/ProtectedRoute.tsx: 保护路由, 用于限制用户直接访问私密页面
 - src/context/ZoomContext.tsx: 保存 zoom 值
-- 
+- src/hooks/useDraggable.ts: 
+- src/hooks/useNodePositions.ts:
+- src/hooks/usePan.ts: 
+- src/hooks/useZoom.ts

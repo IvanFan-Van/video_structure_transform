@@ -24,10 +24,18 @@ interface CanvasState {
 export const useCanvasStore = create<CanvasState>()(
     persist(
         (set) => ({
-            zoom: 1,
+            zoom: 0.5,
             panX: 0,
             panY: 0,
-            positions: {},
+            positions: {
+                reference: { x: 77, y: 295, w: 280, h: 113 },
+                compress_config: { x: 553, y: 128, w: 300, h: 269.5 },
+                compress: { x: 1116, y: 113, w: 300, h: 91.5 },
+                extracting: { x: 503, y: 630, w: 300, h: 91.5 },
+                script_analysis: { x: 1201, y: 315, w: 300, h: 91.5 },
+                audio_analysis: { x: 1233, y: 560, w: 300, h: 91.5 },
+                visual_analysis: { x: 1280, y: 787, w: 300, h: 91.5 },
+            },
 
             setZoom: (updater) =>
                 set((s) => ({

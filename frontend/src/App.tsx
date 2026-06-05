@@ -23,6 +23,16 @@ import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
 import { ZoomContext } from "./context/ZoomContext";
 
+const NODES = {
+    reference: ReferenceNode,
+    compress_config: CompressConfigNode,
+    compress: CompressNode,
+    extracting: ExtractingNode,
+    script_analysis: ScriptAnalysisNode,
+    audio_analysis: AudioAnalysisNode,
+    visual_analysis: VisualAnalysisNode,
+};
+
 function App() {
     const { positions, update: updatePos } = useNodePositions();
     const initWorker = useAppStore((s) => s.initWorker);
@@ -101,7 +111,7 @@ function App() {
                     color: "#ccc",
                 }}
             >
-                TRAIN MY OWN GPT
+                爆款视频风格迁移
             </div>
             {user && (
                 <div
