@@ -47,7 +47,7 @@ class TaskRegistry:
         user_id: str,
         type: str,
         resource_id: str,
-        task: asyncio.Task,
+        task: asyncio.Task | None = None,
     ) -> TaskInfo:
         info = TaskInfo(
             task_id=task_id,
