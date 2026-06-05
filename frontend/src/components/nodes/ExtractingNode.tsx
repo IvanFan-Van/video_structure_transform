@@ -77,6 +77,8 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
     const scriptTime = useVideoStore((s) => s.scriptTime);
     const startExtractScript = useVideoStore((s) => s.startExtractScript);
     const stopExtractScript = useVideoStore((s) => s.stopExtractScript);
+    const startAnalyzeAudio = useVideoStore((s) => s.startAnalyzeAudio);
+    const audioStatus = useVideoStore((s) => s.audioStatus);
     const videoErrors = useVideoStore((s) => s.videoErrors);
     const hasError = videoErrors.some((e) => e.nodeId === "extracting");
 
@@ -84,6 +86,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
 
     const getStatus = (key: string) => {
         if (key === "script") return scriptStatus;
+        if (key === "bgm") return audioStatus;
         if (key === "features") return "error";
         return "pending";
     };
@@ -110,7 +113,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
             >
                 {!isExtractingFlow && (
                     <button
-                        onClick={startExtractScript}
+                        onClick={() => { startExtractScript(); startAnalyzeAudio(); }}
                         disabled={!compressResult}
                         style={{
                             padding: "10px",

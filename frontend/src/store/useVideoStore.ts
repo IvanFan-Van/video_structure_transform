@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import axios, { AxiosError } from "axios";
+import { fetchEventSource } from "@microsoft/fetch-event-source";
 import {
     UploadResult,
     CompressResult,
@@ -10,10 +11,13 @@ import {
     ApiErrorResponse,
     TranscriptResult,
     TaskInfo,
+    AudioStreamChunk,
+    AudioGlobalFeatures,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
 const pollTimers: Record<string, ReturnType<typeof setInterval> | null> = {};
+let sseAbortController: AbortController | null = null;
 
 function clearPoll(taskId: string | null) {
     if (!taskId) return;
@@ -81,6 +85,12 @@ interface VideoState {
     extractTaskId: string | null;
     transcriptResult: TranscriptResult | null;
 
+    audioStatus: string;
+    audioTime: number | null;
+    streamArr: AudioStreamChunk[];
+    audioGlobal: AudioGlobalFeatures | null;
+    audioBgmAssetId: string | null;
+
     videoErrors: NodeError[];
 }
 
@@ -93,6 +103,8 @@ interface VideoActions {
     stopCompress: () => Promise<void>;
     startExtractScript: () => Promise<void>;
     stopExtractScript: () => Promise<void>;
+    startAnalyzeAudio: () => Promise<void>;
+    stopAnalyzeAudio: () => void;
     dismissError: (id: number) => void;
 }
 
@@ -159,6 +171,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     extractTaskId: null,
     transcriptResult: null,
 
+    audioStatus: "idle",
+    audioTime: null,
+    streamArr: [],
+    audioGlobal: null,
+    audioBgmAssetId: null,
+
     videoErrors: [],
 
     uploadVideo: async (file) => {
@@ -176,6 +194,11 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             scriptStatus: "idle",
             isExtractingFlow: false,
             isCompressing: false,
+            audioStatus: "idle",
+            audioTime: null,
+            streamArr: [],
+            audioGlobal: null,
+            audioBgmAssetId: null,
         });
 
         generateThumbnail(file).then((url) => set({ thumbnailUrl: url }));
@@ -268,7 +291,11 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         const { uploadResult, compressConfig } = get();
         if (!uploadResult) return;
         const token = useAuthStore.getState().token;
-        set({ isCompressing: true, compressResult: null, compressTaskId: null });
+        set({
+            isCompressing: true,
+            compressResult: null,
+            compressTaskId: null,
+        });
 
         try {
             const res = await axios.post(
@@ -295,7 +322,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 let msg: string, code: string, details: string;
                 if (res.data.status === "error") {
                     msg = res.data.message || "Compress failed";
-                    code = res.data.code ? String(res.data.code) : "SERVER_ERROR";
+                    code = res.data.code
+                        ? String(res.data.code)
+                        : "SERVER_ERROR";
                     details = res.data.data
                         ? JSON.stringify(res.data.data, null, 2)
                         : res.data.message || "";
@@ -443,7 +472,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 let msg: string, code: string, details: string;
                 if (res.data.status === "error") {
                     msg = res.data.message || "Extract failed";
-                    code = res.data.code ? String(res.data.code) : "SERVER_ERROR";
+                    code = res.data.code
+                        ? String(res.data.code)
+                        : "SERVER_ERROR";
                     details = res.data.data
                         ? JSON.stringify(res.data.data, null, 2)
                         : res.data.message || "";
@@ -575,6 +606,112 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             extractTaskId: null,
             transcriptResult: null,
             scriptTime: null,
+        });
+    },
+
+    startAnalyzeAudio: async () => {
+        const { compressResult } = get();
+        if (!compressResult) return;
+        const token = useAuthStore.getState().token;
+        if (!token) return;
+        const t0 = Date.now();
+
+        if (sseAbortController) sseAbortController.abort();
+        sseAbortController = new AbortController();
+
+        set({
+            audioStatus: "loading",
+            audioTime: null,
+            streamArr: [],
+            audioGlobal: null,
+            audioBgmAssetId: null,
+        });
+
+        try {
+            await fetchEventSource(
+                `/api/analyze-audio?asset_id=${compressResult.asset_id}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                    signal: sseAbortController.signal,
+                    onmessage(event) {
+                        if (event.data === "[DONE]") return;
+                        try {
+                            const frame = JSON.parse(event.data);
+
+                            if (frame.asset_id) {
+                                set({ audioBgmAssetId: frame.asset_id });
+                            }
+
+                            if (frame.local) {
+                                const chunk: AudioStreamChunk = {
+                                    time: frame.time,
+                                    frame_index: frame.frame_index,
+                                    rms: frame.local.rms,
+                                    spectral_centroid:
+                                        frame.local.spectral_centroid,
+                                    spectral_flux: frame.local.spectral_flux,
+                                    onset_envelope: frame.local.onset_envelope,
+                                };
+                                set((s) => ({
+                                    streamArr: [...s.streamArr, chunk],
+                                }));
+                            }
+
+                            if (frame.running_global) {
+                                set({
+                                    audioGlobal: frame.running_global,
+                                });
+                            }
+
+                            if (frame.is_last_frame) {
+                                const elapsed = (Date.now() - t0) / 1000;
+                                set((s) => ({
+                                    audioStatus: "done",
+                                    audioTime: elapsed,
+                                    videoErrors: s.videoErrors.filter(
+                                        (e) => e.nodeId !== "audio",
+                                    ),
+                                }));
+                            }
+                        } catch {}
+                    },
+                    onerror() {
+                        const elapsed = (Date.now() - t0) / 1000;
+                        set((s) => ({
+                            audioStatus: "error",
+                            audioTime: elapsed,
+                            videoErrors: [
+                                ...s.videoErrors.filter(
+                                    (e) => e.nodeId !== "audio",
+                                ),
+                                makeError(
+                                    "audio",
+                                    "Audio analysis failed",
+                                    "AUDIO_FAILED",
+                                    "Stream connection error or server error.",
+                                ),
+                            ],
+                        }));
+                        throw new Error("stop"); // stop retrying
+                    },
+                },
+            );
+        } catch {
+            // aborted or connection error — onerror already handled error case
+        }
+    },
+
+    stopAnalyzeAudio: () => {
+        if (sseAbortController) {
+            sseAbortController.abort();
+            sseAbortController = null;
+        }
+        set({
+            audioStatus: "idle",
+            audioTime: null,
+            streamArr: [],
+            audioGlobal: null,
+            audioBgmAssetId: null,
         });
     },
 

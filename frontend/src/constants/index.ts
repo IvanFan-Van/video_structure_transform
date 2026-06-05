@@ -37,6 +37,7 @@ export const WIRES: [string, string][] = [
     ["compress_config", "compress"],
     ["compress", "extracting"],
     ["extracting", "script_analysis"],
+    ["extracting", "audio_analysis"],
 ];
 
 export const SESSION_KEYS = {

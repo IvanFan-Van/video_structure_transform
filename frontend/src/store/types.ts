@@ -114,6 +114,24 @@ export interface TranscriptResult {
     };
 }
 
+export interface AudioStreamChunk {
+    time: number;
+    frame_index: number;
+    rms: number;
+    spectral_centroid: number;
+    spectral_flux: number;
+    onset_envelope: number;
+}
+
+export interface AudioGlobalFeatures {
+    duration: number;
+    genre: string;
+    average_spectral_centroid: number;
+    overall_brightness_hz: number;
+    dynamic_range: number;
+    estimated_bpm: number;
+}
+
 export type TaskStatus = 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface TaskInfo {
