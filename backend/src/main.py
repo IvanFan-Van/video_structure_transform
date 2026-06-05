@@ -35,6 +35,7 @@ ALLOWED_VIDEO_MIME_TYPES = {
     "video/x-flv",
     "video/x-ms-wmv",
 }
+MAX_ANALYZE_SIZE_MB = int(os.getenv("MAX_ANALYZE_SIZE_MB", "50"))
 
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
@@ -328,14 +329,16 @@ async def compress_video_endpoint(
             compressed_path.unlink(missing_ok=True)
             task_registry.set_error(task_id, str(e))
 
-    asyncio_task = asyncio.create_task(_run_compress())
-    task_registry.register(
+    info = task_registry.register(
         task_id=task_id,
         user_id=user_id,
         type="compress",
         resource_id=asset_id,
-        task=asyncio_task,
+        task=None,
     )
+
+    asyncio_task = asyncio.create_task(_run_compress())
+    info.task = asyncio_task
 
     return JSONResponse(
         status_code=202,
@@ -386,6 +389,18 @@ async def analyze_script_endpoint(
 
         video_path_str = str(video_path)
 
+    meta = probe_video(video_path)
+    file_size_mb = (int(meta.size) if meta.size else 0) / (1024 * 1024)
+    if file_size_mb > MAX_ANALYZE_SIZE_MB:
+        raise StarletteHTTPException(
+            status_code=400,
+            detail=(
+                f"视频文件过大（{file_size_mb:.1f} MB），"
+                f"超过分析上限 {MAX_ANALYZE_SIZE_MB} MB。"
+                "请先调用 /compress 压缩后再分析。"
+            ),
+        )
+
     task_id = str(uuid.uuid4())
 
     async def _run_analyze():
@@ -397,14 +412,16 @@ async def analyze_script_endpoint(
         except Exception as e:
             task_registry.set_error(task_id, str(e))
 
-    asyncio_task = asyncio.create_task(_run_analyze())
-    task_registry.register(
+    info = task_registry.register(
         task_id=task_id,
         user_id=current_user.user_id,
         type="analyze-script",
         resource_id=asset_id,
-        task=asyncio_task,
+        task=None,
     )
+
+    asyncio_task = asyncio.create_task(_run_analyze())
+    info.task = asyncio_task
 
     return JSONResponse(
         status_code=202,
