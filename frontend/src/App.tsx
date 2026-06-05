@@ -111,7 +111,7 @@ function App() {
                     color: "#ccc",
                 }}
             >
-                爆款视频风格迁移
+                VIRAL STYLE
             </div>
             {user && (
                 <div

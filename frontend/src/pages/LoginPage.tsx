@@ -85,7 +85,7 @@ export function LoginPage() {
                     marginBottom: "32px",
                 }}
             >
-                TRAIN MY OWN GPT
+                VIRAL STYLE
             </div>
             <div style={cardStyle}>
                 <div
