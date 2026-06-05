@@ -15,6 +15,7 @@ HookType = Literal[
     "scene_immersion",
     "contrast_flip",
 ]
+
 CtaType = Literal[
     "follow",
     "like_collect",

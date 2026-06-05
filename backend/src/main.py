@@ -432,10 +432,65 @@ async def analyze_script_endpoint(
     )
 
 
-# TODO: SSE 替代轮询 — 新增 GET /task/{task_id}/stream
-#       await task_info._event.wait()
-#       首次连接立即发送当前状态，状态变更后推送 finished 状态并关闭连接
-#       保留 GET /task/{task_id} 作为一次性查询/降级回退
+HEARTBEAT_INTERVAL = 15.0  # seconds between SSE keepalive comments
+
+
+@app.get("/task/{task_id}/stream")
+async def stream_task_endpoint(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    SSE 端点：连接后立即推送当前状态；若任务仍在运行，
+    每 15 秒发送一次 keepalive 注释，任务终止时推送最终状态后关闭连接。
+    """
+    task_info = task_registry.get(task_id)
+    if task_info is None:
+        raise StarletteHTTPException(status_code=404, detail=f"任务 {task_id} 不存在")
+
+    if task_info.user_id != current_user.user_id:
+        raise StarletteHTTPException(status_code=403, detail="无权访问该任务")
+
+    async def event_stream():
+        # 任务已结束：立即推送最终状态，关闭连接
+        if task_info.status != "running":
+            payload = json.dumps(task_info.to_dict(), ensure_ascii=False)
+            yield f"data: {payload}\n\n"
+            return
+
+        # 任务运行中：先推送当前状态，让客户端知道连接已建立
+        initial = json.dumps(
+            {"task_id": task_id, "status": "running"}, ensure_ascii=False
+        )
+        yield f"data: {initial}\n\n"
+
+        # 等待完成，每 HEARTBEAT_INTERVAL 秒发送一次 keepalive 保持连接
+        # asyncio.shield 防止 wait_for 超时时取消底层 Event.wait()
+        try:
+            while not task_info._event.is_set():
+                try:
+                    await asyncio.wait_for(
+                        asyncio.shield(task_info._event.wait()),
+                        timeout=HEARTBEAT_INTERVAL,
+                    )
+                except TimeoutError:
+                    yield ": keepalive\n\n"
+        except asyncio.CancelledError:
+            return
+
+        # 推送最终状态，关闭连接
+        payload = json.dumps(task_info.to_dict(), ensure_ascii=False)
+        yield f"data: {payload}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/task/{task_id}")

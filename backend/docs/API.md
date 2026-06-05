@@ -40,23 +40,29 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应 (202)](#成功响应-202-1)
     - [响应字段说明](#响应字段说明)
     - [错误响应](#错误响应-4)
-  - [7. GET /task/{task\_id} — 查询异步任务状态](#7-get-tasktask_id--查询异步任务状态)
+  - [7. GET /task/{task\_id} — 查询异步任务状态（轮询）](#7-get-tasktask_id--查询异步任务状态轮询)
     - [路径参数](#路径参数)
     - [成功响应 (200)](#成功响应-200-1)
     - [响应字段说明](#响应字段说明-1)
     - [错误响应](#错误响应-5)
-  - [8. POST /task/{task\_id}/cancel — 取消异步任务](#8-post-tasktask_idcancel--取消异步任务)
+  - [8. GET /task/{task\_id}/stream — SSE 实时推送任务状态（推荐）](#8-get-tasktask_idstream--sse-实时推送任务状态推荐)
     - [路径参数](#路径参数-1)
     - [请求示例](#请求示例-4)
-    - [成功响应 (200)](#成功响应-200-2)
+    - [响应格式 (SSE)](#响应格式-sse-1)
+    - [SSE 事件说明](#sse-事件说明-1)
     - [错误响应](#错误响应-6)
-  - [9. GET /analyze-audio — 流式音频分析](#9-get-analyze-audio--流式音频分析)
+  - [9. POST /task/{task\_id}/cancel — 取消异步任务](#9-post-tasktask_idcancel--取消异步任务)
+    - [路径参数](#路径参数-2)
+    - [请求示例](#请求示例-5)
+    - [成功响应 (200)](#成功响应-200-2)
+    - [错误响应](#错误响应-7)
+  - [10. GET /analyze-audio — 流式音频分析](#10-get-analyze-audio--流式音频分析)
     - [查询参数](#查询参数)
     - [请求示例 (curl)](#请求示例-curl-1)
     - [响应格式 (SSE)](#响应格式-sse)
     - [SSE 事件说明](#sse-事件说明)
     - [前端集成示例](#前端集成示例)
-    - [错误响应](#错误响应-7)
+    - [错误响应](#错误响应-8)
   - [附录 A: VideoMeta 元数据字段](#附录-a-videometa-元数据字段)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
@@ -393,7 +399,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ### 成功响应 (202)
 
-压缩任务已提交，通过 `GET /task/{task_id}` 轮询结果。
+压缩任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
 
 ```json
 {
@@ -463,7 +469,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ### 成功响应 (202)
 
-分析任务已提交，通过 `GET /task/{task_id}` 轮询结果。
+分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
 
 ```json
 {
@@ -585,9 +591,11 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ---
 
-## 7. GET /task/{task_id} — 查询异步任务状态
+## 7. GET /task/{task_id} — 查询异步任务状态（轮询）
 
 查询由 `/compress` 或 `/analyze-script` 提交的异步任务的当前状态和结果。
+
+> **推荐使用 SSE**：`GET /task/{task_id}/stream` 提供实时推送，无需轮询。此端点在客户端不支持 SSE 时作为降级回退使用。
 
 | 属性 | 值 |
 |---|---|
@@ -690,7 +698,87 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ---
 
-## 8. POST /task/{task_id}/cancel — 取消异步任务
+## 8. GET /task/{task_id}/stream — SSE 实时推送任务状态（推荐）
+
+使用 **Server-Sent Events (SSE)** 实时订阅任务状态变更，无需反复轮询。连接建立后立即推送当前状态；若任务仍在运行，期间每 15 秒发送一次 keepalive 注释保持连接；任务终止时推送最终状态后自动关闭连接。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `GET` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | —（无请求体） |
+| **响应类型** | `text/event-stream`（SSE 流式推送） |
+
+> **推荐**：此端点比 `GET /task/{task_id}` 轮询更高效。仅在客户端不支持 SSE 时使用轮询端点作为降级回退。
+
+### 路径参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `task_id` | string | **是** | 任务 ID（由发起接口返回） |
+
+### 请求示例
+
+```bash
+curl -N "http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/stream" \
+  -H "Authorization: Bearer <token>"
+```
+
+### 响应格式 (SSE)
+
+**任务已完成/失败/取消（连接时任务已结束）：**
+
+推送一条最终状态后立即关闭连接：
+
+```
+data: {"task_id":"dddddddd-...","type":"analyze-script","resource_id":"a1b2...","status":"completed","created_at":"...","result":{...}}
+```
+
+**任务运行中（连接时任务仍在执行）：**
+
+先推送运行状态，然后每 15 秒发送 keepalive，最后推送最终状态：
+
+```
+data: {"task_id":"dddddddd-...","status":"running"}
+
+: keepalive
+
+: keepalive
+
+data: {"task_id":"dddddddd-...","type":"analyze-script","resource_id":"a1b2...","status":"completed","created_at":"...","result":{...}}
+```
+
+### SSE 事件说明
+
+| 帧类型 | 格式 | 说明 |
+|---|---|---|
+| 初始状态 | `data: <json>\n\n` | 连接建立后立即发送的第一帧：若任务已结束则包含完整 `to_dict()` 输出；若仍在运行则只包含 `{"task_id":"...","status":"running"}` |
+| keepalive | `: keepalive\n\n` | 以 `:` 开头的 SSE 注释行，仅用于保持 TCP 连接不被中间代理关闭，无业务含义，客户端可直接忽略 |
+| 最终状态 | `data: <json>\n\n` | 任务状态转为 `completed` / `failed` / `cancelled` 时发送的最后一帧，包含完整 `to_dict()` 输出，此帧后服务端关闭连接 |
+
+**任务在不同状态下首次连接的 SSE 行为：**
+
+| 任务当前状态 | SSE 流行为 |
+|---|---|
+| `running` | 发送 `{"task_id":"...","status":"running"}`，每 15 秒 keepalive，状态变更后发送最终 `to_dict()` 并关闭 |
+| `completed` | 发送最终 `to_dict()` 后立即关闭 |
+| `failed` | 发送最终 `to_dict()`（含 `error` 字段）后立即关闭 |
+| `cancelled` | 发送最终 `to_dict()` 后立即关闭 |
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 401 | `令牌格式无效` | JWT 缺少 user_id |
+| 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
+| 403 | `无权访问该任务` | 试图访问其他用户的任务 |
+| 404 | `任务 xxx 不存在` | task_id 不在注册表中 |
+
+---
+
+## 9. POST /task/{task_id}/cancel — 取消异步任务
 
 取消一个正在执行的异步任务。取消后通过 `GET /task/{task_id}` 查询将返回 `status: "cancelled"`。
 
@@ -735,7 +823,7 @@ curl -X POST http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/can
 
 ---
 
-## 9. GET /analyze-audio — 流式音频分析
+## 10. GET /analyze-audio — 流式音频分析
 
 接收已上传的视频，自动提取背景音乐（BGM）并以 **Server-Sent Events (SSE)** 方式逐帧流式返回音频特征。支持与 `/upload` 相同的所有视频格式。
 
@@ -951,15 +1039,16 @@ while (true) {
 
 ### 概述
 
-视频压缩 (`/compress`) 和 AI 分析 (`/analyze-script`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端通过轮询 `GET /task/{task_id}` 获取进度和结果。
+视频压缩 (`/compress`) 和 AI 分析 (`/analyze-script`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
 
 ### 工作流程
 
 ```
-POST /compress       → 202 { task_id }     ← 立即返回
-GET  /task/{id}      → 200 { status: "running" }
-GET  /task/{id}      → 200 { status: "completed", result: {...} }  ← 结果就绪
-POST /task/{id}/cancel  → 200 "已发起取消"   ← 中途取消
+POST /compress       → 202 { task_id }                    ← 立即返回
+                     → 连接 GET /task/{id}/stream (SSE)   ← 推荐：实时推送
+GET  /task/{id}      → 200 { status: "running" }           ← 轮询回退
+GET  /task/{id}      → 200 { status: "completed", ... }    ← 结果就绪
+POST /task/{id}/cancel → 200 "已发起取消"                   ← 中途取消
 GET  /task/{id}      → 200 { status: "cancelled" }
 ```
 
@@ -982,4 +1071,5 @@ GET  /task/{id}      → 200 { status: "cancelled" }
 - 发起接口仅做参数校验（asset 是否存在、归属等），通过校验后立即返回 202
 - 任务记录在服务内存中持久保存，服务重启后丢失
 - 取消操作是尽力而为的——AI 模型可能已经消耗了部分 token
-- 建议客户端以 1-2 秒间隔轮询 `GET /task/{task_id}`
+- **推荐使用 SSE**：`GET /task/{task_id}/stream` 提供实时推送，连接后立即获取当前状态，任务完成时自动推送结果，无需反复轮询
+- 建议客户端以 1-2 秒间隔轮询 `GET /task/{task_id}`（仅在不支持 SSE 时使用）
