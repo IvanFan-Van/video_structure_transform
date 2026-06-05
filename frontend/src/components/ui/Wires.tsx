@@ -4,19 +4,39 @@ interface WiresProps {
     positions: Record<string, Pos>;
     wires: [string, string][];
     tick: number;
+    zoom: number;
+    panX: number;
+    panY: number;
 }
 
-export function Wires({ positions, wires, tick }: WiresProps) {
+function toScreen(
+    lx: number,
+    ly: number,
+    zoom: number,
+    panX: number,
+    panY: number,
+) {
+    return { sx: lx * zoom + panX, sy: ly * zoom + panY };
+}
+
+export function Wires({
+    positions,
+    wires,
+    tick,
+    zoom,
+    panX,
+    panY,
+}: WiresProps) {
     void tick;
 
     return (
         <svg
             style={{
-                position: "absolute",
+                position: "fixed",
                 top: 0,
                 left: 0,
-                width: "100%",
-                height: "100%",
+                width: "100vw",
+                height: "100vh",
                 pointerEvents: "none",
                 zIndex: 5,
             }}
@@ -25,45 +45,45 @@ export function Wires({ positions, wires, tick }: WiresProps) {
                 const a = positions[from],
                     b = positions[to];
                 if (!a || !b) return null;
-                // Smart connection: pick closest edges
+
+                // 仍在逻辑空间计算哪条边连接
                 const aCx = a.x + a.w / 2,
                     aCy = a.y + a.h / 2;
                 const bCx = b.x + b.w / 2,
                     bCy = b.y + b.h / 2;
-                // Determine which edges to connect
-                let x1 = 0,
-                    y1 = 0,
-                    x2 = 0,
-                    y2 = 0;
                 const dx = bCx - aCx,
                     dy = bCy - aCy;
+
+                let lx1: number, ly1: number, lx2: number, ly2: number;
                 if (Math.abs(dx) > Math.abs(dy)) {
-                    // Horizontal connection
                     if (dx > 0) {
-                        x1 = a.x + a.w;
-                        y1 = aCy;
-                        x2 = b.x;
-                        y2 = bCy;
+                        lx1 = a.x + a.w;
+                        ly1 = aCy;
+                        lx2 = b.x;
+                        ly2 = bCy;
                     } else {
-                        x1 = a.x;
-                        y1 = aCy;
-                        x2 = b.x + b.w;
-                        y2 = bCy;
+                        lx1 = a.x;
+                        ly1 = aCy;
+                        lx2 = b.x + b.w;
+                        ly2 = bCy;
                     }
                 } else {
-                    // Vertical connection
                     if (dy > 0) {
-                        x1 = aCx;
-                        y1 = a.y + a.h;
-                        x2 = bCx;
-                        y2 = b.y;
+                        lx1 = aCx;
+                        ly1 = a.y + a.h;
+                        lx2 = bCx;
+                        ly2 = b.y;
                     } else {
-                        x1 = aCx;
-                        y1 = a.y;
-                        x2 = bCx;
-                        y2 = b.y + b.h;
+                        lx1 = aCx;
+                        ly1 = a.y;
+                        lx2 = bCx;
+                        ly2 = b.y + b.h;
                     }
                 }
+
+                const { sx: x1, sy: y1 } = toScreen(lx1, ly1, zoom, panX, panY);
+                const { sx: x2, sy: y2 } = toScreen(lx2, ly2, zoom, panX, panY);
+
                 const mx = (x1 + x2) / 2,
                     my = (y1 + y2) / 2;
                 let d;
@@ -72,20 +92,21 @@ export function Wires({ positions, wires, tick }: WiresProps) {
                 } else {
                     d = `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`;
                 }
+
                 return (
                     <g key={i}>
                         <path
                             d={d}
                             fill="none"
                             stroke="#d4d4d4"
-                            strokeWidth="1.5"
+                            strokeWidth={1.5 * zoom}
                             strokeDasharray="6,4"
                         />
-                        <circle cx={x2} cy={y2} r="3" fill="#d4d4d4" />
+                        <circle cx={x2} cy={y2} r={3 * zoom} fill="#d4d4d4" />
                         <circle
                             cx={x1}
                             cy={y1}
-                            r="2.5"
+                            r={2.5 * zoom}
                             fill="none"
                             stroke="#d4d4d4"
                             strokeWidth="1"

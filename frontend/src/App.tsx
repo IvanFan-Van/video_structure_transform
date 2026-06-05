@@ -75,6 +75,7 @@ function App() {
 
     return (
         <div
+            onMouseDown={onPanMouseDown}
             style={{
                 width: "100vw",
                 height: "100vh",
@@ -190,8 +191,15 @@ function App() {
             )}
 
             <ZoomContext.Provider value={zoom}>
+                <Wires
+                    positions={positions}
+                    wires={WIRES}
+                    tick={posTick}
+                    zoom={zoom}
+                    panX={panX}
+                    panY={panY}
+                />
                 <div
-                    onMouseDown={onPanMouseDown}
                     style={{
                         transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
                         transformOrigin: "top left",
@@ -199,7 +207,6 @@ function App() {
                         height: `calc(100% / ${zoom})`,
                     }}
                 >
-                    <Wires positions={positions} wires={WIRES} tick={posTick} />
                     {/* <DatasetNode x={offset} y={80} onPosChange={updatePos} />
             <TokenizerNode x={offset} y={380} onPosChange={updatePos} />
 
