@@ -92,7 +92,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
             w={300}
             title="Script Analysis"
             active={scriptStatus !== "idle"}
-            accent="#8b5cf6"
+            accent="#10b981"
             id="script_analysis"
             onPosChange={onPosChange}
         >
@@ -117,7 +117,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                         style={{
                             fontSize: "10px",
                             fontWeight: 600,
-                            color: "#8b5cf6",
+                            color: "#10b981",
                             letterSpacing: "2px",
                             textAlign: "center",
                             padding: "12px 0",
@@ -133,13 +133,13 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                             style={{
                                 fontSize: "10px",
                                 fontWeight: 600,
-                                color: "#8b5cf6",
-                                letterSpacing: "2px",
-                                textAlign: "center",
-                                marginBottom: "2px",
-                            }}
-                        >
-                            ✓ ANALYZED
+color: "#10b981",
+                            letterSpacing: "2px",
+                            textAlign: "center",
+                            marginBottom: "2px",
+                        }}
+                    >
+                        ✓ ANALYZED
                         </div>
                         {perspectiveLabel && (
                             <div
@@ -183,10 +183,10 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                             padding: "6px 8px",
                                             borderRadius: "3px",
                                             background: open
-                                                ? "#f5f3ff"
+                                                ? "#ecfdf5"
                                                 : "#fafafa",
                                             border: open
-                                                ? "1px solid #e9d5ff"
+                                                ? "1px solid #a7f3d0"
                                                 : "1px solid #f0f0f0",
                                             cursor: "pointer",
                                             transition:
@@ -204,7 +204,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                 style={{
                                                     fontSize: "8px",
                                                     color: open
-                                                        ? "#8b5cf6"
+                                                        ? "#10b981"
                                                         : "#bbb",
                                                 }}
                                             >
@@ -215,7 +215,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                     fontSize: "9px",
                                                     fontWeight: 600,
                                                     color: open
-                                                        ? "#6d28d9"
+                                                        ? "#065f46"
                                                         : "#555",
                                                 }}
                                             >
@@ -370,8 +370,10 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                                 }}
                                                             >
                                                                 {HOOK_TYPE_LABELS[
-                                                                    data.hook_type
-                                                                ] || data.hook_type}
+                                                                    data
+                                                                        .hook_type
+                                                                ] ||
+                                                                    data.hook_type}
                                                             </span>
                                                         </div>
                                                     )}
@@ -405,8 +407,10 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                                 }}
                                                             >
                                                                 {CTA_TYPE_LABELS[
-                                                                    data.cta_type
-                                                                ] || data.cta_type}
+                                                                    data
+                                                                        .cta_type
+                                                                ] ||
+                                                                    data.cta_type}
                                                             </span>
                                                         </div>
                                                     )}

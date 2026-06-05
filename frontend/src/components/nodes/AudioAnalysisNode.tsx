@@ -33,7 +33,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
             w={300}
             title="Audio Analysis"
             active={hasData}
-            accent="#7c3aed"
+            accent="#f59e0b"
             error={hasError}
             id="audio_analysis"
             onPosChange={onPosChange}
@@ -60,7 +60,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                             style={{
                                 fontSize: "10px",
                                 fontWeight: 600,
-                                color: "#7c3aed",
+                                color: "#f59e0b",
                                 letterSpacing: "2px",
                                 textAlign: "center",
                                 marginBottom: "2px",
