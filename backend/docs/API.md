@@ -51,7 +51,7 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应 (200)](#成功响应-200-2)
     - [错误响应](#错误响应-6)
   - [9. GET /analyze-audio — 流式音频分析](#9-get-analyze-audio--流式音频分析)
-    - [查询参数](#查询参数-1)
+    - [查询参数](#查询参数)
     - [请求示例 (curl)](#请求示例-curl-1)
     - [响应格式 (SSE)](#响应格式-sse)
     - [SSE 事件说明](#sse-事件说明)
@@ -737,7 +737,7 @@ curl -X POST http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/can
 
 ## 9. GET /analyze-audio — 流式音频分析
 
-接收已上传的 mp4 视频，自动提取背景音乐（BGM）并以 **Server-Sent Events (SSE)** 方式逐帧流式返回音频特征。
+接收已上传的视频，自动提取背景音乐（BGM）并以 **Server-Sent Events (SSE)** 方式逐帧流式返回音频特征。支持与 `/upload` 相同的所有视频格式。
 
 | 属性 | 值 |
 |---|---|
@@ -746,13 +746,13 @@ curl -X POST http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/can
 | **Content-Type** | —（无请求体） |
 | **响应类型** | `text/event-stream`（SSE 流式推送） |
 
-> **BGM 自动提取**：每次请求都会使用 `ffmpeg` 从 mp4 中提取音轨，再用 `audio_separator` (UVR-MDX-NET-Inst_HQ_3) 分离人声与伴奏，仅保留伴奏（bgm.mp3）用于分析。分离后的 bgm.mp3 以 `type="audio"` 存入数据库。
+> **BGM 自动提取**：每次请求都会使用 `ffmpeg` 从视频中提取音轨，再用 `audio_separator` (UVR-MDX-NET-Inst_HQ_3) 分离人声与伴奏，仅保留伴奏（bgm.mp3）用于分析。分离后的 bgm.mp3 以 `type="audio"` 存入数据库。
 
 ### 查询参数
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |---|---|---|---|---|
-| `asset_id` | string | **是** | — | 已上传的 mp4 视频 asset_id（由 `/upload` 返回，**必须是 .mp4**） |
+| `asset_id` | string | **是** | — | 已上传的视频 asset_id（由 `/upload` 返回） |
 
 认证通过标准 `Authorization: Bearer <token>` 请求头传递。
 
@@ -875,7 +875,7 @@ while (true) {
 | HTTP 状态码 | message | 说明 |
 |---|---|---|
 | 400 | `缺少 asset_id 参数` | 未提供 asset_id 查询参数 |
-| 400 | `仅支持 mp4 格式` | asset_id 指向的文件不是 .mp4 |
+| 400 | `不支持的文件类型 .xxx` | 文件扩展名不在允许列表中 |
 | 404 | `素材 xxx 不存在` | 该 asset_id 对应的记录不存在 |
 | 403 | `无权访问该素材` | 素材不属于当前用户 |
 | 500 | `源文件丢失` | 数据库记录存在但磁盘文件已丢失 |

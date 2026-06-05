@@ -494,8 +494,12 @@ async def analyze_audio_endpoint(  # noqa: C901
         if not video_path.exists():
             raise StarletteHTTPException(status_code=500, detail="源文件丢失")
 
-    if video_path.suffix.lower() != ".mp4":
-        raise StarletteHTTPException(status_code=400, detail="仅支持 mp4 格式")
+    ext = video_path.suffix.lower()
+    if ext not in ALLOWED_VIDEO_EXTENSIONS:
+        raise StarletteHTTPException(
+            status_code=400,
+            detail=f"不支持的文件类型 {ext}",
+        )
 
     AUDIO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     audio_asset_id = str(uuid.uuid4())
