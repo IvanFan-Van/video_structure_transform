@@ -14,7 +14,7 @@ from sqlmodel import Session, select
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from audio import extract_bgm, stream_audio_features
-from core import analyze_video_script_async
+from core import analyze_video_script_async, analyze_video_visual_async
 from models import Asset, User, engine
 from task_registry import task_registry
 from utils import create_access_token, hash_password, verify_password
@@ -36,6 +36,7 @@ ALLOWED_VIDEO_MIME_TYPES = {
     "video/x-ms-wmv",
 }
 MAX_ANALYZE_SIZE_MB = int(os.getenv("MAX_ANALYZE_SIZE_MB", "50"))
+HEARTBEAT_INTERVAL = 15.0  # seconds between SSE keepalive comments
 
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
@@ -432,7 +433,82 @@ async def analyze_script_endpoint(
     )
 
 
-HEARTBEAT_INTERVAL = 15.0  # seconds between SSE keepalive comments
+@app.post("/analyze-visual")
+async def analyze_visual_endpoint(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    data = await request.json()
+    asset_id = data.get("asset_id")
+
+    if not asset_id:
+        raise StarletteHTTPException(status_code=400, detail="缺少 asset_id 参数")
+
+    with Session(engine) as session:
+        statement = select(Asset).where(Asset.asset_id == asset_id)
+        asset = session.exec(statement).first()
+
+        if not asset:
+            raise StarletteHTTPException(
+                status_code=404, detail=f"素材 {asset_id} 不存在"
+            )
+
+        if asset.user_id != current_user.user_id:
+            raise StarletteHTTPException(status_code=403, detail="无权访问该素材")
+
+        video_path = Path(asset.path)
+        if not video_path.exists():
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "status": "error",
+                    "message": "源文件丢失",
+                    "data": {"code": "FILE_MISSING", "details": str(asset.path)},
+                },
+            )
+
+        video_path_str = str(video_path)
+
+    meta = probe_video(video_path)
+    file_size_mb = (int(meta.size) if meta.size else 0) / (1024 * 1024)
+    if file_size_mb > MAX_ANALYZE_SIZE_MB:
+        raise StarletteHTTPException(
+            status_code=400,
+            detail=(
+                f"视频文件过大（{file_size_mb:.1f} MB），"
+                f"超过分析上限 {MAX_ANALYZE_SIZE_MB} MB。"
+                "请先调用 /compress 压缩后再分析。"
+            ),
+        )
+
+    task_id = str(uuid.uuid4())
+
+    async def _run_visual_analyze():
+        try:
+            result = await analyze_video_visual_async(video_path_str)
+            task_registry.set_result(task_id, result.model_dump())
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            task_registry.set_error(task_id, str(e))
+
+    info = task_registry.register(
+        task_id=task_id,
+        user_id=current_user.user_id,
+        type="analyze-visual",
+        resource_id=asset_id,
+        task=None,
+    )
+    asyncio_task = asyncio.create_task(_run_visual_analyze())
+    info.task = asyncio_task
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "success",
+            "data": {"task_id": task_id},
+        },
+    )
 
 
 @app.get("/task/{task_id}/stream")
@@ -514,37 +590,6 @@ async def get_task_endpoint(
     )
 
 
-@app.post("/task/{task_id}/cancel")
-async def cancel_task_endpoint(
-    task_id: str,
-    current_user: User = Depends(get_current_user),
-):
-    task_info = task_registry.get(task_id)
-    if task_info is None:
-        raise StarletteHTTPException(status_code=404, detail=f"任务 {task_id} 不存在")
-
-    if task_info.user_id != current_user.user_id:
-        raise StarletteHTTPException(status_code=403, detail="无权操作该任务")
-
-    if task_info.status != "running":
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "success",
-                "data": "任务已完成，无需取消",
-            },
-        )
-
-    task_registry.cancel(task_id)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": "success",
-            "data": f"任务 {task_id} 已发起取消",
-        },
-    )
-
-
 @app.get("/analyze-audio")
 async def analyze_audio_endpoint(  # noqa: C901
     asset_id: str = Query(..., description="素材 ID"),
@@ -616,6 +661,37 @@ async def analyze_audio_endpoint(  # noqa: C901
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/task/{task_id}/cancel")
+async def cancel_task_endpoint(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    task_info = task_registry.get(task_id)
+    if task_info is None:
+        raise StarletteHTTPException(status_code=404, detail=f"任务 {task_id} 不存在")
+
+    if task_info.user_id != current_user.user_id:
+        raise StarletteHTTPException(status_code=403, detail="无权操作该任务")
+
+    if task_info.status != "running":
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "success",
+                "data": "任务已完成，无需取消",
+            },
+        )
+
+    task_registry.cancel(task_id)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success",
+            "data": f"任务 {task_id} 已发起取消",
         },
     )
 

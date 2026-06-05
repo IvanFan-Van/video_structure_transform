@@ -35,28 +35,11 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应 (202)](#成功响应-202)
     - [错误响应](#错误响应-3)
   - [6. POST /analyze-script — 提取视频叙事结构](#6-post-analyze-script--提取视频叙事结构)
-    - [请求参数](#请求参数-5)
-    - [请求示例](#请求示例-3)
-    - [成功响应 (202)](#成功响应-202-1)
-    - [响应字段说明](#响应字段说明)
-    - [错误响应](#错误响应-4)
-  - [7. GET /task/{task\_id} — 查询异步任务状态（轮询）](#7-get-tasktask_id--查询异步任务状态轮询)
-    - [路径参数](#路径参数)
-    - [成功响应 (200)](#成功响应-200-1)
-    - [响应字段说明](#响应字段说明-1)
-    - [错误响应](#错误响应-5)
-  - [8. GET /task/{task\_id}/stream — SSE 实时推送任务状态（推荐）](#8-get-tasktask_idstream--sse-实时推送任务状态推荐)
-    - [路径参数](#路径参数-1)
-    - [请求示例](#请求示例-4)
-    - [响应格式 (SSE)](#响应格式-sse-1)
-    - [SSE 事件说明](#sse-事件说明-1)
-    - [错误响应](#错误响应-6)
-  - [9. POST /task/{task\_id}/cancel — 取消异步任务](#9-post-tasktask_idcancel--取消异步任务)
-    - [路径参数](#路径参数-2)
-    - [请求示例](#请求示例-5)
-    - [成功响应 (200)](#成功响应-200-2)
-    - [错误响应](#错误响应-7)
-  - [10. GET /analyze-audio — 流式音频分析](#10-get-analyze-audio--流式音频分析)
+  - [7. POST /analyze-visual — 视频视觉层分析](#7-post-analyze-visual--视频视觉层分析)
+  - [8. GET /task/{task\_id} — 查询异步任务状态（轮询）](#8-get-tasktask_id--查询异步任务状态轮询)
+  - [9. GET /task/{task\_id}/stream — SSE 实时推送任务状态（推荐）](#9-get-tasktask_idstream--sse-实时推送任务状态推荐)
+  - [10. POST /task/{task\_id}/cancel — 取消异步任务](#10-post-tasktask_idcancel--取消异步任务)
+  - [11. GET /analyze-audio — 流式音频分析](#11-get-analyze-audio--流式音频分析)
     - [查询参数](#查询参数)
     - [请求示例 (curl)](#请求示例-curl-1)
     - [响应格式 (SSE)](#响应格式-sse)
@@ -591,9 +574,176 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ---
 
-## 7. GET /task/{task_id} — 查询异步任务状态（轮询）
+## 7. POST /analyze-visual — 视频视觉层分析
 
-查询由 `/compress` 或 `/analyze-script` 提交的异步任务的当前状态和结果。
+使用 AI 多模态模型对已上传的短视频进行视觉层面结构化拆解，提取镜头切分、转场类型、运镜方式、文字元素与动效，并生成节奏摘要。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `POST` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | `application/json` |
+
+### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `asset_id` | string | **是** | 源视频的 asset_id（由 /upload 返回） |
+
+### 请求示例
+
+```json
+{
+  "asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+### 成功响应 (202)
+
+分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+  }
+}
+```
+
+任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下视觉分析结果：
+
+```json
+{
+  "total_duration": 60.5,
+  "pacing": {
+    "avg_shot_duration": 2.3,
+    "pacing_category": "fast",
+    "acceleration_points": [12.5, 35.0]
+  },
+  "shots": [
+    {
+      "shot_index": 1,
+      "start_time": 0.0,
+      "end_time": 2.5,
+      "camera_movement": "zoom_in",
+      "is_text_frame": false,
+      "description": "片头标题大字弹出，伴随背景画面"
+    },
+    {
+      "shot_index": 2,
+      "start_time": 2.5,
+      "end_time": 4.0,
+      "camera_movement": "static",
+      "is_text_frame": true,
+      "description": "纯色背景上的白色大字叙事文字"
+    }
+  ],
+  "transitions": [
+    {
+      "after_shot_index": 1,
+      "type": "dissolve",
+      "duration": 0.3
+    }
+  ],
+  "text_elements": [
+    {
+      "text": "你知道吗？90%的人都做错了这件事",
+      "position": "center",
+      "appear_style": "pop",
+      "appear_time": 0.3,
+      "disappear_time": 2.5,
+      "emphasis": "zoom"
+    }
+  ],
+  "text_density_curve": [
+    { "time": 0.3, "text_count": 1 },
+    { "time": 2.5, "text_count": 0 }
+  ]
+}
+```
+
+### 响应字段说明
+
+**顶层字段：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `total_duration` | float | 视频总时长（秒） |
+| `pacing` | object | 全局节奏摘要 |
+| `shots` | array | 镜头列表，按时间顺序排列 |
+| `transitions` | array | 转场列表，长度应为 `len(shots)-1` |
+| `text_elements` | array | 独立文字时间轴，元素可跨镜头，不嵌套在 ShotInfo 内 |
+| `text_density_curve` | array | 文字密度曲线，由后处理代码计算填充（非 LLM 输出） |
+
+**`pacing` 对象字段：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `avg_shot_duration` | float | 平均镜头时长（秒） |
+| `pacing_category` | string | 节奏档位：`fast`（<2s）/ `medium`（2-4s）/ `slow`（>4s） |
+| `acceleration_points` | array[float] | 节奏骤然加快的时间点列表（秒），通常对应高潮段入口 |
+
+**`shots` 数组元素字段：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `shot_index` | int | 镜头序号，从 1 开始，仅用于展示，非数组下标 |
+| `start_time` | float | 镜头开始时间（秒） |
+| `end_time` | float | 镜头结束时间（秒） |
+| `camera_movement` | string \| null | 镜头运动类型：`static` / `zoom_in` / `zoom_out` / `pan` / `tilt` / `handheld` |
+| `is_text_frame` | bool | 该镜头是否为纯文字帧（无视频素材，仅文字+纯色背景） |
+| `description` | string | 镜头画面简述，10-30字 |
+
+**`transitions` 数组元素字段：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `after_shot_index` | int | 转场发生在第 N 个镜头之后（对应 shot_index） |
+| `type` | string | 转场类型：`cut` / `dissolve` / `wipe` / `fade_in` / `fade_out` |
+| `duration` | float | 转场持续时长（秒），硬切为 0.0 |
+
+**`text_elements` 数组元素字段：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `text` | string | 文字内容 |
+| `position` | string \| null | 屏幕位置：`top_center` / `center` / `bottom_center` / `overlay_left` / `overlay_right` / `full_screen` |
+| `appear_style` | string \| null | 出现动效：`fade_in` / `pop` / `slide` / `typewriter` |
+| `appear_time` | float | 文字出现时间（秒） |
+| `disappear_time` | float | 文字消失时间（秒） |
+| `emphasis` | string \| null | 强调动效：`zoom` / `shake` / `color_change` / `stroke` |
+
+**`text_density_curve` 数组元素字段：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `time` | float | 采样时间点（秒） |
+| `text_count` | int | 该时刻屏幕上同时存在的文字数量 |
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 400 | `缺少 asset_id 参数` | 请求体未提供 asset_id |
+| 400 | `视频文件过大（xx MB），超过分析上限 xx MB。请先调用 /compress 压缩后再分析。` | 视频文件超过 `MAX_ANALYZE_SIZE_MB` 限制 |
+| 404 | `素材 xxx 不存在` | 该 asset_id 对应的记录不存在 |
+| 403 | `无权访问该素材` | 素材不属于当前用户 |
+
+**服务端错误（附带 error code）：**
+
+| HTTP 状态码 | data.code | 说明 |
+|---|---|---|
+| 500 | `FILE_MISSING` | 数据库记录存在但磁盘文件已丢失 |
+| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 GET /task/{task_id} 查询 status: "failed" 获取详情） |
+
+---
+
+## 8. GET /task/{task_id} — 查询异步任务状态（轮询）
+
+查询由 `/compress`、`/analyze-script` 或 `/analyze-visual` 提交的异步任务的当前状态和结果。
 
 > **推荐使用 SSE**：`GET /task/{task_id}/stream` 提供实时推送，无需轮询。此端点在客户端不支持 SSE 时作为降级回退使用。
 
@@ -678,7 +828,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `task_id` | string | 任务唯一标识 |
-| `type` | string | 任务类型：`compress` / `analyze-script` |
+| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` |
 | `resource_id` | string | 关联的资源 ID（如 asset_id） |
 | `status` | string | 任务状态：`running` / `completed` / `failed` / `cancelled` |
 | `created_at` | string | 任务创建时间（ISO 8601） |
@@ -698,7 +848,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ---
 
-## 8. GET /task/{task_id}/stream — SSE 实时推送任务状态（推荐）
+## 9. GET /task/{task_id}/stream — SSE 实时推送任务状态（推荐）
 
 使用 **Server-Sent Events (SSE)** 实时订阅任务状态变更，无需反复轮询。连接建立后立即推送当前状态；若任务仍在运行，期间每 15 秒发送一次 keepalive 注释保持连接；任务终止时推送最终状态后自动关闭连接。
 
@@ -778,7 +928,7 @@ data: {"task_id":"dddddddd-...","type":"analyze-script","resource_id":"a1b2...",
 
 ---
 
-## 9. POST /task/{task_id}/cancel — 取消异步任务
+## 10. POST /task/{task_id}/cancel — 取消异步任务
 
 取消一个正在执行的异步任务。取消后通过 `GET /task/{task_id}` 查询将返回 `status: "cancelled"`。
 
@@ -823,7 +973,7 @@ curl -X POST http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/can
 
 ---
 
-## 10. GET /analyze-audio — 流式音频分析
+## 11. GET /analyze-audio — 流式音频分析
 
 接收已上传的视频，自动提取背景音乐（BGM）并以 **Server-Sent Events (SSE)** 方式逐帧流式返回音频特征。支持与 `/upload` 相同的所有视频格式。
 
@@ -1039,7 +1189,7 @@ while (true) {
 
 ### 概述
 
-视频压缩 (`/compress`) 和 AI 分析 (`/analyze-script`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
+视频压缩 (`/compress`) 和 AI 分析 (`/analyze-script`、`/analyze-visual`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
 
 ### 工作流程
 
@@ -1064,7 +1214,7 @@ GET  /task/{id}      → 200 { status: "cancelled" }
 ### 取消机制
 
 - **`/compress`**: 底层 `ffmpeg` 子进程被 `SIGKILL` 杀死，部分压缩文件被清理
-- **`/analyze-script`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
+- **`/analyze-script` / `/analyze-visual`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
 
 ### 注意事项
 

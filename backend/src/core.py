@@ -6,10 +6,12 @@ import instructor
 from dotenv import find_dotenv, load_dotenv
 from openai import AsyncOpenAI, OpenAI
 
-from models import VideoStructure
+from models import VideoStructure, VideoVisualAnalysis, compute_text_density_curve
 from prompts import (
     TRANSCRIPT_EXTRACTION_SYSTEM_PROMPT,
     TRANSCRIPT_EXTRACTION_USER_PROMPT,
+    VIDEO_VISUAL_ANALYSIS_SYSTEM_PROMPT,
+    VIDEO_VISUAL_ANALYSIS_USER_PROMPT,
 )
 from utils import timer
 from video import video_to_base64
@@ -92,3 +94,58 @@ async def analyze_video_script_async(video_path: str | Path) -> VideoStructure:
     )
 
     return response
+
+
+@timer
+def analyze_video_visual(video_path: str | Path) -> VideoVisualAnalysis:
+    """同步版本，用于 notebook / 脚本调试。"""
+    video_path = Path(video_path)
+    video_b64 = video_to_base64(video_path)
+
+    user_content: list[dict] = [
+        {"type": "text", "text": VIDEO_VISUAL_ANALYSIS_USER_PROMPT},
+        {
+            "type": "video_url",
+            "video_url": {"url": f"data:video/mp4;base64,{video_b64}"},
+        },
+    ]
+
+    instructor_sync_client = instructor.from_openai(client)
+    result: VideoVisualAnalysis = instructor_sync_client.chat.completions.create(
+        model=os.getenv("MODEL"),  # type: ignore
+        response_model=VideoVisualAnalysis,
+        messages=[
+            {"role": "system", "content": VIDEO_VISUAL_ANALYSIS_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},  # type: ignore
+        ],
+    )
+
+    result.text_density_curve = compute_text_density_curve(result.text_elements)
+    return result
+
+
+async def analyze_video_visual_async(video_path: str | Path) -> VideoVisualAnalysis:
+    """异步版本，供 API 端点调用。"""
+    video_path = Path(video_path)
+    video_b64 = video_to_base64(video_path)
+
+    user_content: list[dict] = [
+        {"type": "text", "text": VIDEO_VISUAL_ANALYSIS_USER_PROMPT},
+        {
+            "type": "video_url",
+            "video_url": {"url": f"data:video/mp4;base64,{video_b64}"},
+        },
+    ]
+
+    instructor_client = instructor.from_openai(async_client)
+    result: VideoVisualAnalysis = await instructor_client.chat.completions.create(
+        model=os.getenv("MODEL"),  # type: ignore
+        response_model=VideoVisualAnalysis,
+        messages=[
+            {"role": "system", "content": VIDEO_VISUAL_ANALYSIS_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},  # type: ignore
+        ],
+    )
+
+    result.text_density_curve = compute_text_density_curve(result.text_elements)
+    return result
