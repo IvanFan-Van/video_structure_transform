@@ -75,6 +75,16 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
         }));
     };
 
+    const [expandedTextElements, setExpandedTextElements] = useState<
+        Record<number, boolean>
+    >({});
+    const toggleTextElement = (idx: number) => {
+        setExpandedTextElements((prev) => ({
+            ...prev,
+            [idx]: !prev[idx],
+        }));
+    };
+
     const hasData = visualStatus !== "idle";
     const accent = "#06b6d4";
 
@@ -416,106 +426,87 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                     TEXT ELEMENTS
                                 </div>
                                 {visualResult.text_elements.map(
-                                    (el: VisualTextElement, idx: number) => (
-                                        <div
-                                            key={idx}
-                                            style={{
-                                                padding: "6px 8px",
-                                                borderRadius: "3px",
-                                                background: "#fafafa",
-                                                border: "1px solid #f0f0f0",
-                                                fontSize: "8px",
-                                                color: "#555",
-                                                lineHeight: "1.5",
-                                            }}
-                                        >
-                                            <div
-                                                style={{
-                                                    fontWeight: 600,
-                                                    color: "#333",
-                                                    marginBottom: "3px",
-                                                }}
-                                            >
-                                                {el.text}
-                                            </div>
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    flexDirection: "column",
-                                                    gap: "2px",
-                                                    fontSize: "7px",
-                                                }}
-                                            >
+                                    (el: VisualTextElement, idx: number) => {
+                                        const open =
+                                            expandedTextElements[idx] ?? false;
+                                        const preview =
+                                            el.text.length > 35
+                                                ? el.text.slice(0, 35) + "..."
+                                                : el.text;
+                                        return (
+                                            <div key={idx}>
                                                 <div
+                                                    onClick={() =>
+                                                        toggleTextElement(idx)
+                                                    }
                                                     style={{
                                                         display: "flex",
                                                         justifyContent:
                                                             "space-between",
+                                                        alignItems: "center",
+                                                        padding: "5px 8px",
+                                                        borderRadius: "3px",
+                                                        background: open
+                                                            ? "#ecfeff"
+                                                            : "#fafafa",
+                                                        border: open
+                                                            ? "1px solid #cffafe"
+                                                            : "1px solid #f0f0f0",
+                                                        cursor: "pointer",
+                                                        transition:
+                                                            "background 0.15s, border-color 0.15s",
                                                     }}
                                                 >
-                                                    <span style={{ color: "#bbb" }}>
-                                                        POSITION
-                                                    </span>
-                                                    <span>
-                                                        {el.position
-                                                            ? POSITION_LABELS[
-                                                                  el.position
-                                                              ] || el.position
-                                                            : "—"}
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        justifyContent:
-                                                            "space-between",
-                                                    }}
-                                                >
-                                                    <span style={{ color: "#bbb" }}>
-                                                        APPEAR
-                                                    </span>
-                                                    <span>
-                                                        {el.appear_style
-                                                            ? APPEAR_LABELS[
-                                                                  el.appear_style
-                                                              ] ||
-                                                              el.appear_style
-                                                            : "—"}
-                                                    </span>
-                                                </div>
-                                                {el.emphasis && (
                                                     <div
                                                         style={{
                                                             display: "flex",
-                                                            justifyContent:
-                                                                "space-between",
+                                                            alignItems:
+                                                                "center",
+                                                            gap: "6px",
+                                                            maxWidth: "70%",
                                                         }}
                                                     >
                                                         <span
                                                             style={{
-                                                                color: "#bbb",
+                                                                fontSize:
+                                                                    "8px",
+                                                                color: open
+                                                                    ? accent
+                                                                    : "#bbb",
+                                                                flexShrink: 0,
                                                             }}
                                                         >
-                                                            EMPHASIS
+                                                            {open ? "▼" : "▶"}
                                                         </span>
-                                                        <span>
-                                                            {EMPHASIS_LABELS[
-                                                                el.emphasis
-                                                            ] || el.emphasis}
+                                                        <span
+                                                            style={{
+                                                                fontSize:
+                                                                    "9px",
+                                                                fontWeight: 600,
+                                                                color: open
+                                                                    ? "#0891b2"
+                                                                    : "#555",
+                                                                overflow:
+                                                                    "hidden",
+                                                                textOverflow:
+                                                                    "ellipsis",
+                                                                whiteSpace:
+                                                                    "nowrap",
+                                                            }}
+                                                        >
+                                                            {open
+                                                                ? el.text
+                                                                : preview}
                                                         </span>
                                                     </div>
-                                                )}
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        justifyContent:
-                                                            "space-between",
-                                                    }}
-                                                >
-                                                    <span style={{ color: "#bbb" }}>
-                                                        TIME
-                                                    </span>
-                                                    <span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: "8px",
+                                                            color: "#bbb",
+                                                            flexShrink: 0,
+                                                            marginLeft: "6px",
+                                                        }}
+                                                    >
                                                         {el.appear_time.toFixed(
                                                             1,
                                                         )}
@@ -526,9 +517,136 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                         s
                                                     </span>
                                                 </div>
+                                                {open && (
+                                                    <div
+                                                        style={{
+                                                            marginTop: "4px",
+                                                            padding: "8px",
+                                                            background:
+                                                                "#fafafa",
+                                                            borderRadius:
+                                                                "3px",
+                                                            border: "1px solid #f0f0f0",
+                                                            fontSize: "8px",
+                                                            color: "#555",
+                                                            lineHeight: "1.6",
+                                                        }}
+                                                    >
+                                                        <div
+                                                            style={{
+                                                                display: "flex",
+                                                                flexDirection:
+                                                                    "column",
+                                                                gap: "3px",
+                                                                fontSize:
+                                                                    "7px",
+                                                            }}
+                                                        >
+                                                            <div
+                                                                style={{
+                                                                    display:
+                                                                        "flex",
+                                                                    justifyContent:
+                                                                        "space-between",
+                                                                }}
+                                                            >
+                                                                <span
+                                                                    style={{
+                                                                        color: "#bbb",
+                                                                    }}
+                                                                >
+                                                                    POSITION
+                                                                </span>
+                                                                <span>
+                                                                    {el.position
+                                                                        ? POSITION_LABELS[
+                                                                              el.position
+                                                                          ] ||
+                                                                          el.position
+                                                                        : "—"}
+                                                                </span>
+                                                            </div>
+                                                            <div
+                                                                style={{
+                                                                    display:
+                                                                        "flex",
+                                                                    justifyContent:
+                                                                        "space-between",
+                                                                }}
+                                                            >
+                                                                <span
+                                                                    style={{
+                                                                        color: "#bbb",
+                                                                    }}
+                                                                >
+                                                                    APPEAR
+                                                                </span>
+                                                                <span>
+                                                                    {el.appear_style
+                                                                        ? APPEAR_LABELS[
+                                                                              el.appear_style
+                                                                          ] ||
+                                                                          el.appear_style
+                                                                        : "—"}
+                                                                </span>
+                                                            </div>
+                                                            {el.emphasis && (
+                                                                <div
+                                                                    style={{
+                                                                        display:
+                                                                            "flex",
+                                                                        justifyContent:
+                                                                            "space-between",
+                                                                    }}
+                                                                >
+                                                                    <span
+                                                                        style={{
+                                                                            color: "#bbb",
+                                                                        }}
+                                                                    >
+                                                                        EMPHASIS
+                                                                    </span>
+                                                                    <span>
+                                                                        {EMPHASIS_LABELS[
+                                                                            el
+                                                                                .emphasis
+                                                                        ] ||
+                                                                            el.emphasis}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            <div
+                                                                style={{
+                                                                    display:
+                                                                        "flex",
+                                                                    justifyContent:
+                                                                        "space-between",
+                                                                }}
+                                                            >
+                                                                <span
+                                                                    style={{
+                                                                        color: "#bbb",
+                                                                    }}
+                                                                >
+                                                                    TIME
+                                                                </span>
+                                                                <span>
+                                                                    {el.appear_time.toFixed(
+                                                                        1,
+                                                                    )}
+                                                                    s —{" "}
+                                                                    {el.disappear_time.toFixed(
+                                                                        1,
+                                                                    )}
+                                                                    s
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                    ),
+                                        );
+                                    },
                                 )}
                             </>
                         )}
