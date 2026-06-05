@@ -62,6 +62,7 @@ const CTA_TYPE_LABELS: Record<string, string> = {
 
 export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
     const transcriptResult = useVideoStore((s) => s.transcriptResult);
+    const scriptStatus = useVideoStore((s) => s.scriptStatus);
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
     const stages: { key: string; label: string; data: TranscriptStage }[] = [];
@@ -90,7 +91,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
             y={y}
             w={300}
             title="Script Analysis"
-            active={!!transcriptResult}
+            active={scriptStatus !== "idle"}
             accent="#8b5cf6"
             id="script_analysis"
             onPosChange={onPosChange}
@@ -98,7 +99,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
             <div
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
-                {!transcriptResult && (
+                {!transcriptResult && scriptStatus === "idle" && (
                     <div
                         style={{
                             fontSize: "9px",
@@ -108,6 +109,21 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                         }}
                     >
                         Waiting for extraction...
+                    </div>
+                )}
+
+                {!transcriptResult && scriptStatus === "loading" && (
+                    <div
+                        style={{
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            color: "#8b5cf6",
+                            letterSpacing: "2px",
+                            textAlign: "center",
+                            padding: "12px 0",
+                        }}
+                    >
+                        Analyzing...
                     </div>
                 )}
 

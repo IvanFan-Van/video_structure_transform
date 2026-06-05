@@ -16,6 +16,7 @@ import { CompressConfigNode } from "./components/nodes/CompressConfigNode";
 import { CompressNode } from "./components/nodes/CompressNode";
 import { ExtractingNode } from "./components/nodes/ExtractingNode";
 import { ScriptAnalysisNode } from "./components/nodes/ScriptAnalysisNode";
+import { AudioAnalysisNode } from "./components/nodes/AudioAnalysisNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
@@ -60,7 +61,7 @@ function App() {
     const [offset, setOffset] = useState(60);
     useEffect(() => {
         const calcOffset = () => {
-            const totalWidth = 1760;
+            const totalWidth = 2070;
             const ox = Math.max(
                 60,
                 Math.floor((window.innerWidth - totalWidth) / 2),
@@ -199,7 +200,6 @@ function App() {
                     }}
                 >
                     <Wires positions={positions} wires={WIRES} tick={posTick} />
-
                     {/* <DatasetNode x={offset} y={80} onPosChange={updatePos} />
             <TokenizerNode x={offset} y={380} onPosChange={updatePos} />
 
@@ -227,6 +227,11 @@ function App() {
                     />
                     <ScriptAnalysisNode
                         x={offset + 1260}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <AudioAnalysisNode
+                        x={offset + 1570}
                         y={30}
                         onPosChange={updatePos}
                     />
