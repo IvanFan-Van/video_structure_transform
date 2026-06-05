@@ -18,56 +18,10 @@ import {
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
-const pollTimers: Record<string, ReturnType<typeof setInterval> | null> = {};
 let sseAbortController: AbortController | null = null;
-
-function clearPoll(taskId: string | null) {
-    if (!taskId) return;
-    const timer = pollTimers[taskId];
-    if (timer) {
-        clearInterval(timer);
-        pollTimers[taskId] = null;
-    }
-}
-
-function clearAllPolls() {
-    Object.keys(pollTimers).forEach(clearPoll);
-}
-
-function pollTask(
-    taskId: string,
-    token: string | null,
-    onDone: (info: TaskInfo) => void,
-    onReject: () => void,
-) {
-    clearPoll(taskId);
-
-    const doPoll = async () => {
-        try {
-            const res = await axios.get<ApiResponse<TaskInfo>>(
-                `/api/task/${taskId}`,
-                { headers: { Authorization: `Bearer ${token}` } },
-            );
-            const task = res.data as any;
-            if (task.status !== "success") return;
-            const info: TaskInfo = task.data;
-            if (
-                info.status === "completed" ||
-                info.status === "failed" ||
-                info.status === "cancelled"
-            ) {
-                clearPoll(taskId);
-                onDone(info);
-            }
-        } catch {
-            clearPoll(taskId);
-            onReject();
-        }
-    };
-
-    pollTimers[taskId] = setInterval(doPoll, 1500);
-    setTimeout(doPoll, 500);
-}
+let compressSseController: AbortController | null = null;
+let scriptSseController: AbortController | null = null;
+let visualSseController: AbortController | null = null;
 
 interface VideoState {
     isUploading: boolean;
@@ -196,7 +150,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
     uploadVideo: async (file) => {
         const token = useAuthStore.getState().token;
-        clearAllPolls();
+        if (sseAbortController) { sseAbortController.abort(); sseAbortController = null; }
+        if (compressSseController) { compressSseController.abort(); compressSseController = null; }
+        if (scriptSseController) { scriptSseController.abort(); scriptSseController = null; }
+        if (visualSseController) { visualSseController.abort(); visualSseController = null; }
         set({
             isUploading: true,
             uploadProgress: 0,
@@ -361,43 +318,49 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             const taskId: string = res.data.data.task_id;
             set({ compressTaskId: taskId });
 
-            pollTask(
-                taskId,
-                token,
-                (info) => {
-                    if (info.status === "completed") {
-                        set((s) => ({
-                            compressResult: info.result,
-                            isCompressing: false,
-                            compressTaskId: null,
-                            videoErrors: s.videoErrors.filter(
-                                (e) => e.nodeId !== "compress",
-                            ),
-                        }));
-                    } else if (info.status === "failed") {
-                        set((s) => ({
-                            isCompressing: false,
-                            compressTaskId: null,
-                            videoErrors: [
-                                ...s.videoErrors.filter(
+            if (compressSseController) compressSseController.abort();
+            compressSseController = new AbortController();
+
+            await fetchEventSource(`/api/task/${taskId}/stream`, {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: compressSseController.signal,
+                onmessage(event) {
+                    try {
+                        const info: TaskInfo = JSON.parse(event.data);
+                        if (info.status === "completed") {
+                            set((s) => ({
+                                compressResult: info.result,
+                                isCompressing: false,
+                                compressTaskId: null,
+                                videoErrors: s.videoErrors.filter(
                                     (e) => e.nodeId !== "compress",
                                 ),
-                                makeError(
-                                    "compress",
-                                    "Compress failed",
-                                    "COMPRESS_FAILED",
-                                    info.error || "",
-                                ),
-                            ],
-                        }));
-                    } else {
-                        set({
-                            isCompressing: false,
-                            compressTaskId: null,
-                        });
-                    }
+                            }));
+                        } else if (info.status === "failed") {
+                            set((s) => ({
+                                isCompressing: false,
+                                compressTaskId: null,
+                                videoErrors: [
+                                    ...s.videoErrors.filter(
+                                        (e) => e.nodeId !== "compress",
+                                    ),
+                                    makeError(
+                                        "compress",
+                                        "Compress failed",
+                                        "COMPRESS_FAILED",
+                                        info.error || "",
+                                    ),
+                                ],
+                            }));
+                        } else if (info.status === "cancelled") {
+                            set({
+                                isCompressing: false,
+                                compressTaskId: null,
+                            });
+                        }
+                    } catch {}
                 },
-                () => {
+                onerror() {
                     set((s) => ({
                         isCompressing: false,
                         compressTaskId: null,
@@ -413,8 +376,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                             ),
                         ],
                     }));
+                    throw new Error("stop");
                 },
-            );
+            });
         } catch {
             set((s) => ({
                 isCompressing: false,
@@ -432,24 +396,28 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     },
 
     stopCompress: async () => {
-        const { compressTaskId } = get();
-        if (!compressTaskId) return;
-        const token = useAuthStore.getState().token;
-        try {
-            await axios.post(
-                `/api/task/${compressTaskId}/cancel`,
-                {},
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                },
-            );
-        } catch {
-            // best-effort cancel
+        if (compressSseController) {
+            compressSseController.abort();
+            compressSseController = null;
         }
-        clearPoll(compressTaskId);
+        const { compressTaskId } = get();
+        if (compressTaskId) {
+            const token = useAuthStore.getState().token;
+            try {
+                await axios.post(
+                    `/api/task/${compressTaskId}/cancel`,
+                    {},
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                    },
+                );
+            } catch {
+                // best-effort cancel
+            }
+        }
         set({
             isCompressing: false,
             compressTaskId: null,
@@ -515,47 +483,53 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             const taskId: string = res.data.data.task_id;
             set({ extractTaskId: taskId });
 
-            pollTask(
-                taskId,
-                token,
-                (info) => {
-                    const elapsed = (Date.now() - t0) / 1000;
-                    if (info.status === "completed") {
-                        set((s) => ({
-                            transcriptResult: info.result,
-                            scriptStatus: "success",
-                            scriptTime: elapsed,
-                            extractTaskId: null,
-                            videoErrors: s.videoErrors.filter(
-                                (e) => e.nodeId !== "extracting",
-                            ),
-                        }));
-                    } else if (info.status === "failed") {
-                        set((s) => ({
-                            transcriptResult: null,
-                            scriptStatus: "error",
-                            scriptTime: elapsed,
-                            extractTaskId: null,
-                            videoErrors: [
-                                ...s.videoErrors.filter(
+            if (scriptSseController) scriptSseController.abort();
+            scriptSseController = new AbortController();
+
+            await fetchEventSource(`/api/task/${taskId}/stream`, {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: scriptSseController.signal,
+                onmessage(event) {
+                    try {
+                        const info: TaskInfo = JSON.parse(event.data);
+                        const elapsed = (Date.now() - t0) / 1000;
+                        if (info.status === "completed") {
+                            set((s) => ({
+                                transcriptResult: info.result,
+                                scriptStatus: "success",
+                                scriptTime: elapsed,
+                                extractTaskId: null,
+                                videoErrors: s.videoErrors.filter(
                                     (e) => e.nodeId !== "extracting",
                                 ),
-                                makeError(
-                                    "extracting",
-                                    "Extract failed",
-                                    "EXTRACT_FAILED",
-                                    info.error || "",
-                                ),
-                            ],
-                        }));
-                    } else {
-                        set({
-                            scriptStatus: "idle",
-                            extractTaskId: null,
-                        });
-                    }
+                            }));
+                        } else if (info.status === "failed") {
+                            set((s) => ({
+                                transcriptResult: null,
+                                scriptStatus: "error",
+                                scriptTime: elapsed,
+                                extractTaskId: null,
+                                videoErrors: [
+                                    ...s.videoErrors.filter(
+                                        (e) => e.nodeId !== "extracting",
+                                    ),
+                                    makeError(
+                                        "extracting",
+                                        "Extract failed",
+                                        "EXTRACT_FAILED",
+                                        info.error || "",
+                                    ),
+                                ],
+                            }));
+                        } else if (info.status === "cancelled") {
+                            set({
+                                scriptStatus: "idle",
+                                extractTaskId: null,
+                            });
+                        }
+                    } catch {}
                 },
-                () => {
+                onerror() {
                     const elapsed = (Date.now() - t0) / 1000;
                     set((s) => ({
                         transcriptResult: null,
@@ -574,8 +548,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                             ),
                         ],
                     }));
+                    throw new Error("stop");
                 },
-            );
+            });
         } catch {
             const elapsed = (Date.now() - t0) / 1000;
             set((s) => ({
@@ -597,43 +572,47 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     },
 
     stopAnalyzeScript: async () => {
+        if (scriptSseController) {
+            scriptSseController.abort();
+            scriptSseController = null;
+        }
         const { extractTaskId } = get();
-        if (!extractTaskId) return;
-        const token = useAuthStore.getState().token;
-        try {
-            await axios.post<ApiResponse<String>>(
-                `/api/task/${extractTaskId}/cancel`,
-                {},
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
+        if (extractTaskId) {
+            const token = useAuthStore.getState().token;
+            try {
+                await axios.post<ApiResponse<String>>(
+                    `/api/task/${extractTaskId}/cancel`,
+                    {},
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
                     },
-                },
-            );
-            set({
-                scriptStatus: "cancelled",
-                extractTaskId: null,
-                transcriptResult: null,
-                scriptTime: null,
-            });
-            clearPoll(extractTaskId);
-        } catch (error: any) {
-            if (axios.isAxiosError(error)) {
-                const axiosError = error as AxiosError<ApiErrorResponse>;
-                const msg = axiosError.message || "Failed to cancel analysis";
-                const code = error.response?.statusText || "CANCEL_FAILED";
-                const details = axiosError.response?.data.message || "";
-                set((s) => ({
-                    videoErrors: [
-                        ...s.videoErrors.filter(
-                            (e) => e.nodeId !== "extracting",
-                        ),
-                        makeError("extracting", msg, code, details),
-                    ],
-                }));
+                );
+            } catch (error: any) {
+                if (axios.isAxiosError(error)) {
+                    const axiosError = error as AxiosError<ApiErrorResponse>;
+                    const msg = axiosError.message || "Failed to cancel analysis";
+                    const code = error.response?.statusText || "CANCEL_FAILED";
+                    const details = axiosError.response?.data.message || "";
+                    set((s) => ({
+                        videoErrors: [
+                            ...s.videoErrors.filter(
+                                (e) => e.nodeId !== "extracting",
+                            ),
+                            makeError("extracting", msg, code, details),
+                        ],
+                    }));
+                }
             }
         }
+        set({
+            scriptStatus: "cancelled",
+            extractTaskId: null,
+            transcriptResult: null,
+            scriptTime: null,
+        });
     },
 
     startAnalyzeAudio: async () => {
@@ -799,50 +778,56 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             const taskId: string = res.data.data.task_id;
             set({ visualTaskId: taskId });
 
-            pollTask(
-                taskId,
-                token,
-                (info) => {
-                    const elapsed = (Date.now() - t0) / 1000;
-                    if (info.status === "completed") {
-                        set((s) => ({
-                            visualResult: info.result,
-                            visualStatus: "success",
-                            visualTime: elapsed,
-                            isAnalyzingVisual: false,
-                            visualTaskId: null,
-                            videoErrors: s.videoErrors.filter(
-                                (e) => e.nodeId !== "visual",
-                            ),
-                        }));
-                    } else if (info.status === "failed") {
-                        set((s) => ({
-                            visualResult: null,
-                            visualStatus: "error",
-                            visualTime: elapsed,
-                            isAnalyzingVisual: false,
-                            visualTaskId: null,
-                            videoErrors: [
-                                ...s.videoErrors.filter(
+            if (visualSseController) visualSseController.abort();
+            visualSseController = new AbortController();
+
+            await fetchEventSource(`/api/task/${taskId}/stream`, {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: visualSseController.signal,
+                onmessage(event) {
+                    try {
+                        const info: TaskInfo = JSON.parse(event.data);
+                        const elapsed = (Date.now() - t0) / 1000;
+                        if (info.status === "completed") {
+                            set((s) => ({
+                                visualResult: info.result,
+                                visualStatus: "success",
+                                visualTime: elapsed,
+                                isAnalyzingVisual: false,
+                                visualTaskId: null,
+                                videoErrors: s.videoErrors.filter(
                                     (e) => e.nodeId !== "visual",
                                 ),
-                                makeError(
-                                    "visual",
-                                    "Visual analysis failed",
-                                    "EXTRACT_FAILED",
-                                    info.error || "",
-                                ),
-                            ],
-                        }));
-                    } else {
-                        set({
-                            visualStatus: "idle",
-                            visualTaskId: null,
-                            isAnalyzingVisual: false,
-                        });
-                    }
+                            }));
+                        } else if (info.status === "failed") {
+                            set((s) => ({
+                                visualResult: null,
+                                visualStatus: "error",
+                                visualTime: elapsed,
+                                isAnalyzingVisual: false,
+                                visualTaskId: null,
+                                videoErrors: [
+                                    ...s.videoErrors.filter(
+                                        (e) => e.nodeId !== "visual",
+                                    ),
+                                    makeError(
+                                        "visual",
+                                        "Visual analysis failed",
+                                        "EXTRACT_FAILED",
+                                        info.error || "",
+                                    ),
+                                ],
+                            }));
+                        } else if (info.status === "cancelled") {
+                            set({
+                                visualStatus: "idle",
+                                visualTaskId: null,
+                                isAnalyzingVisual: false,
+                            });
+                        }
+                    } catch {}
                 },
-                () => {
+                onerror() {
                     const elapsed = (Date.now() - t0) / 1000;
                     set((s) => ({
                         visualResult: null,
@@ -862,8 +847,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                             ),
                         ],
                     }));
+                    throw new Error("stop");
                 },
-            );
+            });
         } catch {
             const elapsed = (Date.now() - t0) / 1000;
             set((s) => ({
@@ -886,24 +872,28 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     },
 
     stopAnalyzeVisual: async () => {
-        const { visualTaskId } = get();
-        if (!visualTaskId) return;
-        const token = useAuthStore.getState().token;
-        try {
-            await axios.post(
-                `/api/task/${visualTaskId}/cancel`,
-                {},
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                },
-            );
-        } catch {
-            // best-effort cancel
+        if (visualSseController) {
+            visualSseController.abort();
+            visualSseController = null;
         }
-        clearPoll(visualTaskId);
+        const { visualTaskId } = get();
+        if (visualTaskId) {
+            const token = useAuthStore.getState().token;
+            try {
+                await axios.post(
+                    `/api/task/${visualTaskId}/cancel`,
+                    {},
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                    },
+                );
+            } catch {
+                // best-effort cancel
+            }
+        }
         set({
             isAnalyzingVisual: false,
             visualStatus: "cancelled",
