@@ -4,6 +4,7 @@ import { Wires } from "./components/ui/Wires";
 import { useNodePositions } from "./hooks/useNodePositions";
 import { useAppStore } from "./store/useAppStore";
 import { useAuthStore } from "./store/useAuthStore";
+import { useCanvasStore } from "./store/useCanvasStore";
 import { WIRES } from "./constants";
 import { DatasetNode } from "./components/nodes/DatasetNode";
 import { TokenizerNode } from "./components/nodes/TokenizerNode";
@@ -41,9 +42,11 @@ function App() {
     const saveRunHistory = useAppStore((s) => s.saveRunHistory);
     const user = useAuthStore((s) => s.user);
     const logout = useAuthStore((s) => s.logout);
+    const savePreset = useCanvasStore((s) => s.savePreset);
     const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const [toast, setToast] = useState<string | null>(null);
 
     useEffect(() => {
         initWorker();
@@ -66,6 +69,14 @@ function App() {
         document.addEventListener("mousedown", onClick);
         return () => document.removeEventListener("mousedown", onClick);
     }, []);
+
+    useEffect(() => {
+        if (toast) {
+            const t = setTimeout(() => setToast(null), 2000);
+            return () => clearTimeout(t);
+        }
+    }, [toast]);
+
     const zoom = useZoom();
     const { panX, panY, onMouseDown: onPanMouseDown } = usePan(zoom);
 
@@ -168,6 +179,34 @@ function App() {
                                 minWidth: "120px",
                             }}
                         >
+                            <button
+                                onClick={() => {
+                                    savePreset();
+                                    setToast("Layout saved");
+                                    setDropdownOpen(false);
+                                }}
+                                style={{
+                                    width: "100%",
+                                    padding: "8px 16px",
+                                    textAlign: "left",
+                                    fontSize: "10px",
+                                    fontFamily: "inherit",
+                                    color: "#666",
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "pointer",
+                                }}
+                                onMouseEnter={(e) =>
+                                    (e.currentTarget.style.background =
+                                        "#f5f5f5")
+                                }
+                                onMouseLeave={(e) =>
+                                    (e.currentTarget.style.background =
+                                        "transparent")
+                                }
+                            >
+                                Save layout
+                            </button>
                             <button
                                 onClick={() => {
                                     logout();
@@ -287,6 +326,41 @@ function App() {
                     />
                 </div>
             </ZoomContext.Provider>
+            {toast && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 48,
+                        right: 20,
+                        zIndex: 200,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        fontSize: "10px",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: "#166534",
+                        background: "#f0fdf4",
+                        border: "1px solid #bbf7d0",
+                        borderRadius: "6px",
+                        padding: "8px 14px",
+                        boxShadow: "0 2px 8px rgba(34,197,94,0.10)",
+                    }}
+                >
+                    <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#22c55e"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    {toast}
+                </div>
+            )}
             <NodeErrorToast />
         </div>
     );
