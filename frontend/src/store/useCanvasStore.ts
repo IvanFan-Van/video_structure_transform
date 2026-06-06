@@ -10,6 +10,7 @@ const DEFAULT_POSITIONS: Record<string, Pos> = {
     compress_config: { x: 553, y: 128, w: 300, h: 269.5 },
     compress: { x: 1116, y: 113, w: 300, h: 91.5 },
     extracting: { x: 503, y: 630, w: 300, h: 91.5 },
+    split: { x: 900, y: 630, w: 300, h: 91.5 },
     script_analysis: { x: 1201, y: 315, w: 300, h: 91.5 },
     audio_analysis: { x: 1233, y: 560, w: 300, h: 91.5 },
     visual_analysis: { x: 1280, y: 787, w: 300, h: 91.5 },

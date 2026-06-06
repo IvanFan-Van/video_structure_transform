@@ -202,4 +202,40 @@ export interface ApiErrorResponse {
     message: string;
 }
 
+export interface SplitConfig {
+    use_ai: boolean;
+    threshold: number;
+    min_scene_len: number;
+}
+
+export interface SplitSegment {
+    index: number;
+    start_sec: number;
+    end_sec: number;
+    duration: number;
+    cut_score: number | null;
+    reason: string | null;
+}
+
+export interface SplitClipAsset {
+    asset_id: string;
+    index: number;
+    path: string;
+    metadata: {
+        codec: string | null;
+        width: number | null;
+        height: number | null;
+        fps: number | null;
+        duration: number | null;
+    };
+}
+
+export interface SplitResult {
+    source_asset_id: string;
+    method: string;
+    total_segments: number;
+    segments: SplitSegment[];
+    clip_assets: SplitClipAsset[];
+}
+
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;

@@ -36,6 +36,7 @@ export const WIRES: [string, string][] = [
     ["reference", "compress_config"],
     ["compress_config", "compress"],
     ["compress", "extracting"],
+    ["extracting", "split"],
     ["extracting", "script_analysis"],
     ["extracting", "audio_analysis"],
     ["extracting", "visual_analysis"],

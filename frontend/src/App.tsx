@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wires } from "./components/ui/Wires";
 import { useNodePositions } from "./hooks/useNodePositions";
 import { useAppStore } from "./store/useAppStore";
 import { useAuthStore } from "./store/useAuthStore";
 import { useCanvasStore } from "./store/useCanvasStore";
+import { useVideoStore } from "./store/useVideoStore";
 import { WIRES } from "./constants";
 import { DatasetNode } from "./components/nodes/DatasetNode";
 import { TokenizerNode } from "./components/nodes/TokenizerNode";
@@ -19,6 +20,8 @@ import { ExtractingNode } from "./components/nodes/ExtractingNode";
 import { ScriptAnalysisNode } from "./components/nodes/ScriptAnalysisNode";
 import { AudioAnalysisNode } from "./components/nodes/AudioAnalysisNode";
 import { VisualAnalysisNode } from "./components/nodes/VisualAnalysisNode";
+import { SplitNode } from "./components/nodes/SplitNode";
+import { SplitSegmentNode } from "./components/nodes/SplitSegmentNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
@@ -29,6 +32,7 @@ const NODES = {
     compress_config: CompressConfigNode,
     compress: CompressNode,
     extracting: ExtractingNode,
+    split: SplitNode,
     script_analysis: ScriptAnalysisNode,
     audio_analysis: AudioAnalysisNode,
     visual_analysis: VisualAnalysisNode,
@@ -43,6 +47,7 @@ function App() {
     const user = useAuthStore((s) => s.user);
     const logout = useAuthStore((s) => s.logout);
     const savePreset = useCanvasStore((s) => s.savePreset);
+    const splitResult = useVideoStore((s) => s.splitResult);
     const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -94,6 +99,16 @@ function App() {
         window.addEventListener("resize", calcOffset);
         return () => window.removeEventListener("resize", calcOffset);
     }, []);
+
+    const allWires = useMemo<[string, string][]>(() => {
+        const base = [...WIRES];
+        if (splitResult?.segments) {
+            for (let i = 0; i < splitResult.segments.length; i++) {
+                base.push(["split", `split_segment_${i}`]);
+            }
+        }
+        return base;
+    }, [splitResult]);
 
     return (
         <div
@@ -260,7 +275,7 @@ function App() {
             <ZoomContext.Provider value={zoom}>
                 <Wires
                     positions={positions}
-                    wires={WIRES}
+                    wires={allWires}
                     zoom={zoom}
                     panX={panX}
                     panY={panY}
@@ -298,6 +313,25 @@ function App() {
                         y={30}
                         onPosChange={updatePos}
                     />
+                    <SplitNode
+                        x={offset + 1100}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    {splitResult?.segments?.map((seg, i) => (
+                        <SplitSegmentNode
+                            key={`seg_${i}`}
+                            x={offset + 1430}
+                            y={30 + i * 200}
+                            segment={seg}
+                            clip={splitResult.clip_assets?.find(
+                                (c) => c.index === i,
+                            )}
+                            index={i}
+                            method={splitResult.method}
+                            onPosChange={updatePos}
+                        />
+                    ))}
                     <ScriptAnalysisNode
                         x={offset + 1260}
                         y={30}

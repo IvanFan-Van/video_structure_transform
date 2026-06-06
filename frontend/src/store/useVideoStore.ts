@@ -14,6 +14,8 @@ import {
     AudioGlobalFeatures,
     VisualResult,
     NodeStatus,
+    SplitConfig,
+    SplitResult,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -23,6 +25,7 @@ const streamControllers: Record<string, AbortController | null> = {
     audio: null,
     compress: null,
     script: null,
+    split: null,
     visual: null,
 };
 
@@ -269,6 +272,13 @@ interface VideoState {
     visualTaskId: string | null;
     visualResult: VisualResult | null;
 
+    splitConfig: SplitConfig;
+    splitStatus: NodeStatus;
+    splitTime: number | null;
+    isSplitting: boolean;
+    splitTaskId: string | null;
+    splitResult: SplitResult | null;
+
     videoErrors: NodeError[];
 }
 
@@ -285,6 +295,11 @@ interface VideoActions {
     stopAnalyzeAudio: () => void;
     startAnalyzeVisual: () => Promise<void>;
     stopAnalyzeVisual: () => Promise<void>;
+    setSplitConfig: (
+        updater: SplitConfig | ((c: SplitConfig) => SplitConfig),
+    ) => void;
+    startSplit: () => Promise<void>;
+    stopSplit: () => Promise<void>;
     dismissError: (id: number) => void;
 }
 
@@ -296,6 +311,12 @@ const initialCompressConfig: CompressConfig = {
     max_fps: 30,
     acodec: "aac",
     target_a_bitrate: "96k",
+};
+
+const initialSplitConfig: SplitConfig = {
+    use_ai: false,
+    threshold: 25,
+    min_scene_len: 15,
 };
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -329,6 +350,13 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     isAnalyzingVisual: false,
     visualTaskId: null,
     visualResult: null,
+
+    splitConfig: { ...initialSplitConfig },
+    splitStatus: "idle",
+    splitTime: null,
+    isSplitting: false,
+    splitTaskId: null,
+    splitResult: null,
 
     videoErrors: [],
 
@@ -886,6 +914,105 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             visualTaskId: null,
             visualResult: null,
             visualTime: null,
+        });
+    },
+
+    setSplitConfig: (updater) => {
+        set((s) => ({
+            splitConfig:
+                typeof updater === "function"
+                    ? updater(s.splitConfig)
+                    : updater,
+        }));
+    },
+
+    startSplit: async () => {
+        const { compressResult, splitConfig } = get();
+        if (!compressResult) return;
+        const token = useAuthStore.getState().token;
+        const t0 = Date.now();
+
+        set({ isSplitting: true, splitStatus: "loading", splitTime: null, splitTaskId: null, splitResult: null });
+
+        try {
+            const res = await axios.post(
+                "/api/split",
+                { asset_id: compressResult.asset_id, ...splitConfig },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (res.data.status !== "success") {
+                const { msg, code, details } = parseApiError(
+                    res.data,
+                    "Split failed",
+                );
+                set((s) => ({
+                    isSplitting: false,
+                    splitStatus: "error",
+                    videoErrors: [
+                        ...s.videoErrors.filter((e) => e.nodeId !== "split"),
+                        makeError("split", msg, code, details),
+                    ],
+                }));
+                return;
+            }
+
+            const taskId: string = res.data.data.task_id;
+            set({ splitTaskId: taskId });
+
+            await subscribeTaskStream<SplitResult>(taskId, token, {
+                controllerKey: "split",
+                t0,
+                set,
+                nodeId: "split",
+                failureLabel: "Split failed",
+                onCompleted: (result, elapsed) => ({
+                    splitResult: result,
+                    splitStatus: "success",
+                    splitTime: elapsed,
+                    isSplitting: false,
+                    splitTaskId: null,
+                }),
+                onFailed: (elapsed) => ({
+                    splitResult: null,
+                    splitStatus: "error",
+                    splitTime: elapsed,
+                    isSplitting: false,
+                    splitTaskId: null,
+                }),
+                onCancelled: () => ({
+                    splitStatus: "idle",
+                    splitTaskId: null,
+                    isSplitting: false,
+                }),
+            });
+        } catch {
+            set((s) => ({
+                isSplitting: false,
+                splitStatus: "error",
+                videoErrors: [
+                    ...s.videoErrors.filter((e) => e.nodeId !== "split"),
+                    makeError("split", "Network error", "NETWORK_ERROR", NETWORK_ERROR_DETAILS),
+                ],
+            }));
+        }
+    },
+
+    stopSplit: async () => {
+        abortStream("split");
+        const { splitTaskId } = get();
+        if (splitTaskId) await cancelTaskRequest(splitTaskId);
+        set({
+            isSplitting: false,
+            splitStatus: "cancelled",
+            splitTaskId: null,
+            splitResult: null,
+            splitTime: null,
         });
     },
 
