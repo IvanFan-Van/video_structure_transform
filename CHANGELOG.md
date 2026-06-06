@@ -2,7 +2,8 @@
 2. [x] `optim`: 优化鼠标拖动幕布速度 (2026.06.05)
 3. [x] `feat`: 幕布拖拽数据保存 (2026.06.05)
 4. [x] `optim`: cover image 截取选择 0.1s 而不是 1s (或是寻找一个最佳的 clip) (2026.06.06)
-5. [ ] `feat`: 对于分析并选择特效, 可以给每一个 remotion 组件都生成一个简短的 fig, 然后让用户可以看到 AI 识别出来的特效都有什么.
+5. [ ] `feat`: 对于分析并选择特效, 可以给每一个 remotion 组件都生成一个简短的 fig, 然后让用户可
+以看到 AI 识别出来的特效都有什么.
 6. [ ] `feat`: 并且提供一个搜索框, 可以让用户本地通过自然语言检索可能相关的特效 (通过设置一个 fuzzy search engine (lightweight) 版本)
 7. [ ] `feat`: 给 wire 添加箭头
 8. [ ] `feat`: 使用 driver.js 添加新手指引
@@ -11,6 +12,19 @@
 11. [x] `feat`: 自定义布局, 允许用户保存自己喜欢的布局作为起始布局.
 12. [x] `feat`: 定义 static 目录挂载, 同时限制用户只能访问自己上传或处理得到的素材
 13. [ ] `bug`: 当节点长度改变时, Wires 组件并没有自己更新
-14. [x] `bug`: 当浏览器失去焦点时, @microsoft/fetch-event-source 疑似会自动重试, 从而导致反复请求 /analyze-audio 接口, 重复实施某个任务. (2026.06.06)
-15. [ ] `bug`: 当有多个 NodeErrorToast 组件时, 一个组件的展开会导致其他组件一起被展开 (状态意外共享)
+14. [x] `bug`: 当浏览器失去焦点时, @microsoft/fetch-event-source 疑似会自动重试, 从而导致反复请
+求 /analyze-audio 接口, 重复实施某个任务. (2026.06.06)
+15. [ ] `bug`: 当有多个 NodeErrorToast 组件时, 一个组件的展开会导致其他组件一起被展开 (状态意外
+共享)
 16. [x] `bug`: /analyze-audio 因为 audio queue 没有放入 END_FLAG, 导致 queue 阻塞卡死. 
+17. [ ] `feat`: Extracting Node 添加一个 TODO 列表 info. 
+18. [ ] `feat`: 修改 COMPRESS 节点按钮大小
+19. [ ] `feat`: 对于 visual analysis, 能够折叠所有 shots 以及 text elements
+20. [ ] `optim`: 使用 hsl 颜色表示法来简化所有相关颜色的开发
+21. [ ] `feat`: 添加双手指拖动移动幕布功能
+22. [ ] `optim`: 对于音乐节点, 可以考虑使用 moving average, 或是下采样当样本数超过一定时
+23. [x] `feat`: 我希望新添加一个 EffectAnalysis 节点, 其能够将视频按照 scene 切分 (2026.06.06)
+24. [ ] `feat`: 逐个 scene 分析其特效构成部分
+25. [x] `feat`: 将 cover image 等添加一个 /files/{file_id} 链接. (让后端生成 cover image) (2026.06.06)
+26. [ ] `refac`: 重构 backend 代码, 使其符合 MVC 架构
+27. [ ] `feat`: 可以框选多个节点一起移动

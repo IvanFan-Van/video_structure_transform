@@ -1,4 +1,5 @@
 import { BaseNode } from "../ui/BaseNode";
+import { CoverImage } from "../ui/CoverImage";
 import { SplitSegment, SplitClipAsset } from "../../store/types";
 
 interface Props {
@@ -43,6 +44,12 @@ export function SplitSegmentNode({
                     fontSize: "10px",
                 }}
             >
+                <CoverImage
+                    coverImageAssetId={clip?.cover_image_asset_id}
+                    videoAssetId={clip?.asset_id}
+                    alt={`Segment ${index + 1} cover`}
+                    maxHeight={80}
+                />
                 <div
                     style={{
                         display: "grid",

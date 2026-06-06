@@ -64,6 +64,7 @@ export interface UploadResult {
     asset_id: string;
     type: string;
     path: string;
+    cover_image_asset_id?: string | null;
     metadata: VideoMeta;
 }
 
@@ -72,6 +73,7 @@ export interface CompressResult {
     source_asset_id: string;
     type: string;
     path: string;
+    cover_image_asset_id?: string | null;
     metadata: VideoMeta;
 }
 
@@ -219,6 +221,7 @@ export interface SplitSegment {
 
 export interface SplitClipAsset {
     asset_id: string;
+    cover_image_asset_id?: string | null;
     index: number;
     path: string;
     metadata: {

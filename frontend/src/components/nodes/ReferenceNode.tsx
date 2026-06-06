@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
+import { CoverImage } from "../ui/CoverImage";
 import { fmtSize } from "../../utils";
 
 interface Props {
@@ -21,7 +22,6 @@ export function ReferenceNode({ x, y, onPosChange }: Props) {
     const uploadProgress = useVideoStore((s) => s.uploadProgress);
     const uploadResult = useVideoStore((s) => s.uploadResult);
     const uploadVideo = useVideoStore((s) => s.uploadVideo);
-    const thumbnailUrl = useVideoStore((s) => s.thumbnailUrl);
     const videoErrors = useVideoStore((s) => s.videoErrors);
     const hasError = videoErrors.some((e) => e.nodeId === "reference");
 
@@ -89,27 +89,12 @@ export function ReferenceNode({ x, y, onPosChange }: Props) {
                         .mp4 .mov .avi .mkv .webm
                     </div>
                 </div>
-                {thumbnailUrl && (
-                    <div
-                        style={{
-                            borderRadius: "3px",
-                            overflow: "hidden",
-                            maxHeight: "120px",
-                            border: "1px solid #f0f0f0",
-                            background: "#fafafa",
-                        }}
-                    >
-                        <img
-                            src={thumbnailUrl}
-                            alt="video cover"
-                            style={{
-                                width: "100%",
-                                display: "block",
-                                objectFit: "cover",
-                                maxHeight: "120px",
-                            }}
-                        />
-                    </div>
+                {uploadResult && (
+                    <CoverImage
+                        coverImageAssetId={uploadResult.cover_image_asset_id}
+                        videoAssetId={uploadResult.asset_id}
+                        alt="Reference video cover"
+                    />
                 )}
                 {isUploading && (
                     <>

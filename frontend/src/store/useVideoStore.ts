@@ -212,41 +212,12 @@ async function subscribeTaskStream<TResult>(
     }
 }
 
-// ─── Misc helpers ─────────────────────────────────────────────────────────────
-
-function generateThumbnail(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(file);
-        const video = document.createElement("video");
-        video.preload = "metadata";
-        video.muted = true;
-        video.playsInline = true;
-        video.src = url;
-        video.onloadeddata = () => {
-            video.currentTime = Math.min(1, video.duration / 2);
-        };
-        video.onseeked = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext("2d")!.drawImage(video, 0, 0);
-            resolve(canvas.toDataURL("image/jpeg", 0.7));
-            URL.revokeObjectURL(url);
-        };
-        video.onerror = () => {
-            URL.revokeObjectURL(url);
-            reject();
-        };
-    });
-}
-
 // ─── State & actions interfaces ───────────────────────────────────────────────
 
 interface VideoState {
     isUploading: boolean;
     uploadProgress: number;
     uploadResult: UploadResult | null;
-    thumbnailUrl: string | null;
 
     compressConfig: CompressConfig;
     isCompressing: boolean;
@@ -325,7 +296,6 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     isUploading: false,
     uploadProgress: 0,
     uploadResult: null,
-    thumbnailUrl: null,
 
     compressConfig: { ...initialCompressConfig },
     isCompressing: false,
@@ -385,8 +355,6 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             audioGlobal: null,
             audioBgmAssetId: null,
         });
-
-        generateThumbnail(file).then((url) => set({ thumbnailUrl: url }));
 
         const formData = new FormData();
         formData.append("file", file);

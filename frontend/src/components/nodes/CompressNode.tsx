@@ -1,5 +1,6 @@
 import { useVideoStore } from '../../store/useVideoStore';
 import { BaseNode } from '../ui/BaseNode';
+import { CoverImage } from '../ui/CoverImage';
 import { fmtSize } from '../../utils';
 
 interface Props { x: number; y: number; onPosChange: (id: string, x: number, y: number, w: number, h: number) => void; }
@@ -55,6 +56,11 @@ export function CompressNode({ x, y, onPosChange }: Props) {
         {compressResult && (
           <>
             <div style={{ fontSize: '10px', fontWeight: 600, color: '#06b6d4', letterSpacing: '2px', textAlign: 'center', marginBottom: '4px' }}>✓ COMPRESSED</div>
+            <CoverImage
+                coverImageAssetId={compressResult.cover_image_asset_id}
+                videoAssetId={compressResult.asset_id}
+                alt="Compressed video cover"
+            />
             {uploadResult && (
               <div style={{ fontSize: '9px', color: '#888', lineHeight: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0', paddingBottom: '2px', marginBottom: '2px', color: '#bbb', fontSize: '8px', letterSpacing: '1px' }}>
