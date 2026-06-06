@@ -14,6 +14,7 @@ from core import (
     run_script_analysis,
     run_split_task,
     run_visual_analysis,
+    save_cover_for_video,
 )
 from deps import get_current_user, get_video_asset
 from models import Asset, User, engine
@@ -88,6 +89,15 @@ async def upload_video_endpoint(
         session.add(asset)
         session.commit()
 
+    loop = asyncio.get_running_loop()
+    cover_id = await loop.run_in_executor(
+        None,
+        save_cover_for_video,
+        str(filepath),
+        current_user.user_id,
+        asset_id,
+    )
+
     return JSONResponse(
         status_code=201,
         content={
@@ -97,6 +107,7 @@ async def upload_video_endpoint(
                 "type": "video",
                 "path": str(filepath),
                 "metadata": meta.to_dict(),
+                "cover_image_asset_id": cover_id,
             },
         },
     )

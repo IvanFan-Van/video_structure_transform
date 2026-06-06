@@ -5,6 +5,8 @@ from pathlib import Path
 
 import cv2
 import ffmpeg
+import numpy as np
+from PIL import Image
 
 
 @dataclass
@@ -293,6 +295,60 @@ def split_video_by_segments(
         output_paths.append(output_path)
 
     return output_paths
+
+
+def extract_cover_image(video_path: str) -> Image.Image:
+    """
+    从视频中提取第一个有效关键帧作为封面图。
+    跳过亮度过低的静默帧（黑屏、带水印黑屏等），返回 PIL Image 对象。
+
+    Args:
+        video_path: 视频文件路径
+
+    Returns:
+        PIL.Image.Image: 封面图像
+    """
+    PIXEL_BRIGHTNESS_THRESHOLD = 15  # 单个像素亮度阈值 (0-255)
+    CONTENT_RATIO_THRESHOLD = 0.1  # 至少 10% 的像素有内容才算有效帧
+    MAX_KEYFRAMES = 10  # 最多检查前 N 个关键帧
+
+    # 获取视频元信息（宽高）
+    probe = ffmpeg.probe(video_path)
+    video_stream = next(s for s in probe["streams"] if s["codec_type"] == "video")
+    width = int(video_stream["width"])
+    height = int(video_stream["height"])
+
+    # 抽取前 MAX_KEYFRAMES 个 I 帧，输出原始 RGB 字节流
+    out, _ = (
+        ffmpeg.input(video_path)
+        .video.filter("select", f"lte(n,{MAX_KEYFRAMES})*eq(pict_type,I)")
+        .output("pipe:", format="rawvideo", pix_fmt="rgb24", vsync="vfr")
+        .run(capture_stdout=True, capture_stderr=True, quiet=True)
+    )
+
+    frame_size = width * height * 3  # bytes per frame (RGB24)
+
+    if len(out) < frame_size:
+        raise ValueError(f"未能从视频中抽取到任何关键帧: {video_path}")
+
+    def is_valid_frame(frame: np.ndarray) -> bool:
+        """判断帧是否为有效内容帧（非静默帧、非纯水印黑屏）"""
+        gray = frame.mean(axis=2)  # (H, W) 灰度
+        content_ratio = (gray > PIXEL_BRIGHTNESS_THRESHOLD).sum() / gray.size
+        return content_ratio >= CONTENT_RATIO_THRESHOLD
+
+    # 逐帧检查，返回第一个有效帧
+    num_frames = min(MAX_KEYFRAMES, len(out) // frame_size)
+    for i in range(num_frames):
+        raw = out[i * frame_size : (i + 1) * frame_size]
+        frame = np.frombuffer(raw, dtype=np.uint8).reshape((height, width, 3))
+        if is_valid_frame(frame):
+            return Image.fromarray(frame)
+
+    # 所有关键帧均为静默帧，退而返回最后一个关键帧
+    raw = out[(num_frames - 1) * frame_size : num_frames * frame_size]
+    frame = np.frombuffer(raw, dtype=np.uint8).reshape((height, width, 3))
+    return Image.fromarray(frame)
 
 
 if __name__ == "__main__":

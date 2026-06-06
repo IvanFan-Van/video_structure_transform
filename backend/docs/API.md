@@ -71,7 +71,7 @@ Base URL: `http://127.0.0.1:8000`
     - [任务完成后 result 结构](#任务完成后-result-结构)
     - [前端集成示例](#前端集成示例)
     - [错误响应](#错误响应-9)
-  - [12. GET /files/{filename} — 访问素材文件](#12-get-filesfilename--访问素材文件)
+  - [12. GET /files/{asset_id} — 访问素材文件](#12-get-filesasset_id--访问素材文件)
     - [路径参数](#路径参数-8)
     - [请求示例](#请求示例-8)
     - [安全校验](#安全校验)
@@ -336,10 +336,13 @@ curl -X POST http://127.0.0.1:8000/upload \
       "a_bitrate": 128,
       "size": 10485760,
       "duration": 15.5
-    }
+    },
+    "cover_image_asset_id": "d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1"
   }
 }
 ```
+
+> **封面自动提取**：上传完成后自动从视频中提取第一张有效关键帧作为封面图（跳过黑屏等静默帧），以 `type="image"` 存入数据库。`cover_image_asset_id` 指向该封面，可通过 `GET /files/{uuid}` 下载。提取失败时为 `null`。
 
 ### 错误响应
 
@@ -438,7 +441,8 @@ curl -X POST http://127.0.0.1:8000/upload \
   "source_asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "type": "video",
   "path": "storage\\videos\\b2c3d4e5-f6a7-8901-bcde-f12345678901_compressed.mp4",
-  "metadata": { ... }
+  "metadata": { ... },
+  "cover_image_asset_id": "e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1"
 }
 ```
 
@@ -1242,9 +1246,9 @@ while (true) {
 
 ---
 
-## 12. GET /files/{filename} — 访问素材文件
+## 12. GET /files/{asset_id} — 访问素材文件
 
-通过文件名访问已上传的素材文件。文件名必须以 asset UUID 开头，服务端自动校验归属权限。
+通过 `asset_id` 直接访问已上传的素材文件。服务端自动校验归属权限，返回文件二进制流。
 
 | 属性 | 值 |
 |---|---|
@@ -1257,22 +1261,26 @@ while (true) {
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `filename` | string | **是** | 素材文件名，必须以 36 位 UUID 开头（如 `a1b2c3d4-...mp4`） |
+| `asset_id` | string | **是** | 素材的 asset_id（由 `/upload`、`/compress`、`/split`、`/analyze-audio` 等接口返回） |
 
 ### 请求示例
 
 ```bash
 # 下载原始视频
-curl "http://127.0.0.1:8000/files/a1b2c3d4-e5f6-7890-abcd-ef1234567890.mp4" \
+curl "http://127.0.0.1:8000/files/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
   -H "Authorization: Bearer <token>" \
   -o video.mp4
 
 # 下载压缩视频
-curl "http://127.0.0.1:8000/files/b2c3d4e5-f6a7-8901-bcde-f12345678901_compressed.mp4" \
+curl "http://127.0.0.1:8000/files/b2c3d4e5-f6a7-8901-bcde-f12345678901" \
   -H "Authorization: Bearer <token>"
 
 # 下载 BGM 音频
-curl "http://127.0.0.1:8000/files/c3d4e5f6-a7b8-9012-cdef-234567890123_bgm.wav" \
+curl "http://127.0.0.1:8000/files/c3d4e5f6-a7b8-9012-cdef-234567890123" \
+  -H "Authorization: Bearer <token>"
+
+# 下载封面图
+curl "http://127.0.0.1:8000/files/d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -1280,8 +1288,7 @@ curl "http://127.0.0.1:8000/files/c3d4e5f6-a7b8-9012-cdef-234567890123_bgm.wav" 
 
 | 校验步骤 | 说明 |
 |---|---|
-| UUID 提取 | 从文件名前缀匹配 36 位 UUID，不匹配 → 404 `文件不存在` |
-| 数据库查询 | `Asset.asset_id == uuid` 查库，记录不存在 → 404 |
+| 数据库查询 | `Asset.asset_id == asset_id` 查库，记录不存在 → 404 |
 | 权限校验 | `asset.user_id == current_user.user_id`，不属于 → 403 `无权访问该文件` |
 | 文件存在 | `Path(asset.path).exists()`，丢失 → 500 `文件丢失` |
 
@@ -1289,7 +1296,7 @@ curl "http://127.0.0.1:8000/files/c3d4e5f6-a7b8-9012-cdef-234567890123_bgm.wav" 
 
 ### 成功响应
 
-直接返回文件二进制流，`Content-Type` 根据文件扩展名自动设置，`Content-Disposition` 包含原始文件名用于下载。
+直接返回文件二进制流，`Content-Type` 根据文件扩展名自动设置。
 
 ### 错误响应
 
@@ -1298,14 +1305,14 @@ curl "http://127.0.0.1:8000/files/c3d4e5f6-a7b8-9012-cdef-234567890123_bgm.wav" 
 | 401 | `未提供认证令牌` | 请求头缺少 Authorization |
 | 401 | `令牌已过期或无效` | JWT 解码失败 |
 | 403 | `无权访问该文件` | 素材不属于当前用户 |
-| 404 | `文件不存在` | 文件名不合法或 asset 记录不存在 |
+| 404 | `文件不存在` | asset_id 无对应记录 |
 | 500 | `文件丢失` | asset 记录存在但磁盘文件已丢失 |
 
 ---
 
 ## 13. POST /split — 视频切割
 
-对已上传的视频进行场景切分，支持两种检测方式：基于 `scenedetect` 的程序化检测（默认）或基于多模态 LLM 的语义切割。切割后的每个片段保存为独立 Asset，通过 `/files/{asset_id}.mp4` 访问。
+对已上传的视频进行场景切分，支持两种检测方式：基于 `scenedetect` 的程序化检测（默认）或基于多模态 LLM 的语义切割。切割后的每个片段保存为独立 Asset，通过 `/files/{asset_id}` 访问。
 
 | 属性 | 值 |
 |---|---|
@@ -1403,7 +1410,8 @@ curl -X POST http://127.0.0.1:8000/split \
         "height": 1080,
         "fps": 30.0,
         "duration": 3.2
-      }
+      },
+      "cover_image_asset_id": "f1f1f1f1-f1f1-f1f1-f1f1-f1f1f1f1f1f1"
     }
   ]
 }
@@ -1420,9 +1428,11 @@ curl -X POST http://127.0.0.1:8000/split \
 | `segments[].duration` | float | 片段时长（秒） |
 | `segments[].cut_score` | float \| null | 切割点置信度（仅 scenedetect） |
 | `segments[].reason` | string \| null | 切割原因（仅 AI） |
-| `clip_assets[].asset_id` | string | 片段对应的 Asset ID，可通过 `/files/{asset_id}.mp4` 下载 |
+| `clip_assets[].asset_id` | string | 片段对应的 Asset ID，可通过 `/files/{asset_id}` 下载 |
+
 | `clip_assets[].path` | string | 片段文件路径 |
 | `clip_assets[].metadata` | object | 片段视频元数据（同 VideoMeta） |
+| `clip_assets[].cover_image_asset_id` | string \| null | 片段封面图的 Asset ID，可通过 `/files/{uuid}` 下载；提取失败时为 `null` |
 
 ### 错误响应
 

@@ -30,6 +30,7 @@ from task_registry import task_registry
 from video import (
     compress_video_async,
     detect_scenes_scenedetect,
+    extract_cover_image,
     get_video_duration,
     probe_video,
     split_video_by_segments,
@@ -37,9 +38,39 @@ from video import (
 )
 
 _STREAM_EOF = object()
+STORAGE_IMAGES = Path("storage/images")
+
+
+def save_cover_for_video(
+    video_path: str,
+    user_id: str,
+    source_asset_id: str | None = None,
+) -> str | None:
+    try:
+        img = extract_cover_image(video_path)
+    except Exception:
+        return None
+
+    STORAGE_IMAGES.mkdir(parents=True, exist_ok=True)
+    cover_id = str(uuid.uuid4())
+    cover_path = STORAGE_IMAGES / f"{cover_id}.jpg"
+    img.save(str(cover_path), "JPEG", quality=85)
+
+    with Session(engine) as session:
+        asset = Asset(
+            asset_id=cover_id,
+            user_id=user_id,
+            source_asset_id=source_asset_id,
+            path=str(cover_path),
+            type="image",
+        )
+        session.add(asset)
+        session.commit()
+
+    return cover_id
+
 
 load_dotenv(find_dotenv(), override=True)
-
 PROJECT_DIR = Path.cwd()
 print(f"📁 项目目录: {PROJECT_DIR}")
 
@@ -153,6 +184,15 @@ async def run_compress_task(
             session.add(compressed_asset)
             session.commit()
 
+        loop = asyncio.get_running_loop()
+        cover_id = await loop.run_in_executor(
+            None,
+            save_cover_for_video,
+            str(compressed_path),
+            user_id,
+            compressed_asset_id,
+        )
+
         task_registry.set_result(
             task_id,
             {
@@ -161,6 +201,7 @@ async def run_compress_task(
                 "type": "video",
                 "path": str(compressed_path),
                 "metadata": compressed_meta.to_dict(),
+                "cover_image_asset_id": cover_id,
             },
         )
     except asyncio.CancelledError:
@@ -365,12 +406,22 @@ async def run_split_task(
                 )
                 session.add(asset)
                 session.commit()
+
+                cover_id = await loop.run_in_executor(
+                    None,
+                    save_cover_for_video,
+                    str(clip_path),
+                    user_id,
+                    asset.asset_id,
+                )
+
                 clip_assets.append(
                     {
                         "asset_id": asset.asset_id,
                         "index": i,
                         "path": str(clip_path),
                         "metadata": meta.to_dict(),
+                        "cover_image_asset_id": cover_id,
                     }
                 )
 

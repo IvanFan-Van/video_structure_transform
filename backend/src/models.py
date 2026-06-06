@@ -270,6 +270,7 @@ class ClipAssetInfo(BaseModel):
     index: int
     path: str
     metadata: dict
+    cover_image_asset_id: str | None = None
 
 
 class SplitResult(BaseModel):
