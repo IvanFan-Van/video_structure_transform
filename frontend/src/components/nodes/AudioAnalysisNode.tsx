@@ -24,7 +24,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
     const videoErrors = useVideoStore((s) => s.videoErrors);
     const hasError = videoErrors.some((e) => e.nodeId === "audio");
 
-    const hasData = audioStatus !== "idle";
+    const hasData = audioStatus !== "idle" && audioStatus !== "cancelled";
 
     return (
         <BaseNode
@@ -41,7 +41,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
             <div
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
-                {audioStatus === "idle" && (
+                {(audioStatus === "idle" || audioStatus === "cancelled") && (
                     <div
                         style={{
                             fontSize: "9px",
@@ -88,7 +88,10 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                             0,
                                         ),
                                     },
-                                    { label: "GENRE", value: audioGlobal.genre },
+                                    {
+                                        label: "GENRE",
+                                        value: audioGlobal.genre,
+                                    },
                                     {
                                         label: "BRIGHT",
                                         value: `${(audioGlobal.overall_brightness_hz / 1000).toFixed(1)}kHz`,

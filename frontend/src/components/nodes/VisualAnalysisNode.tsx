@@ -85,7 +85,7 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
         }));
     };
 
-    const hasData = visualStatus !== "idle";
+    const hasData = visualStatus !== "idle" && visualStatus !== "cancelled";
     const accent = "#06b6d4";
 
     return (
@@ -102,7 +102,7 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
             <div
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
-                {!visualResult && visualStatus === "idle" && (
+                {!visualResult && (visualStatus === "idle" || visualStatus === "cancelled") && (
                     <div
                         style={{
                             fontSize: "9px",

@@ -91,7 +91,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
             y={y}
             w={300}
             title="Script Analysis"
-            active={scriptStatus !== "idle"}
+            active={scriptStatus !== "idle" && scriptStatus !== "cancelled"}
             accent="#10b981"
             id="script_analysis"
             onPosChange={onPosChange}
@@ -99,7 +99,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
             <div
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
-                {!transcriptResult && scriptStatus === "idle" && (
+                {!transcriptResult && (scriptStatus === "idle" || scriptStatus === "cancelled") && (
                     <div
                         style={{
                             fontSize: "9px",

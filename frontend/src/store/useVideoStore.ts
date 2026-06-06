@@ -7,7 +7,6 @@ import {
     CompressConfig,
     NodeError,
     ApiResponse,
-    VideoMeta,
     ApiErrorResponse,
     TranscriptResult,
     TaskInfo,
@@ -18,10 +17,227 @@ import {
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
-let sseAbortController: AbortController | null = null;
-let compressSseController: AbortController | null = null;
-let scriptSseController: AbortController | null = null;
-let visualSseController: AbortController | null = null;
+// ─── Stream abort controllers ─────────────────────────────────────────────────
+
+const streamControllers: Record<string, AbortController | null> = {
+    audio: null,
+    compress: null,
+    script: null,
+    visual: null,
+};
+
+function abortStream(key: string) {
+    streamControllers[key]?.abort();
+    streamControllers[key] = null;
+}
+
+function abortAllStreams() {
+    Object.keys(streamControllers).forEach(abortStream);
+}
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+
+function makeError(
+    nodeId: string,
+    message: string,
+    code: string,
+    details: string,
+): NodeError {
+    return { id: Date.now(), nodeId, message, code, details };
+}
+
+const NETWORK_ERROR_DETAILS =
+    "Unable to reach the server. Check your connection and try again.";
+
+function parseApiError(
+    data: any,
+    fallbackMessage: string,
+): { msg: string; code: string; details: string } {
+    if (data?.status === "error") {
+        return {
+            msg: data.message || fallbackMessage,
+            code: data.code ? String(data.code) : "SERVER_ERROR",
+            details: data.data
+                ? JSON.stringify(data.data, null, 2)
+                : data.message || "",
+        };
+    }
+    return {
+        msg: data?.data?.message || fallbackMessage,
+        code: "VALIDATION_ERROR",
+        details: JSON.stringify(data?.data, null, 2),
+    };
+}
+
+async function cancelTaskRequest(taskId: string) {
+    const token = useAuthStore.getState().token;
+    try {
+        await axios.post(
+            `/api/task/${taskId}/cancel`,
+            {},
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            },
+        );
+    } catch {
+        // best-effort cancel
+    }
+}
+
+// ─── Universal task stream subscriber ────────────────────────────────────────
+
+interface TaskStreamOptions<TResult> {
+    controllerKey: string;
+    t0: number;
+    set: (updater: any) => void;
+    nodeId: string;
+    failureLabel: string;
+    onCompleted: (result: TResult, elapsed: number) => object;
+    onFailed: (elapsed: number) => object;
+    onCancelled: () => object;
+}
+
+async function subscribeTaskStream<TResult>(
+    taskId: string,
+    token: string | null,
+    opts: TaskStreamOptions<TResult>,
+) {
+    const { controllerKey, t0, set, nodeId, failureLabel } = opts;
+
+    abortStream(controllerKey);
+    streamControllers[controllerKey] = new AbortController();
+    const signal = streamControllers[controllerKey]!.signal;
+
+    const setNetworkError = (elapsed: number) => {
+        set((s: any) => ({
+            ...opts.onFailed(elapsed),
+            videoErrors: [
+                ...s.videoErrors.filter((e: NodeError) => e.nodeId !== nodeId),
+                makeError(
+                    nodeId,
+                    "Network error",
+                    "NETWORK_ERROR",
+                    NETWORK_ERROR_DETAILS,
+                ),
+            ],
+        }));
+    };
+
+    try {
+        const response = await fetch(`/api/task/${taskId}/stream`, {
+            headers: { Authorization: `Bearer ${token}` },
+            signal,
+        });
+
+        if (!response.ok || !response.body) {
+            setNetworkError((Date.now() - t0) / 1000);
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        outer: while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+
+            for (const raw of lines) {
+                const line = raw.trim();
+                if (
+                    !line ||
+                    line.startsWith(":") ||
+                    /^(event|id|retry):/.test(line)
+                )
+                    continue;
+
+                const jsonStr = line.startsWith("data:")
+                    ? line.slice(5).trim()
+                    : line;
+                if (!jsonStr) continue;
+
+                try {
+                    const info: TaskInfo = JSON.parse(jsonStr);
+                    const elapsed = (Date.now() - t0) / 1000;
+
+                    if (info.status === "completed") {
+                        set((s: any) => ({
+                            ...opts.onCompleted(
+                                info.result as TResult,
+                                elapsed,
+                            ),
+                            videoErrors: s.videoErrors.filter(
+                                (e: NodeError) => e.nodeId !== nodeId,
+                            ),
+                        }));
+                        break outer;
+                    } else if (info.status === "failed") {
+                        set((s: any) => ({
+                            ...opts.onFailed(elapsed),
+                            videoErrors: [
+                                ...s.videoErrors.filter(
+                                    (e: NodeError) => e.nodeId !== nodeId,
+                                ),
+                                makeError(
+                                    nodeId,
+                                    failureLabel,
+                                    "TASK_FAILED",
+                                    info.error || "",
+                                ),
+                            ],
+                        }));
+                        break outer;
+                    } else if (info.status === "cancelled") {
+                        set(opts.onCancelled());
+                        break outer;
+                    }
+                } catch {
+                    // Malformed JSON line — skip
+                }
+            }
+        }
+    } catch (err: any) {
+        if (err?.name === "AbortError") return;
+        setNetworkError((Date.now() - t0) / 1000);
+    }
+}
+
+// ─── Misc helpers ─────────────────────────────────────────────────────────────
+
+function generateThumbnail(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.muted = true;
+        video.playsInline = true;
+        video.src = url;
+        video.onloadeddata = () => {
+            video.currentTime = Math.min(1, video.duration / 2);
+        };
+        video.onseeked = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext("2d")!.drawImage(video, 0, 0);
+            resolve(canvas.toDataURL("image/jpeg", 0.7));
+            URL.revokeObjectURL(url);
+        };
+        video.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject();
+        };
+    });
+}
+
+// ─── State & actions interfaces ───────────────────────────────────────────────
 
 interface VideoState {
     isUploading: boolean;
@@ -30,7 +246,6 @@ interface VideoState {
     thumbnailUrl: string | null;
 
     compressConfig: CompressConfig;
-
     isCompressing: boolean;
     compressTaskId: string | null;
     compressResult: CompressResult | null;
@@ -67,9 +282,9 @@ interface VideoActions {
     startAnalyzeScript: () => Promise<void>;
     stopAnalyzeScript: () => Promise<void>;
     startAnalyzeAudio: () => Promise<void>;
-    stopAnalyzeAudio: () => Promise<void>;
+    stopAnalyzeAudio: () => void;
     startAnalyzeVisual: () => Promise<void>;
-    stopAnalyzeVisual: () => void;
+    stopAnalyzeVisual: () => Promise<void>;
     dismissError: (id: number) => void;
 }
 
@@ -83,40 +298,7 @@ const initialCompressConfig: CompressConfig = {
     target_a_bitrate: "96k",
 };
 
-function makeError(
-    nodeId: string,
-    message: string,
-    code: string,
-    details: string,
-): NodeError {
-    return { id: Date.now(), nodeId, message, code, details };
-}
-
-function generateThumbnail(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(file);
-        const video = document.createElement("video");
-        video.preload = "metadata";
-        video.muted = true;
-        video.playsInline = true;
-        video.src = url;
-        video.onloadeddata = () => {
-            video.currentTime = Math.min(1, video.duration / 2);
-        };
-        video.onseeked = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext("2d")!.drawImage(video, 0, 0);
-            resolve(canvas.toDataURL("image/jpeg", 0.7));
-            URL.revokeObjectURL(url);
-        };
-        video.onerror = () => {
-            URL.revokeObjectURL(url);
-            reject();
-        };
-    });
-}
+// ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     isUploading: false,
@@ -125,7 +307,6 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     thumbnailUrl: null,
 
     compressConfig: { ...initialCompressConfig },
-
     isCompressing: false,
     compressTaskId: null,
     compressResult: null,
@@ -142,32 +323,21 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     streamArr: [],
     audioGlobal: null,
     audioBgmAssetId: null,
+
     visualStatus: "idle",
     visualTime: null,
-    visualResult: null,
     isAnalyzingVisual: false,
     visualTaskId: null,
+    visualResult: null,
 
     videoErrors: [],
 
+    // ── Actions ────────────────────────────────────────────────────────────────
+
     uploadVideo: async (file) => {
         const token = useAuthStore.getState().token;
-        if (sseAbortController) {
-            sseAbortController.abort();
-            sseAbortController = null;
-        }
-        if (compressSseController) {
-            compressSseController.abort();
-            compressSseController = null;
-        }
-        if (scriptSseController) {
-            scriptSseController.abort();
-            scriptSseController = null;
-        }
-        if (visualSseController) {
-            visualSseController.abort();
-            visualSseController = null;
-        }
+        abortAllStreams();
+
         set({
             isUploading: true,
             uploadProgress: 0,
@@ -212,7 +382,6 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             );
 
             const result = res.data;
-
             if (result.status !== "success") {
                 throw new Error("服务器 status 字段与 status code 不一致");
             }
@@ -226,27 +395,16 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 ),
             }));
         } catch (error: any) {
+            let msg = "Network error";
+            let code = "NETWORK_ERROR";
+            let details = NETWORK_ERROR_DETAILS;
+
             if (axios.isAxiosError(error)) {
                 const axiosError = error as AxiosError<ApiErrorResponse>;
                 if (axiosError.response) {
-                    const res = axiosError.response;
-                    const result = res.data;
-
-                    let msg: string, code: string, details: string;
-                    msg = res.statusText;
-                    code = res.statusText;
-                    details = JSON.stringify(result);
-
-                    set((s) => ({
-                        isUploading: false,
-                        videoErrors: [
-                            ...s.videoErrors.filter(
-                                (e) => e.nodeId !== "reference",
-                            ),
-                            makeError("reference", msg, code, details),
-                        ],
-                    }));
-                    return;
+                    msg = axiosError.response.statusText;
+                    code = axiosError.response.statusText;
+                    details = JSON.stringify(axiosError.response.data);
                 }
             }
 
@@ -254,12 +412,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 isUploading: false,
                 videoErrors: [
                     ...s.videoErrors.filter((e) => e.nodeId !== "reference"),
-                    makeError(
-                        "reference",
-                        "Network error",
-                        "NETWORK_ERROR",
-                        "Unable to reach the server. Check your connection and try again.",
-                    ),
+                    makeError("reference", msg, code, details),
                 ],
             }));
         }
@@ -278,6 +431,8 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         const { uploadResult, compressConfig } = get();
         if (!uploadResult) return;
         const token = useAuthStore.getState().token;
+        const t0 = Date.now();
+
         set({
             isCompressing: true,
             compressResult: null,
@@ -287,16 +442,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         try {
             const res = await axios.post(
                 "/api/compress",
-                {
-                    asset_id: uploadResult.asset_id,
-                    vcodec: compressConfig.vcodec,
-                    crf: compressConfig.crf,
-                    target_v_bitrate: compressConfig.target_v_bitrate,
-                    scale_width: compressConfig.scale_width,
-                    max_fps: compressConfig.max_fps,
-                    acodec: compressConfig.acodec,
-                    target_a_bitrate: compressConfig.target_a_bitrate,
-                },
+                { asset_id: uploadResult.asset_id, ...compressConfig },
                 {
                     headers: {
                         "Content-Type": "application/json",
@@ -306,20 +452,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             );
 
             if (res.data.status !== "success") {
-                let msg: string, code: string, details: string;
-                if (res.data.status === "error") {
-                    msg = res.data.message || "Compress failed";
-                    code = res.data.code
-                        ? String(res.data.code)
-                        : "SERVER_ERROR";
-                    details = res.data.data
-                        ? JSON.stringify(res.data.data, null, 2)
-                        : res.data.message || "";
-                } else {
-                    msg = res.data.data?.message || "Compress failed";
-                    code = "VALIDATION_ERROR";
-                    details = JSON.stringify(res.data.data, null, 2);
-                }
+                const { msg, code, details } = parseApiError(
+                    res.data,
+                    "Compress failed",
+                );
                 set((s) => ({
                     isCompressing: false,
                     videoErrors: [
@@ -333,66 +469,25 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             const taskId: string = res.data.data.task_id;
             set({ compressTaskId: taskId });
 
-            if (compressSseController) compressSseController.abort();
-            compressSseController = new AbortController();
-
-            await fetchEventSource(`/api/task/${taskId}/stream`, {
-                headers: { Authorization: `Bearer ${token}` },
-                signal: compressSseController.signal,
-                onmessage(event) {
-                    try {
-                        const info: TaskInfo = JSON.parse(event.data);
-                        if (info.status === "completed") {
-                            set((s) => ({
-                                compressResult: info.result,
-                                isCompressing: false,
-                                compressTaskId: null,
-                                videoErrors: s.videoErrors.filter(
-                                    (e) => e.nodeId !== "compress",
-                                ),
-                            }));
-                        } else if (info.status === "failed") {
-                            set((s) => ({
-                                isCompressing: false,
-                                compressTaskId: null,
-                                videoErrors: [
-                                    ...s.videoErrors.filter(
-                                        (e) => e.nodeId !== "compress",
-                                    ),
-                                    makeError(
-                                        "compress",
-                                        "Compress failed",
-                                        "COMPRESS_FAILED",
-                                        info.error || "",
-                                    ),
-                                ],
-                            }));
-                        } else if (info.status === "cancelled") {
-                            set({
-                                isCompressing: false,
-                                compressTaskId: null,
-                            });
-                        }
-                    } catch {}
-                },
-                onerror() {
-                    set((s) => ({
-                        isCompressing: false,
-                        compressTaskId: null,
-                        videoErrors: [
-                            ...s.videoErrors.filter(
-                                (e) => e.nodeId !== "compress",
-                            ),
-                            makeError(
-                                "compress",
-                                "Network error",
-                                "NETWORK_ERROR",
-                                "Unable to reach the server. Check your connection and try again.",
-                            ),
-                        ],
-                    }));
-                    throw new Error("stop");
-                },
+            await subscribeTaskStream<CompressResult>(taskId, token, {
+                controllerKey: "compress",
+                t0,
+                set,
+                nodeId: "compress",
+                failureLabel: "Compress failed",
+                onCompleted: (result) => ({
+                    compressResult: result,
+                    isCompressing: false,
+                    compressTaskId: null,
+                }),
+                onFailed: () => ({
+                    isCompressing: false,
+                    compressTaskId: null,
+                }),
+                onCancelled: () => ({
+                    isCompressing: false,
+                    compressTaskId: null,
+                }),
             });
         } catch {
             set((s) => ({
@@ -403,7 +498,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                         "compress",
                         "Network error",
                         "NETWORK_ERROR",
-                        "Unable to reach the server. Check your connection and try again.",
+                        NETWORK_ERROR_DETAILS,
                     ),
                 ],
             }));
@@ -411,28 +506,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     },
 
     stopCompress: async () => {
-        if (compressSseController) {
-            compressSseController.abort();
-            compressSseController = null;
-        }
+        abortStream("compress");
         const { compressTaskId } = get();
-        if (compressTaskId) {
-            const token = useAuthStore.getState().token;
-            try {
-                await axios.post(
-                    `/api/task/${compressTaskId}/cancel`,
-                    {},
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
-                        },
-                    },
-                );
-            } catch {
-                // best-effort cancel
-            }
-        }
+        if (compressTaskId) await cancelTaskRequest(compressTaskId);
         set({
             isCompressing: false,
             compressTaskId: null,
@@ -445,6 +521,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         if (!compressResult) return;
         const token = useAuthStore.getState().token;
         const t0 = Date.now();
+
         set({
             isExtractingFlow: true,
             scriptStatus: "loading",
@@ -467,20 +544,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
             if (res.data.status !== "success") {
                 const elapsed = (Date.now() - t0) / 1000;
-                let msg: string, code: string, details: string;
-                if (res.data.status === "error") {
-                    msg = res.data.message || "Extract failed";
-                    code = res.data.code
-                        ? String(res.data.code)
-                        : "SERVER_ERROR";
-                    details = res.data.data
-                        ? JSON.stringify(res.data.data, null, 2)
-                        : res.data.message || "";
-                } else {
-                    msg = res.data.data?.message || "Extract failed";
-                    code = "VALIDATION_ERROR";
-                    details = JSON.stringify(res.data.data, null, 2);
-                }
+                const { msg, code, details } = parseApiError(
+                    res.data,
+                    "Extract failed",
+                );
                 set((s) => ({
                     transcriptResult: null,
                     scriptStatus: "error",
@@ -498,82 +565,30 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             const taskId: string = res.data.data.task_id;
             set({ extractTaskId: taskId });
 
-            if (scriptSseController) scriptSseController.abort();
-            scriptSseController = new AbortController();
-
-            let retryCount = 0;
-            const MAX_RETRIES = 5;
-
-            await fetchEventSource(`/api/task/${taskId}/stream`, {
-                headers: { Authorization: `Bearer ${token}` },
-                signal: scriptSseController.signal,
-                openWhenHidden: false,
-                onmessage(event) {
-                    try {
-                        const info: TaskInfo = JSON.parse(event.data);
-                        const elapsed = (Date.now() - t0) / 1000;
-                        if (info.status === "completed") {
-                            set((s) => ({
-                                transcriptResult: info.result,
-                                scriptStatus: "success",
-                                scriptTime: elapsed,
-                                extractTaskId: null,
-                                videoErrors: s.videoErrors.filter(
-                                    (e) => e.nodeId !== "extracting",
-                                ),
-                            }));
-                        } else if (info.status === "failed") {
-                            set((s) => ({
-                                transcriptResult: null,
-                                scriptStatus: "error",
-                                scriptTime: elapsed,
-                                extractTaskId: null,
-                                videoErrors: [
-                                    ...s.videoErrors.filter(
-                                        (e) => e.nodeId !== "extracting",
-                                    ),
-                                    makeError(
-                                        "extracting",
-                                        "Extract failed",
-                                        "EXTRACT_FAILED",
-                                        info.error || "",
-                                    ),
-                                ],
-                            }));
-                        } else if (info.status === "cancelled") {
-                            set({
-                                scriptStatus: "idle",
-                                extractTaskId: null,
-                            });
-                        }
-                    } catch {}
-                },
-                onerror() {
-                    retryCount++;
-                    if (retryCount > MAX_RETRIES) {
-                        const elapsed = (Date.now() - t0) / 1000;
-                        set((s) => ({
-                            transcriptResult: null,
-                            scriptStatus: "error",
-                            scriptTime: elapsed,
-                            extractTaskId: null,
-                            videoErrors: [
-                                ...s.videoErrors.filter(
-                                    (e) => e.nodeId !== "extracting",
-                                ),
-                                makeError(
-                                    "extracting",
-                                    "Network error",
-                                    "NETWORK_ERROR",
-                                    "Unable to reach the server. Check your connection and try again.",
-                                ),
-                            ],
-                        }));
-                        throw new Error("stop");
-                    }
-                },
+            await subscribeTaskStream<TranscriptResult>(taskId, token, {
+                controllerKey: "script",
+                t0,
+                set,
+                nodeId: "extracting",
+                failureLabel: "Extract failed",
+                onCompleted: (result, elapsed) => ({
+                    transcriptResult: result,
+                    scriptStatus: "success",
+                    scriptTime: elapsed,
+                    extractTaskId: null,
+                }),
+                onFailed: (elapsed) => ({
+                    transcriptResult: null,
+                    scriptStatus: "error",
+                    scriptTime: elapsed,
+                    extractTaskId: null,
+                }),
+                onCancelled: () => ({
+                    scriptStatus: "idle",
+                    extractTaskId: null,
+                }),
             });
-        } catch (error: any) {
+        } catch {
             const elapsed = (Date.now() - t0) / 1000;
             set((s) => ({
                 transcriptResult: null,
@@ -586,7 +601,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                         "extracting",
                         "Network error",
                         "NETWORK_ERROR",
-                        "Unable to reach the server. Check your connection and try again.",
+                        NETWORK_ERROR_DETAILS,
                     ),
                 ],
             }));
@@ -594,42 +609,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     },
 
     stopAnalyzeScript: async () => {
-        if (scriptSseController) {
-            scriptSseController.abort();
-            scriptSseController = null;
-        }
+        abortStream("script");
         const { extractTaskId } = get();
-        if (extractTaskId) {
-            const token = useAuthStore.getState().token;
-            try {
-                await axios.post<ApiResponse<String>>(
-                    `/api/task/${extractTaskId}/cancel`,
-                    {},
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
-                        },
-                    },
-                );
-            } catch (error: any) {
-                if (axios.isAxiosError(error)) {
-                    const axiosError = error as AxiosError<ApiErrorResponse>;
-                    const msg =
-                        axiosError.message || "Failed to cancel analysis";
-                    const code = error.response?.statusText || "CANCEL_FAILED";
-                    const details = axiosError.response?.data.message || "";
-                    set((s) => ({
-                        videoErrors: [
-                            ...s.videoErrors.filter(
-                                (e) => e.nodeId !== "extracting",
-                            ),
-                            makeError("extracting", msg, code, details),
-                        ],
-                    }));
-                }
-            }
-        }
+        if (extractTaskId) await cancelTaskRequest(extractTaskId);
         set({
             scriptStatus: "cancelled",
             extractTaskId: null,
@@ -645,8 +627,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         if (!token) return;
         const t0 = Date.now();
 
-        if (sseAbortController) sseAbortController.abort();
-        sseAbortController = new AbortController();
+        // Audio uses a dedicated streaming endpoint with frame-by-frame data —
+        // not the generic task-poll pattern, so it keeps its own handler.
+        abortStream("audio");
+        streamControllers["audio"] = new AbortController();
 
         set({
             audioStatus: "loading",
@@ -671,20 +655,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
             if (res.data.status !== "success") {
                 const elapsed = (Date.now() - t0) / 1000;
-                let msg: string, code: string, details: string;
-                if (res.data.status === "error") {
-                    msg = res.data.message || "Audio analysis failed";
-                    code = res.data.code
-                        ? String(res.data.code)
-                        : "SERVER_ERROR";
-                    details = res.data.data
-                        ? JSON.stringify(res.data.data, null, 2)
-                        : res.data.message || "";
-                } else {
-                    msg = res.data.data?.message || "Audio analysis failed";
-                    code = "VALIDATION_ERROR";
-                    details = JSON.stringify(res.data.data, null, 2);
-                }
+                const { msg, code, details } = parseApiError(
+                    res.data,
+                    "Audio analysis failed",
+                );
                 set((s) => ({
                     audioGlobal: null,
                     audioStatus: "error",
@@ -699,12 +673,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
             const taskId: string = res.data.data.task_id;
             set({ audioTaskId: taskId });
-            let retryCount = 0;
-            const MAX_RETRIES = 5;
 
             await fetchEventSource(`/api/task/${taskId}/stream`, {
                 headers: { Authorization: `Bearer ${token}` },
-                signal: sseAbortController.signal,
+                signal: streamControllers["audio"]!.signal,
                 openWhenHidden: false,
                 onmessage(event) {
                     try {
@@ -767,60 +739,38 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                                 audioTaskId: null,
                             });
                         }
-                    } catch {}
+                    } catch {
+                        // Malformed frame — skip
+                    }
                 },
                 onerror() {
-                    retryCount++;
-                    if (retryCount > MAX_RETRIES) {
-                        const elapsed = (Date.now() - t0) / 1000;
-                        set((s) => ({
-                            audioStatus: "error",
-                            audioTime: elapsed,
-                            audioTaskId: null,
-                            videoErrors: [
-                                ...s.videoErrors.filter(
-                                    (e) => e.nodeId !== "audio",
-                                ),
-                                makeError(
-                                    "audio",
-                                    "Audio analysis failed",
-                                    "AUDIO_FAILED",
-                                    "Stream connection error or server error.",
-                                ),
-                            ],
-                        }));
-                        throw new Error("stop");
-                    }
+                    const elapsed = (Date.now() - t0) / 1000;
+                    set((s) => ({
+                        audioStatus: "error",
+                        audioTime: elapsed,
+                        audioTaskId: null,
+                        videoErrors: [
+                            ...s.videoErrors.filter(
+                                (e) => e.nodeId !== "audio",
+                            ),
+                            makeError(
+                                "audio",
+                                "Audio analysis failed",
+                                "AUDIO_FAILED",
+                                "Stream connection error or server error.",
+                            ),
+                        ],
+                    }));
+                    throw new Error("stop");
                 },
             });
         } catch {
-            // aborted or connection error — onerror already handled error case
+            // Aborted or connection error — onerror already handled the error state.
         }
     },
 
-    stopAnalyzeAudio: async () => {
-        if (sseAbortController) {
-            sseAbortController.abort();
-            sseAbortController = null;
-        }
-        const { audioTaskId } = get();
-        if (audioTaskId) {
-            const token = useAuthStore.getState().token;
-            try {
-                await axios.post(
-                    `/api/task/${audioTaskId}/cancel`,
-                    {},
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
-                        },
-                    },
-                );
-            } catch {
-                // best-effort cancel
-            }
-        }
+    stopAnalyzeAudio: () => {
+        abortStream("audio");
         set({
             audioStatus: "cancelled",
             audioTaskId: null,
@@ -836,6 +786,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         if (!compressResult) return;
         const token = useAuthStore.getState().token;
         const t0 = Date.now();
+
         set({
             isAnalyzingVisual: true,
             visualStatus: "loading",
@@ -858,20 +809,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
             if (res.data.status !== "success") {
                 const elapsed = (Date.now() - t0) / 1000;
-                let msg: string, code: string, details: string;
-                if (res.data.status === "error") {
-                    msg = res.data.message || "Visual analysis failed";
-                    code = res.data.code
-                        ? String(res.data.code)
-                        : "SERVER_ERROR";
-                    details = res.data.data
-                        ? JSON.stringify(res.data.data, null, 2)
-                        : res.data.message || "";
-                } else {
-                    msg = res.data.data?.message || "Visual analysis failed";
-                    code = "VALIDATION_ERROR";
-                    details = JSON.stringify(res.data.data, null, 2);
-                }
+                const { msg, code, details } = parseApiError(
+                    res.data,
+                    "Visual analysis failed",
+                );
                 set((s) => ({
                     visualResult: null,
                     visualStatus: "error",
@@ -888,84 +829,31 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             const taskId: string = res.data.data.task_id;
             set({ visualTaskId: taskId });
 
-            if (visualSseController) visualSseController.abort();
-            visualSseController = new AbortController();
-
-            let retryCount = 0;
-            const MAX_RETRIES = 5;
-
-            await fetchEventSource(`/api/task/${taskId}/stream`, {
-                headers: { Authorization: `Bearer ${token}` },
-                signal: visualSseController.signal,
-                openWhenHidden: false,
-                onmessage(event) {
-                    try {
-                        const info: TaskInfo = JSON.parse(event.data);
-                        const elapsed = (Date.now() - t0) / 1000;
-                        if (info.status === "completed") {
-                            set((s) => ({
-                                visualResult: info.result,
-                                visualStatus: "success",
-                                visualTime: elapsed,
-                                isAnalyzingVisual: false,
-                                visualTaskId: null,
-                                videoErrors: s.videoErrors.filter(
-                                    (e) => e.nodeId !== "visual",
-                                ),
-                            }));
-                        } else if (info.status === "failed") {
-                            set((s) => ({
-                                visualResult: null,
-                                visualStatus: "error",
-                                visualTime: elapsed,
-                                isAnalyzingVisual: false,
-                                visualTaskId: null,
-                                videoErrors: [
-                                    ...s.videoErrors.filter(
-                                        (e) => e.nodeId !== "visual",
-                                    ),
-                                    makeError(
-                                        "visual",
-                                        "Visual analysis failed",
-                                        "EXTRACT_FAILED",
-                                        info.error || "",
-                                    ),
-                                ],
-                            }));
-                        } else if (info.status === "cancelled") {
-                            set({
-                                visualStatus: "idle",
-                                visualTaskId: null,
-                                isAnalyzingVisual: false,
-                            });
-                        }
-                    } catch {}
-                },
-                onerror() {
-                    retryCount++;
-                    if (retryCount > MAX_RETRIES) {
-                        const elapsed = (Date.now() - t0) / 1000;
-                        set((s) => ({
-                            visualResult: null,
-                            visualStatus: "error",
-                            visualTime: elapsed,
-                            isAnalyzingVisual: false,
-                            visualTaskId: null,
-                            videoErrors: [
-                                ...s.videoErrors.filter(
-                                    (e) => e.nodeId !== "visual",
-                                ),
-                                makeError(
-                                    "visual",
-                                    "Network error",
-                                    "NETWORK_ERROR",
-                                    "Unable to reach the server. Check your connection and try again.",
-                                ),
-                            ],
-                        }));
-                        throw new Error("stop");
-                    }
-                },
+            await subscribeTaskStream<VisualResult>(taskId, token, {
+                controllerKey: "visual",
+                t0,
+                set,
+                nodeId: "visual",
+                failureLabel: "Visual analysis failed",
+                onCompleted: (result, elapsed) => ({
+                    visualResult: result,
+                    visualStatus: "success",
+                    visualTime: elapsed,
+                    isAnalyzingVisual: false,
+                    visualTaskId: null,
+                }),
+                onFailed: (elapsed) => ({
+                    visualResult: null,
+                    visualStatus: "error",
+                    visualTime: elapsed,
+                    isAnalyzingVisual: false,
+                    visualTaskId: null,
+                }),
+                onCancelled: () => ({
+                    visualStatus: "idle",
+                    visualTaskId: null,
+                    isAnalyzingVisual: false,
+                }),
             });
         } catch {
             const elapsed = (Date.now() - t0) / 1000;
@@ -981,7 +869,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                         "visual",
                         "Network error",
                         "NETWORK_ERROR",
-                        "Unable to reach the server. Check your connection and try again.",
+                        NETWORK_ERROR_DETAILS,
                     ),
                 ],
             }));
@@ -989,28 +877,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     },
 
     stopAnalyzeVisual: async () => {
-        if (visualSseController) {
-            visualSseController.abort();
-            visualSseController = null;
-        }
+        abortStream("visual");
         const { visualTaskId } = get();
-        if (visualTaskId) {
-            const token = useAuthStore.getState().token;
-            try {
-                await axios.post(
-                    `/api/task/${visualTaskId}/cancel`,
-                    {},
-                    {
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`,
-                        },
-                    },
-                );
-            } catch {
-                // best-effort cancel
-            }
-        }
+        if (visualTaskId) await cancelTaskRequest(visualTaskId);
         set({
             isAnalyzingVisual: false,
             visualStatus: "cancelled",
