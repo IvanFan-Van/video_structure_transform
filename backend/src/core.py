@@ -25,6 +25,8 @@ from prompts import (
 from task_registry import task_registry
 from video import compress_video_async, probe_video, video_to_base64
 
+_STREAM_EOF = object()
+
 load_dotenv(find_dotenv(), override=True)
 
 PROJECT_DIR = Path.cwd()
@@ -210,6 +212,12 @@ async def run_audio_analysis(
                         pass
         finally:
             gen.close()  # type: ignore[attr-defined]
+
+        if queue is not None:
+            try:
+                queue.put_nowait(_STREAM_EOF)
+            except asyncio.QueueFull:
+                pass
 
         if last_frame is None:
             raise RuntimeError("No audio frames produced")

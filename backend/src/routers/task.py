@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from core import _STREAM_EOF
 from deps import get_current_user
 from models import User
 from task_registry import task_registry
@@ -66,24 +67,26 @@ async def stream_task_endpoint(  # noqa: C901
                         frame = await asyncio.wait_for(
                             queue.get(), timeout=HEARTBEAT_INTERVAL
                         )
+                        if frame is _STREAM_EOF:
+                            break
                         payload = json.dumps(frame, ensure_ascii=False)
                         yield f"data: {payload}\n\n"
                     except TimeoutError:
                         yield ": keepalive\n\n"
             except asyncio.CancelledError:
                 return
-        else:
-            try:
-                while not task_info._event.is_set():
-                    try:
-                        await asyncio.wait_for(
-                            asyncio.shield(task_info._event.wait()),
-                            timeout=HEARTBEAT_INTERVAL,
-                        )
-                    except TimeoutError:
-                        yield ": keepalive\n\n"
-            except asyncio.CancelledError:
-                return
+
+        try:
+            while not task_info._event.is_set():
+                try:
+                    await asyncio.wait_for(
+                        asyncio.shield(task_info._event.wait()),
+                        timeout=HEARTBEAT_INTERVAL,
+                    )
+                except TimeoutError:
+                    yield ": keepalive\n\n"
+        except asyncio.CancelledError:
+            return
 
         payload = json.dumps(task_info.to_dict(), ensure_ascii=False)
         yield f"data: {payload}\n\n"
