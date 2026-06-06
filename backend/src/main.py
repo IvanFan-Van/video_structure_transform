@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from routers.auth import router as auth_router
+from routers.files import router as files_router
 from routers.pipeline import router as pipeline_router
 from routers.task import router as task_router
 
@@ -44,6 +45,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(auth_router)
 app.include_router(task_router)
 app.include_router(pipeline_router)
+app.include_router(files_router)
 
 
 if __name__ == "__main__":

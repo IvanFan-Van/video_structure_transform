@@ -63,12 +63,20 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应 (200)](#成功响应-200-2)
     - [错误响应](#错误响应-8)
   - [11. POST /analyze-audio — 异步音频分析](#11-post-analyze-audio--异步音频分析)
-    - [查询参数](#查询参数)
-    - [请求示例 (curl)](#请求示例-curl-1)
-    - [响应格式 (SSE)](#响应格式-sse-1)
-    - [SSE 事件说明](#sse-事件说明-1)
+    - [请求参数](#请求参数-7)
+    - [请求示例](#请求示例-7)
+    - [成功响应 (202)](#成功响应-202-3)
+    - [通过 SSE 获取流式音频帧](#通过-sse-获取流式音频帧)
+    - [SSE 帧数据结构](#sse-帧数据结构)
+    - [任务完成后 result 结构](#任务完成后-result-结构)
     - [前端集成示例](#前端集成示例)
     - [错误响应](#错误响应-9)
+  - [12. GET /files/{filename} — 访问素材文件](#12-get-filesfilename--访问素材文件)
+    - [路径参数](#路径参数-8)
+    - [请求示例](#请求示例-8)
+    - [安全校验](#安全校验)
+    - [成功响应](#成功响应-200-3)
+    - [错误响应](#错误响应-10)
   - [附录 A: VideoMeta 元数据字段](#附录-a-videometa-元数据字段)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
@@ -1225,6 +1233,67 @@ while (true) {
 | 500 | `源文件丢失` | 数据库记录存在但磁盘文件已丢失 |
 
 若分析开始后发生运行时错误，任务状态变为 `failed`，通过 `GET /task/{task_id}` 的 `error` 字段获取详情。
+
+---
+
+## 12. GET /files/{filename} — 访问素材文件
+
+通过文件名访问已上传的素材文件。文件名必须以 asset UUID 开头，服务端自动校验归属权限。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `GET` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | —（无请求体） |
+| **响应类型** | `application/octet-stream` 或对应文件 MIME 类型 |
+
+### 路径参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `filename` | string | **是** | 素材文件名，必须以 36 位 UUID 开头（如 `a1b2c3d4-...mp4`） |
+
+### 请求示例
+
+```bash
+# 下载原始视频
+curl "http://127.0.0.1:8000/files/a1b2c3d4-e5f6-7890-abcd-ef1234567890.mp4" \
+  -H "Authorization: Bearer <token>" \
+  -o video.mp4
+
+# 下载压缩视频
+curl "http://127.0.0.1:8000/files/b2c3d4e5-f6a7-8901-bcde-f12345678901_compressed.mp4" \
+  -H "Authorization: Bearer <token>"
+
+# 下载 BGM 音频
+curl "http://127.0.0.1:8000/files/c3d4e5f6-a7b8-9012-cdef-234567890123_bgm.wav" \
+  -H "Authorization: Bearer <token>"
+```
+
+### 安全校验
+
+| 校验步骤 | 说明 |
+|---|---|
+| UUID 提取 | 从文件名前缀匹配 36 位 UUID，不匹配 → 404 `文件不存在` |
+| 数据库查询 | `Asset.asset_id == uuid` 查库，记录不存在 → 404 |
+| 权限校验 | `asset.user_id == current_user.user_id`，不属于 → 403 `无权访问该文件` |
+| 文件存在 | `Path(asset.path).exists()`，丢失 → 500 `文件丢失` |
+
+> **`storage/tmp` 下的中间文件（ffmpeg 临时产物、Separator 工作文件等）没有对应的 Asset 记录，无法通过此接口访问。**
+
+### 成功响应
+
+直接返回文件二进制流，`Content-Type` 根据文件扩展名自动设置，`Content-Disposition` 包含原始文件名用于下载。
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 403 | `无权访问该文件` | 素材不属于当前用户 |
+| 404 | `文件不存在` | 文件名不合法或 asset 记录不存在 |
+| 500 | `文件丢失` | asset 记录存在但磁盘文件已丢失 |
 
 ---
 
