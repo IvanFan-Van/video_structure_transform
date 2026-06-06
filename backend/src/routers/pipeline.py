@@ -1,0 +1,294 @@
+import asyncio
+import json
+import os
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import JSONResponse, StreamingResponse
+from sqlmodel import Session
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from audio import extract_bgm, stream_audio_features
+from core import run_compress_task, run_script_analysis, run_visual_analysis
+from deps import get_current_user, get_video_asset
+from models import Asset, User, engine
+from schemas import AnalyzeRequest, CompressRequest
+from task_registry import task_registry
+from video import probe_video
+
+router = APIRouter(tags=["pipeline"])
+
+STORAGE_DIR = Path("storage")
+VIDEO_STORAGE_DIR = STORAGE_DIR / "videos"
+AUDIO_STORAGE_DIR = STORAGE_DIR / "audios"
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv"}
+ALLOWED_VIDEO_MIME_TYPES = {
+    "video/mp4",
+    "video/quicktime",
+    "video/x-msvideo",
+    "video/x-matroska",
+    "video/webm",
+    "video/x-flv",
+    "video/x-ms-wmv",
+}
+MAX_ANALYZE_SIZE_MB = int(os.getenv("MAX_ANALYZE_SIZE_MB", "50"))
+
+
+@router.get("/")
+def index():
+    return JSONResponse(status_code=200, content={"status": "success", "data": "ok"})
+
+
+@router.post("/upload")
+async def upload_video_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    ext = Path(file.filename or "upload.mp4").suffix.lower()
+    if (
+        ext not in ALLOWED_VIDEO_EXTENSIONS
+        and file.content_type not in ALLOWED_VIDEO_MIME_TYPES
+    ):
+        raise StarletteHTTPException(status_code=400, detail="不支持的文件类型")
+
+    VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    asset_id = str(uuid.uuid4())
+    filename = f"{asset_id}{ext}"
+    filepath = VIDEO_STORAGE_DIR / filename
+
+    content = await file.read()
+    filepath.write_bytes(content)
+
+    try:
+        meta = probe_video(filepath)
+    except Exception as e:
+        filepath.unlink(missing_ok=True)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": "视频元数据探测失败",
+                "data": {"code": "PROBE_FAILED", "details": str(e)},
+            },
+        )
+
+    with Session(engine) as session:
+        asset = Asset(
+            asset_id=asset_id,
+            user_id=current_user.user_id,
+            path=str(filepath),
+            type="video",
+        )
+        session.add(asset)
+        session.commit()
+
+    return JSONResponse(
+        status_code=201,
+        content={
+            "status": "success",
+            "data": {
+                "asset_id": asset_id,
+                "type": "video",
+                "path": str(filepath),
+                "metadata": meta.to_dict(),
+            },
+        },
+    )
+
+
+@router.post("/compress")
+async def compress_video_endpoint(
+    req: CompressRequest,
+    current_user: User = Depends(get_current_user),
+):
+    source_asset, source_path = get_video_asset(req.asset_id, current_user)
+    source_path_str = str(source_path)
+
+    compressed_asset_id = str(uuid.uuid4())
+    compressed_filename = f"{compressed_asset_id}_compressed.mp4"
+    compressed_path = VIDEO_STORAGE_DIR / compressed_filename
+    VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+    task_id = str(uuid.uuid4())
+    user_id = current_user.user_id
+
+    info = task_registry.register(
+        task_id=task_id,
+        user_id=user_id,
+        type="compress",
+        resource_id=req.asset_id,
+        task=None,
+    )
+
+    asyncio_task = asyncio.create_task(
+        run_compress_task(
+            task_id=task_id,
+            user_id=user_id,
+            source_asset_id=req.asset_id,
+            source_path_str=source_path_str,
+            compressed_asset_id=compressed_asset_id,
+            compressed_path=compressed_path,
+            vcodec=req.vcodec,
+            crf=req.crf,
+            target_v_bitrate=req.target_v_bitrate,
+            scale_width=req.scale_width,
+            max_fps=req.max_fps,
+            acodec=req.acodec,
+            target_a_bitrate=req.target_a_bitrate,
+        )
+    )
+    info.task = asyncio_task
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "success",
+            "data": {"task_id": task_id},
+        },
+    )
+
+
+@router.post("/analyze-script")
+async def analyze_script_endpoint(
+    req: AnalyzeRequest,
+    current_user: User = Depends(get_current_user),
+):
+    source_asset, video_path = get_video_asset(req.asset_id, current_user)
+    video_path_str = str(video_path)
+
+    meta = probe_video(video_path)
+    file_size_mb = (int(meta.size) if meta.size else 0) / (1024 * 1024)
+    if file_size_mb > MAX_ANALYZE_SIZE_MB:
+        raise StarletteHTTPException(
+            status_code=400,
+            detail=(
+                f"视频文件过大（{file_size_mb:.1f} MB），"
+                f"超过分析上限 {MAX_ANALYZE_SIZE_MB} MB。"
+                "请先调用 /compress 压缩后再分析。"
+            ),
+        )
+
+    task_id = str(uuid.uuid4())
+
+    info = task_registry.register(
+        task_id=task_id,
+        user_id=current_user.user_id,
+        type="analyze-script",
+        resource_id=req.asset_id,
+        task=None,
+    )
+
+    asyncio_task = asyncio.create_task(run_script_analysis(task_id, video_path_str))
+    info.task = asyncio_task
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "success",
+            "data": {"task_id": task_id},
+        },
+    )
+
+
+@router.post("/analyze-visual")
+async def analyze_visual_endpoint(
+    req: AnalyzeRequest,
+    current_user: User = Depends(get_current_user),
+):
+    source_asset, video_path = get_video_asset(req.asset_id, current_user)
+    video_path_str = str(video_path)
+
+    meta = probe_video(video_path)
+    file_size_mb = (int(meta.size) if meta.size else 0) / (1024 * 1024)
+    if file_size_mb > MAX_ANALYZE_SIZE_MB:
+        raise StarletteHTTPException(
+            status_code=400,
+            detail=(
+                f"视频文件过大（{file_size_mb:.1f} MB），"
+                f"超过分析上限 {MAX_ANALYZE_SIZE_MB} MB。"
+                "请先调用 /compress 压缩后再分析。"
+            ),
+        )
+
+    task_id = str(uuid.uuid4())
+
+    info = task_registry.register(
+        task_id=task_id,
+        user_id=current_user.user_id,
+        type="analyze-visual",
+        resource_id=req.asset_id,
+        task=None,
+    )
+    asyncio_task = asyncio.create_task(run_visual_analysis(task_id, video_path_str))
+    info.task = asyncio_task
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "success",
+            "data": {"task_id": task_id},
+        },
+    )
+
+
+@router.get("/analyze-audio")
+async def analyze_audio_endpoint(
+    asset_id: str = Query(..., description="素材 ID"),
+    current_user: User = Depends(get_current_user),
+):
+    video_asset, video_path = get_video_asset(asset_id, current_user)
+
+    ext = video_path.suffix.lower()
+    if ext not in ALLOWED_VIDEO_EXTENSIONS:
+        raise StarletteHTTPException(
+            status_code=400,
+            detail=f"不支持的文件类型 {ext}",
+        )
+
+    AUDIO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    audio_asset_id = str(uuid.uuid4())
+    bgm_path = extract_bgm(str(video_path), AUDIO_STORAGE_DIR, audio_asset_id)
+
+    with Session(engine) as session:
+        bgm_asset = Asset(
+            asset_id=audio_asset_id,
+            user_id=current_user.user_id,
+            path=str(bgm_path),
+            type="audio",
+        )
+        session.add(bgm_asset)
+        session.commit()
+
+    async def event_stream():
+        _sentinel = object()
+        loop = asyncio.get_running_loop()
+        gen = stream_audio_features(str(bgm_path), audio_asset_id=audio_asset_id)
+
+        try:
+            while True:
+                frame = await loop.run_in_executor(None, next, gen, _sentinel)
+                if frame is _sentinel:
+                    break
+                payload = json.dumps(frame, ensure_ascii=False)
+                yield f"data: {payload}\n\n"
+        except asyncio.CancelledError:
+            return
+        except Exception as exc:
+            error_payload = json.dumps(
+                {"error": True, "message": str(exc)}, ensure_ascii=False
+            )
+            yield f"event: error\ndata: {error_payload}\n\n"
+        finally:
+            gen.close()  # type: ignore
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

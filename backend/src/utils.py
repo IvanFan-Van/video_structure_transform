@@ -2,7 +2,7 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 
 import bcrypt
@@ -39,9 +39,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     """生成 JWT 访问令牌"""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+        expire = datetime.now(UTC) + timedelta(minutes=15)
 
     # 注入过期时间
     to_encode.update({"exp": expire})

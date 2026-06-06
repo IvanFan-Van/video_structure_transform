@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 from pathlib import Path
@@ -5,16 +6,23 @@ from pathlib import Path
 import instructor
 from dotenv import find_dotenv, load_dotenv
 from openai import AsyncOpenAI, OpenAI
+from sqlmodel import Session
 
-from models import VideoStructure, VideoVisualAnalysis, compute_text_density_curve
+from models import (
+    Asset,
+    VideoStructure,
+    VideoVisualAnalysis,
+    compute_text_density_curve,
+    engine,
+)
 from prompts import (
     TRANSCRIPT_EXTRACTION_SYSTEM_PROMPT,
     TRANSCRIPT_EXTRACTION_USER_PROMPT,
     VIDEO_VISUAL_ANALYSIS_SYSTEM_PROMPT,
     VIDEO_VISUAL_ANALYSIS_USER_PROMPT,
 )
-from utils import timer
-from video import video_to_base64
+from task_registry import task_registry
+from video import compress_video_async, probe_video, video_to_base64
 
 load_dotenv(find_dotenv(), override=True)
 
@@ -34,37 +42,6 @@ async_client = AsyncOpenAI(
     api_key=os.getenv("API_KEY"),
     base_url=os.getenv("BASE_URL"),
 )
-
-
-@timer
-def analyze_video_script(video_path: str | Path) -> VideoStructure:
-    """使用多模态模型将视频按叙事结构拆解为多个阶段元素。
-
-    同步版本，供 notebooks 使用。
-    """
-    instructor_client = instructor.from_openai(client)
-
-    video_b64 = video_to_base64(video_path)
-
-    user_content: list[dict] = [
-        {"type": "text", "text": TRANSCRIPT_EXTRACTION_USER_PROMPT},
-        {
-            "type": "video_url",
-            "video_url": {"url": f"data:video/mp4;base64,{video_b64}"},
-        },
-    ]
-
-    print("🤖 正在调用多模态模型拆解视频结构...")
-    response = instructor_client.chat.completions.create(
-        model=os.getenv("MODEL"),  # type: ignore
-        response_model=VideoStructure,
-        messages=[
-            {"role": "system", "content": TRANSCRIPT_EXTRACTION_SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},  # type: ignore
-        ],
-    )
-
-    return response
 
 
 async def analyze_video_script_async(video_path: str | Path) -> VideoStructure:
@@ -96,34 +73,6 @@ async def analyze_video_script_async(video_path: str | Path) -> VideoStructure:
     return response
 
 
-@timer
-def analyze_video_visual(video_path: str | Path) -> VideoVisualAnalysis:
-    """同步版本，用于 notebook / 脚本调试。"""
-    video_path = Path(video_path)
-    video_b64 = video_to_base64(video_path)
-
-    user_content: list[dict] = [
-        {"type": "text", "text": VIDEO_VISUAL_ANALYSIS_USER_PROMPT},
-        {
-            "type": "video_url",
-            "video_url": {"url": f"data:video/mp4;base64,{video_b64}"},
-        },
-    ]
-
-    instructor_sync_client = instructor.from_openai(client)
-    result: VideoVisualAnalysis = instructor_sync_client.chat.completions.create(
-        model=os.getenv("MODEL"),  # type: ignore
-        response_model=VideoVisualAnalysis,
-        messages=[
-            {"role": "system", "content": VIDEO_VISUAL_ANALYSIS_SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},  # type: ignore
-        ],
-    )
-
-    result.text_density_curve = compute_text_density_curve(result.text_elements)
-    return result
-
-
 async def analyze_video_visual_async(video_path: str | Path) -> VideoVisualAnalysis:
     """异步版本，供 API 端点调用。"""
     video_path = Path(video_path)
@@ -149,3 +98,79 @@ async def analyze_video_visual_async(video_path: str | Path) -> VideoVisualAnaly
 
     result.text_density_curve = compute_text_density_curve(result.text_elements)
     return result
+
+
+async def run_compress_task(
+    task_id: str,
+    user_id: str,
+    source_asset_id: str,
+    source_path_str: str,
+    compressed_asset_id: str,
+    compressed_path: Path,
+    vcodec: str,
+    crf: int,
+    target_v_bitrate: str | None,
+    scale_width: int | None,
+    max_fps: int,
+    acodec: str,
+    target_a_bitrate: str,
+) -> None:
+    try:
+        output = await compress_video_async(
+            source_path_str,
+            str(compressed_path),
+            vcodec=vcodec,
+            crf=crf,
+            target_v_bitrate=target_v_bitrate,
+            scale_width=scale_width,
+            max_fps=max_fps,
+            acodec=acodec,
+            target_a_bitrate=target_a_bitrate,
+        )
+        compressed_meta = probe_video(output)
+
+        with Session(engine) as session:
+            compressed_asset = Asset(
+                asset_id=compressed_asset_id,
+                user_id=user_id,
+                path=str(compressed_path),
+                type="video",
+            )
+            session.add(compressed_asset)
+            session.commit()
+
+        task_registry.set_result(
+            task_id,
+            {
+                "asset_id": compressed_asset_id,
+                "source_asset_id": source_asset_id,
+                "type": "video",
+                "path": str(compressed_path),
+                "metadata": compressed_meta.to_dict(),
+            },
+        )
+    except asyncio.CancelledError:
+        compressed_path.unlink(missing_ok=True)
+    except Exception as e:
+        compressed_path.unlink(missing_ok=True)
+        task_registry.set_error(task_id, str(e))
+
+
+async def run_script_analysis(task_id: str, video_path_str: str) -> None:
+    try:
+        structure = await analyze_video_script_async(video_path_str)
+        task_registry.set_result(task_id, structure.model_dump())
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        task_registry.set_error(task_id, str(e))
+
+
+async def run_visual_analysis(task_id: str, video_path_str: str) -> None:
+    try:
+        result = await analyze_video_visual_async(video_path_str)
+        task_registry.set_result(task_id, result.model_dump())
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        task_registry.set_error(task_id, str(e))
