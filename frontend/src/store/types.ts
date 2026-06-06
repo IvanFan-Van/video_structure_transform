@@ -132,6 +132,8 @@ export interface AudioGlobalFeatures {
     overall_brightness_hz: number;
     dynamic_range: number;
     estimated_bpm: number;
+    audio_asset_id?: string;
+    bgm_path?: string;
 }
 
 export interface VisualPacing {

@@ -43,6 +43,7 @@ interface VideoState {
 
     audioStatus: NodeStatus;
     audioTime: number | null;
+    audioTaskId: string | null;
     streamArr: AudioStreamChunk[];
     audioGlobal: AudioGlobalFeatures | null;
     audioBgmAssetId: string | null;
@@ -66,7 +67,7 @@ interface VideoActions {
     startAnalyzeScript: () => Promise<void>;
     stopAnalyzeScript: () => Promise<void>;
     startAnalyzeAudio: () => Promise<void>;
-    stopAnalyzeAudio: () => void;
+    stopAnalyzeAudio: () => Promise<void>;
     startAnalyzeVisual: () => Promise<void>;
     stopAnalyzeVisual: () => void;
     dismissError: (id: number) => void;
@@ -137,6 +138,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
     audioStatus: "idle",
     audioTime: null,
+    audioTaskId: null,
     streamArr: [],
     audioGlobal: null,
     audioBgmAssetId: null,
@@ -180,6 +182,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             isCompressing: false,
             audioStatus: "idle",
             audioTime: null,
+            audioTaskId: null,
             streamArr: [],
             audioGlobal: null,
             audioBgmAssetId: null,
@@ -498,9 +501,13 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             if (scriptSseController) scriptSseController.abort();
             scriptSseController = new AbortController();
 
+            let retryCount = 0;
+            const MAX_RETRIES = 5;
+
             await fetchEventSource(`/api/task/${taskId}/stream`, {
                 headers: { Authorization: `Bearer ${token}` },
                 signal: scriptSseController.signal,
+                openWhenHidden: false,
                 onmessage(event) {
                     try {
                         const info: TaskInfo = JSON.parse(event.data);
@@ -542,28 +549,31 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     } catch {}
                 },
                 onerror() {
-                    const elapsed = (Date.now() - t0) / 1000;
-                    set((s) => ({
-                        transcriptResult: null,
-                        scriptStatus: "error",
-                        scriptTime: elapsed,
-                        extractTaskId: null,
-                        videoErrors: [
-                            ...s.videoErrors.filter(
-                                (e) => e.nodeId !== "extracting",
-                            ),
-                            makeError(
-                                "extracting",
-                                "Network error",
-                                "NETWORK_ERROR",
-                                "Unable to reach the server. Check your connection and try again.",
-                            ),
-                        ],
-                    }));
-                    throw new Error("stop");
+                    retryCount++;
+                    if (retryCount > MAX_RETRIES) {
+                        const elapsed = (Date.now() - t0) / 1000;
+                        set((s) => ({
+                            transcriptResult: null,
+                            scriptStatus: "error",
+                            scriptTime: elapsed,
+                            extractTaskId: null,
+                            videoErrors: [
+                                ...s.videoErrors.filter(
+                                    (e) => e.nodeId !== "extracting",
+                                ),
+                                makeError(
+                                    "extracting",
+                                    "Network error",
+                                    "NETWORK_ERROR",
+                                    "Unable to reach the server. Check your connection and try again.",
+                                ),
+                            ],
+                        }));
+                        throw new Error("stop");
+                    }
                 },
             });
-        } catch {
+        } catch (error: any) {
             const elapsed = (Date.now() - t0) / 1000;
             set((s) => ({
                 transcriptResult: null,
@@ -641,64 +651,132 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         set({
             audioStatus: "loading",
             audioTime: null,
+            audioTaskId: null,
             streamArr: [],
             audioGlobal: null,
             audioBgmAssetId: null,
         });
 
         try {
-            await fetchEventSource(
-                `/api/analyze-audio?asset_id=${compressResult.asset_id}`,
+            const res = await axios.post(
+                "/api/analyze-audio",
+                { asset_id: compressResult.asset_id },
                 {
-                    headers: { Authorization: `Bearer ${token}` },
-                    signal: sseAbortController.signal,
-                    onmessage(event) {
-                        if (event.data === "[DONE]") return;
-                        try {
-                            const frame = JSON.parse(event.data);
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
 
-                            if (frame.asset_id) {
-                                set({ audioBgmAssetId: frame.asset_id });
-                            }
+            if (res.data.status !== "success") {
+                const elapsed = (Date.now() - t0) / 1000;
+                let msg: string, code: string, details: string;
+                if (res.data.status === "error") {
+                    msg = res.data.message || "Audio analysis failed";
+                    code = res.data.code
+                        ? String(res.data.code)
+                        : "SERVER_ERROR";
+                    details = res.data.data
+                        ? JSON.stringify(res.data.data, null, 2)
+                        : res.data.message || "";
+                } else {
+                    msg = res.data.data?.message || "Audio analysis failed";
+                    code = "VALIDATION_ERROR";
+                    details = JSON.stringify(res.data.data, null, 2);
+                }
+                set((s) => ({
+                    audioGlobal: null,
+                    audioStatus: "error",
+                    audioTime: elapsed,
+                    videoErrors: [
+                        ...s.videoErrors.filter((e) => e.nodeId !== "audio"),
+                        makeError("audio", msg, code, details),
+                    ],
+                }));
+                return;
+            }
 
-                            if (frame.local) {
-                                const chunk: AudioStreamChunk = {
-                                    time: frame.time,
-                                    frame_index: frame.frame_index,
-                                    rms: frame.local.rms,
-                                    spectral_centroid:
-                                        frame.local.spectral_centroid,
-                                    spectral_flux: frame.local.spectral_flux,
-                                    onset_envelope: frame.local.onset_envelope,
-                                };
-                                set((s) => ({
-                                    streamArr: [...s.streamArr, chunk],
-                                }));
-                            }
+            const taskId: string = res.data.data.task_id;
+            set({ audioTaskId: taskId });
+            let retryCount = 0;
+            const MAX_RETRIES = 5;
 
-                            if (frame.running_global) {
-                                set({
-                                    audioGlobal: frame.running_global,
-                                });
-                            }
+            await fetchEventSource(`/api/task/${taskId}/stream`, {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: sseAbortController.signal,
+                openWhenHidden: false,
+                onmessage(event) {
+                    try {
+                        const data = JSON.parse(event.data);
 
-                            if (frame.is_last_frame) {
-                                const elapsed = (Date.now() - t0) / 1000;
-                                set((s) => ({
-                                    audioStatus: "success",
-                                    audioTime: elapsed,
-                                    videoErrors: s.videoErrors.filter(
+                        if (data.asset_id) {
+                            set({ audioBgmAssetId: data.asset_id });
+                        }
+
+                        if (data.local) {
+                            const chunk: AudioStreamChunk = {
+                                time: data.time,
+                                frame_index: data.frame_index,
+                                rms: data.local.rms,
+                                spectral_centroid: data.local.spectral_centroid,
+                                spectral_flux: data.local.spectral_flux,
+                                onset_envelope: data.local.onset_envelope,
+                            };
+                            set((s) => ({
+                                streamArr: [...s.streamArr, chunk],
+                            }));
+                        }
+
+                        if (data.running_global) {
+                            set({ audioGlobal: data.running_global });
+                        }
+
+                        if (data.status === "completed") {
+                            const elapsed = (Date.now() - t0) / 1000;
+                            set((s) => ({
+                                audioStatus: "success",
+                                audioTime: elapsed,
+                                audioTaskId: null,
+                                audioGlobal: data.result || data.running_global,
+                                videoErrors: s.videoErrors.filter(
+                                    (e) => e.nodeId !== "audio",
+                                ),
+                            }));
+                        } else if (data.status === "failed") {
+                            const elapsed = (Date.now() - t0) / 1000;
+                            set((s) => ({
+                                audioStatus: "error",
+                                audioTime: elapsed,
+                                audioTaskId: null,
+                                videoErrors: [
+                                    ...s.videoErrors.filter(
                                         (e) => e.nodeId !== "audio",
                                     ),
-                                }));
-                            }
-                        } catch {}
-                    },
-                    onerror() {
+                                    makeError(
+                                        "audio",
+                                        "Audio analysis failed",
+                                        "AUDIO_FAILED",
+                                        data.error || "",
+                                    ),
+                                ],
+                            }));
+                        } else if (data.status === "cancelled") {
+                            set({
+                                audioStatus: "idle",
+                                audioTaskId: null,
+                            });
+                        }
+                    } catch {}
+                },
+                onerror() {
+                    retryCount++;
+                    if (retryCount > MAX_RETRIES) {
                         const elapsed = (Date.now() - t0) / 1000;
                         set((s) => ({
                             audioStatus: "error",
                             audioTime: elapsed,
+                            audioTaskId: null,
                             videoErrors: [
                                 ...s.videoErrors.filter(
                                     (e) => e.nodeId !== "audio",
@@ -711,22 +789,41 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                                 ),
                             ],
                         }));
-                        throw new Error("stop"); // stop retrying
-                    },
+                        throw new Error("stop");
+                    }
                 },
-            );
+            });
         } catch {
             // aborted or connection error — onerror already handled error case
         }
     },
 
-    stopAnalyzeAudio: () => {
+    stopAnalyzeAudio: async () => {
         if (sseAbortController) {
             sseAbortController.abort();
             sseAbortController = null;
         }
+        const { audioTaskId } = get();
+        if (audioTaskId) {
+            const token = useAuthStore.getState().token;
+            try {
+                await axios.post(
+                    `/api/task/${audioTaskId}/cancel`,
+                    {},
+                    {
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                    },
+                );
+            } catch {
+                // best-effort cancel
+            }
+        }
         set({
             audioStatus: "cancelled",
+            audioTaskId: null,
             audioTime: null,
             streamArr: [],
             audioGlobal: null,
@@ -794,9 +891,13 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             if (visualSseController) visualSseController.abort();
             visualSseController = new AbortController();
 
+            let retryCount = 0;
+            const MAX_RETRIES = 5;
+
             await fetchEventSource(`/api/task/${taskId}/stream`, {
                 headers: { Authorization: `Bearer ${token}` },
                 signal: visualSseController.signal,
+                openWhenHidden: false,
                 onmessage(event) {
                     try {
                         const info: TaskInfo = JSON.parse(event.data);
@@ -841,26 +942,29 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     } catch {}
                 },
                 onerror() {
-                    const elapsed = (Date.now() - t0) / 1000;
-                    set((s) => ({
-                        visualResult: null,
-                        visualStatus: "error",
-                        visualTime: elapsed,
-                        isAnalyzingVisual: false,
-                        visualTaskId: null,
-                        videoErrors: [
-                            ...s.videoErrors.filter(
-                                (e) => e.nodeId !== "visual",
-                            ),
-                            makeError(
-                                "visual",
-                                "Network error",
-                                "NETWORK_ERROR",
-                                "Unable to reach the server. Check your connection and try again.",
-                            ),
-                        ],
-                    }));
-                    throw new Error("stop");
+                    retryCount++;
+                    if (retryCount > MAX_RETRIES) {
+                        const elapsed = (Date.now() - t0) / 1000;
+                        set((s) => ({
+                            visualResult: null,
+                            visualStatus: "error",
+                            visualTime: elapsed,
+                            isAnalyzingVisual: false,
+                            visualTaskId: null,
+                            videoErrors: [
+                                ...s.videoErrors.filter(
+                                    (e) => e.nodeId !== "visual",
+                                ),
+                                makeError(
+                                    "visual",
+                                    "Network error",
+                                    "NETWORK_ERROR",
+                                    "Unable to reach the server. Check your connection and try again.",
+                                ),
+                            ],
+                        }));
+                        throw new Error("stop");
+                    }
                 },
             });
         } catch {
