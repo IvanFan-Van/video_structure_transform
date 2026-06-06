@@ -1,7 +1,7 @@
 1. [x] optim: 使用 sse 代替轮询 (2026.06.05)
 2. [x] optim: 优化鼠标拖动幕布速度 (2026.06.05)
 3. [x] feat: 幕布拖拽数据保存 (2026.06.05)
-4. [ ] optim: cover image 截取选择 0.1s 而不是 1s (或是寻找一个最佳的 clip)
+4. [x] optim: cover image 截取选择 0.1s 而不是 1s (或是寻找一个最佳的 clip)
 5. [ ] feat: 对于分析并选择特效, 可以给每一个 remotion 组件都生成一个简短的 fig, 然后让用户可以看到 AI 识别出来的特效都有什么.
 6. [ ] feat: 并且提供一个搜索框, 可以让用户本地通过自然语言检索可能相关的特效 (通过设置一个 fuzzy search engine (lightweight) 版本)
 7. [ ] feat: 给 wire 添加箭头

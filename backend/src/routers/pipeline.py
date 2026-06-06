@@ -1,16 +1,19 @@
 import asyncio
-import json
 import os
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi.responses import JSONResponse
 from sqlmodel import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from audio import extract_bgm, stream_audio_features
-from core import run_compress_task, run_script_analysis, run_visual_analysis
+from core import (
+    run_audio_analysis,
+    run_compress_task,
+    run_script_analysis,
+    run_visual_analysis,
+)
 from deps import get_current_user, get_video_asset
 from models import Asset, User, engine
 from schemas import AnalyzeRequest, CompressRequest
@@ -233,12 +236,13 @@ async def analyze_visual_endpoint(
     )
 
 
-@router.get("/analyze-audio")
+@router.post("/analyze-audio")
 async def analyze_audio_endpoint(
-    asset_id: str = Query(..., description="素材 ID"),
+    req: AnalyzeRequest,
     current_user: User = Depends(get_current_user),
 ):
-    video_asset, video_path = get_video_asset(asset_id, current_user)
+    source_asset, video_path = get_video_asset(req.asset_id, current_user)
+    video_path_str = str(video_path)
 
     ext = video_path.suffix.lower()
     if ext not in ALLOWED_VIDEO_EXTENSIONS:
@@ -249,46 +253,33 @@ async def analyze_audio_endpoint(
 
     AUDIO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     audio_asset_id = str(uuid.uuid4())
-    bgm_path = extract_bgm(str(video_path), AUDIO_STORAGE_DIR, audio_asset_id)
+    task_id = str(uuid.uuid4())
 
-    with Session(engine) as session:
-        bgm_asset = Asset(
-            asset_id=audio_asset_id,
+    info = task_registry.register(
+        task_id=task_id,
+        user_id=current_user.user_id,
+        type="analyze-audio",
+        resource_id=req.asset_id,
+        task=None,
+    )
+    info._stream_queue = asyncio.Queue(maxsize=256)
+
+    asyncio_task = asyncio.create_task(
+        run_audio_analysis(
+            task_id=task_id,
             user_id=current_user.user_id,
-            path=str(bgm_path),
-            type="audio",
+            source_asset_id=req.asset_id,
+            video_path_str=video_path_str,
+            audio_asset_id=audio_asset_id,
+            dst_dir=str(AUDIO_STORAGE_DIR),
         )
-        session.add(bgm_asset)
-        session.commit()
+    )
+    info.task = asyncio_task
 
-    async def event_stream():
-        _sentinel = object()
-        loop = asyncio.get_running_loop()
-        gen = stream_audio_features(str(bgm_path), audio_asset_id=audio_asset_id)
-
-        try:
-            while True:
-                frame = await loop.run_in_executor(None, next, gen, _sentinel)
-                if frame is _sentinel:
-                    break
-                payload = json.dumps(frame, ensure_ascii=False)
-                yield f"data: {payload}\n\n"
-        except asyncio.CancelledError:
-            return
-        except Exception as exc:
-            error_payload = json.dumps(
-                {"error": True, "message": str(exc)}, ensure_ascii=False
-            )
-            yield f"event: error\ndata: {error_payload}\n\n"
-        finally:
-            gen.close()  # type: ignore
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "success",
+            "data": {"task_id": task_id},
         },
     )

@@ -36,7 +36,7 @@ async def get_task_endpoint(
 
 
 @router.get("/task/{task_id}/stream")
-async def stream_task_endpoint(
+async def stream_task_endpoint(  # noqa: C901
     task_id: str,
     current_user: User = Depends(get_current_user),
 ):
@@ -58,17 +58,32 @@ async def stream_task_endpoint(
         )
         yield f"data: {initial}\n\n"
 
-        try:
-            while not task_info._event.is_set():
-                try:
-                    await asyncio.wait_for(
-                        asyncio.shield(task_info._event.wait()),
-                        timeout=HEARTBEAT_INTERVAL,
-                    )
-                except TimeoutError:
-                    yield ": keepalive\n\n"
-        except asyncio.CancelledError:
-            return
+        if task_info._stream_queue is not None:
+            queue = task_info._stream_queue
+            try:
+                while not task_info._event.is_set():
+                    try:
+                        frame = await asyncio.wait_for(
+                            queue.get(), timeout=HEARTBEAT_INTERVAL
+                        )
+                        payload = json.dumps(frame, ensure_ascii=False)
+                        yield f"data: {payload}\n\n"
+                    except TimeoutError:
+                        yield ": keepalive\n\n"
+            except asyncio.CancelledError:
+                return
+        else:
+            try:
+                while not task_info._event.is_set():
+                    try:
+                        await asyncio.wait_for(
+                            asyncio.shield(task_info._event.wait()),
+                            timeout=HEARTBEAT_INTERVAL,
+                        )
+                    except TimeoutError:
+                        yield ": keepalive\n\n"
+            except asyncio.CancelledError:
+                return
 
         payload = json.dumps(task_info.to_dict(), ensure_ascii=False)
         yield f"data: {payload}\n\n"

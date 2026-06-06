@@ -18,6 +18,7 @@ class TaskInfo:
     result: Any = None
     error: str | None = None
     _event: asyncio.Event = field(default_factory=asyncio.Event)
+    _stream_queue: asyncio.Queue | None = None
 
     def to_dict(self) -> dict:
         base: dict = {

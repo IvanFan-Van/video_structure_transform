@@ -62,7 +62,7 @@ Base URL: `http://127.0.0.1:8000`
     - [请求示例](#请求示例-6)
     - [成功响应 (200)](#成功响应-200-2)
     - [错误响应](#错误响应-8)
-  - [11. GET /analyze-audio — 流式音频分析](#11-get-analyze-audio--流式音频分析)
+  - [11. POST /analyze-audio — 异步音频分析](#11-post-analyze-audio--异步音频分析)
     - [查询参数](#查询参数)
     - [请求示例 (curl)](#请求示例-curl-1)
     - [响应格式 (SSE)](#响应格式-sse-1)
@@ -766,7 +766,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ## 8. GET /task/{task_id} — 查询异步任务状态（轮询）
 
-查询由 `/compress`、`/analyze-script` 或 `/analyze-visual` 提交的异步任务的当前状态和结果。
+查询由 `/compress`、`/analyze-script`、`/analyze-visual` 或 `/analyze-audio` 提交的异步任务的当前状态和结果。
 
 > **推荐使用 SSE**：`GET /task/{task_id}/stream` 提供实时推送，无需轮询。此端点在客户端不支持 SSE 时作为降级回退使用。
 
@@ -851,7 +851,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `task_id` | string | 任务唯一标识 |
-| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` |
+| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` |
 | `resource_id` | string | 关联的资源 ID（如 asset_id） |
 | `status` | string | 任务状态：`running` / `completed` / `failed` / `cancelled` |
 | `created_at` | string | 任务创建时间（ISO 8601） |
@@ -909,7 +909,7 @@ data: {"task_id":"dddddddd-...","type":"analyze-script","resource_id":"a1b2...",
 
 **任务运行中（连接时任务仍在执行）：**
 
-先推送运行状态，然后每 15 秒发送 keepalive，最后推送最终状态：
+普通任务（compress/analyze-script/visual）先推送运行状态，然后每 15 秒发送 keepalive，最后推送最终状态：
 
 ```
 data: {"task_id":"dddddddd-...","status":"running"}
@@ -921,11 +921,28 @@ data: {"task_id":"dddddddd-...","status":"running"}
 data: {"task_id":"dddddddd-...","type":"analyze-script","resource_id":"a1b2...","status":"completed","created_at":"...","result":{...}}
 ```
 
+**流式任务（analyze-audio）：** 在运行状态和最终结果之间，会逐帧推送业务数据：
+
+```
+data: {"task_id":"ffffffff-...","status":"running"}
+
+data: {"time":0.0,"asset_id":"b2c3...","frame_index":0,"is_last_frame":false,"local":{...},"running_global":{...}}
+
+data: {"time":0.023,...}
+
+: keepalive
+
+data: {"time":30.0,...}
+
+data: {"task_id":"ffffffff-...","type":"analyze-audio","status":"completed","created_at":"...","result":{...}}
+```
+
 ### SSE 事件说明
 
 | 帧类型 | 格式 | 说明 |
 |---|---|---|
 | 初始状态 | `data: <json>\n\n` | 连接建立后立即发送的第一帧：若任务已结束则包含完整 `to_dict()` 输出；若仍在运行则只包含 `{"task_id":"...","status":"running"}` |
+| 流式数据 | `data: <json>\n\n` | （仅流式任务，如 `analyze-audio`）任务运行期间逐帧推送的业务数据，格式取决于任务类型 |
 | keepalive | `: keepalive\n\n` | 以 `:` 开头的 SSE 注释行，仅用于保持 TCP 连接不被中间代理关闭，无业务含义，客户端可直接忽略 |
 | 最终状态 | `data: <json>\n\n` | 任务状态转为 `completed` / `failed` / `cancelled` 时发送的最后一帧，包含完整 `to_dict()` 输出，此帧后服务端关闭连接 |
 
@@ -933,7 +950,8 @@ data: {"task_id":"dddddddd-...","type":"analyze-script","resource_id":"a1b2...",
 
 | 任务当前状态 | SSE 流行为 |
 |---|---|
-| `running` | 发送 `{"task_id":"...","status":"running"}`，每 15 秒 keepalive，状态变更后发送最终 `to_dict()` 并关闭 |
+| `running`（普通任务） | 发送 `{"task_id":"...","status":"running"}`，每 15 秒 keepalive，状态变更后发送最终 `to_dict()` 并关闭 |
+| `running`（流式任务） | 发送 `{"task_id":"...","status":"running"}`，逐帧推送业务数据（帧间超时 15s 则发 keepalive），任务完成后发送最终 `to_dict()` 并关闭 |
 | `completed` | 发送最终 `to_dict()` 后立即关闭 |
 | `failed` | 发送最终 `to_dict()`（含 `error` 字段）后立即关闭 |
 | `cancelled` | 发送最终 `to_dict()` 后立即关闭 |
@@ -996,56 +1014,78 @@ curl -X POST http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/can
 
 ---
 
-## 11. GET /analyze-audio — 流式音频分析
+## 11. POST /analyze-audio — 异步音频分析
 
-接收已上传的视频，自动提取背景音乐（BGM）并以 **Server-Sent Events (SSE)** 方式逐帧流式返回音频特征。支持与 `/upload` 相同的所有视频格式。
+对已上传的视频进行音频分析：提取背景音乐（BGM）并流式推送音频特征。采用与 `/compress`、`/analyze-script`、`/analyze-visual` 一致的异步任务模式。
 
 | 属性 | 值 |
 |---|---|
-| **方法** | `GET` |
+| **方法** | `POST` |
 | **认证** | 需要（Bearer Token） |
-| **Content-Type** | —（无请求体） |
-| **响应类型** | `text/event-stream`（SSE 流式推送） |
+| **Content-Type** | `application/json` |
 
-> **BGM 自动提取**：每次请求都会使用 `ffmpeg` 从视频中提取音轨，再用 `audio_separator` (UVR-MDX-NET-Inst_HQ_3) 分离人声与伴奏，仅保留伴奏（bgm.mp3）用于分析。分离后的 bgm.mp3 以 `type="audio"` 存入数据库。
+> **BGM 自动提取**：后台任务使用 `ffmpeg` 从视频中提取音轨，再用 `audio_separator` (UVR-MDX-NET-Inst_HQ_3) 分离人声与伴奏，仅保留伴奏（bgm.wav）用于分析。分离后的 bgm.wav 以 `type="audio"` 存入数据库。
 
-### 查询参数
+### 请求参数
 
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
-|---|---|---|---|---|
-| `asset_id` | string | **是** | — | 已上传的视频 asset_id（由 `/upload` 返回） |
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `asset_id` | string | **是** | 源视频的 asset_id（由 `/upload` 返回） |
 
-认证通过标准 `Authorization: Bearer <token>` 请求头传递。
-
-### 请求示例 (curl)
+### 请求示例
 
 ```bash
-curl -N "http://127.0.0.1:8000/analyze-audio?asset_id=a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
-  -H "Authorization: Bearer <token>"
+curl -X POST http://127.0.0.1:8000/analyze-audio \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"}'
 ```
 
-> **浏览器 EventSource 限制**：浏览器原生 `EventSource` API 不支持自定义请求头（如 `Authorization`）。在浏览器端使用时，需通过以下方式之一解决：
-> - 使用 `fetch()` + ReadableStream 模拟 SSE 并手动添加 `Authorization` 头
-> - 使用 `EventSource` polyfill（支持 `headers` 配置）
-> - 调整服务端 `get_current_user` 以额外从 URL query string 或 cookie 中读取 token
+### 成功响应 (202)
 
-### 响应格式 (SSE)
+分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取实时音频帧和最终结果。
 
-每一帧以 `data: {json}\n\n` 格式推送：
-
-```
-data: {"time": 0.0, "frame_index": 0, "is_last_frame": false, "local": {...}, "running_global": {...}}
-
-data: {"time": 0.023, "frame_index": 1, "is_last_frame": false, "local": {...}, "running_global": {...}}
-
-...
-
-data: {"time": 30.0, "frame_index": 1293, "is_last_frame": true, "local": {...}, "running_global": {...}}
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "ffffffff-ffff-ffff-ffff-ffffffffffff"
+  }
+}
 ```
 
-### SSE 事件说明
+---
 
-每帧数据结构如下：
+### 通过 SSE 获取流式音频帧
+
+连接 `GET /task/{task_id}/stream`，任务运行期间会**逐帧推送音频特征**，格式与 `/task/{id}/stream` 通用机制兼容但增加了帧级数据：
+
+```
+data: {"task_id":"ffffffff-...","status":"running"}
+
+data: {"time":0.0,"asset_id":"b2c3d4e5-...","frame_index":0,"is_last_frame":false,"local":{...},"running_global":{...}}
+
+data: {"time":0.023,"asset_id":"b2c3d4e5-...","frame_index":1,"is_last_frame":false,"local":{...},"running_global":{...}}
+
+: keepalive
+
+data: {"time":30.0,"asset_id":"b2c3d4e5-...","frame_index":1293,"is_last_frame":true,"local":{...},"running_global":{...}}
+
+data: {"task_id":"ffffffff-...","type":"analyze-audio","resource_id":"a1b2...","status":"completed","created_at":"...","result":{...}}
+```
+
+**时序说明：**
+
+| 阶段 | SSE 帧 | 说明 |
+|---|---|---|
+| 连接建立 | `{"task_id":"...","status":"running"}` | 任务正在执行 |
+| BGM 提取中 | `: keepalive` | BGM 分离期间每 15s 发送一次心跳 |
+| 特征推送 | `{"time":..., "local":{...}, "running_global":{...}}` | 逐帧推送音频特征，帧率取决于 hop_size |
+| 任务完成 | `{"task_id":"...","status":"completed","result":{...}}` | 发送最终结果后关闭连接 |
+
+### SSE 帧数据结构
+
+每帧的音频特征数据结构如下：
 
 ```json
 {
@@ -1073,35 +1113,75 @@ data: {"time": 30.0, "frame_index": 1293, "is_last_frame": true, "local": {...},
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `time` | float | 当前帧在音频中的绝对时间（秒） |
-| `asset_id` | string \| null | BGM 音频在数据库中的 asset_id，所有帧相同；客户端可据此下载原始 bgm.mp3 |
+| `asset_id` | string \| null | BGM 音频在数据库中的 asset_id，所有帧相同 |
 | `frame_index` | int | 从 0 开始的帧序号 |
-| `is_last_frame` | bool | 是否为最后一帧，客户端可据此关闭 EventSource |
+| `is_last_frame` | bool | 是否为最后一帧 |
 | `local.rms` | float | 当前帧的 RMS 能量（线性幅度） |
 | `local.spectral_centroid` | float | 当前帧的频谱质心（Hz），反映亮度 |
 | `local.spectral_flux` | float | 当前帧的频谱变化率，反映新声音出现 |
 | `local.onset_envelope` | float | 当前帧的 onset 强度包络值 |
-| `running_global.duration` | float | 音频总时长（秒），所有帧中该值相同 |
-| `running_global.genre` | string | 音乐流派（HuggingFace 分类），所有帧中该值相同 |
+| `running_global.duration` | float | 音频总时长（秒） |
+| `running_global.genre` | string | 音乐流派（HuggingFace 分类） |
 | `running_global.average_spectral_centroid` | float | 从开始到当前帧的平均频谱质心 |
-| `running_global.overall_brightness_hz` | float | 同 `average_spectral_centroid`，表示整体明亮度 |
+| `running_global.overall_brightness_hz` | float | 同 `average_spectral_centroid` |
 | `running_global.dynamic_range` | float | 从开始到当前帧的动态范围（max-min RMS） |
 | `running_global.estimated_bpm` | float | aubio 在线 BPM 估计（实时收敛） |
 
-**错误事件**（`event: error`）：
+---
 
-若分析过程中发生异常，将推送一条 `event: error` 消息后关闭连接：
+### 任务完成后 result 结构
 
+通过 `GET /task/{task_id}` 轮询，任务完成后 `result` 字段包含音频摘要：
+
+```json
+{
+  "task_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+  "type": "analyze-audio",
+  "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "completed",
+  "created_at": "2025-01-01T12:00:00+00:00",
+  "result": {
+    "audio_asset_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "bgm_path": "storage/audios/b2c3d4e5-..._bgm.wav",
+    "duration": 30.8,
+    "genre": "pop",
+    "estimated_bpm": 121.3,
+    "average_spectral_centroid": 1256.3,
+    "overall_brightness_hz": 1256.3,
+    "dynamic_range": 0.0023
+  }
+}
 ```
-event: error
-data: {"error": true, "message": "错误描述"}
-```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `audio_asset_id` | string | BGM 音频的 asset_id，可用于下载 |
+| `bgm_path` | string | BGM 文件在服务器上的路径 |
+| `duration` | float | 音频总时长（秒） |
+| `genre` | string | 音乐流派分类 |
+| `estimated_bpm` | float | 估计的 BPM |
+| `average_spectral_centroid` | float | 全局平均频谱质心（Hz） |
+| `overall_brightness_hz` | float | 全局明亮度（Hz） |
+| `dynamic_range` | float | 全局动态范围 |
+
+---
 
 ### 前端集成示例
 
 ```javascript
-// 浏览器端：使用 fetch + ReadableStream（支持自定义 Authorization 头）
+// 步骤 1：发起音频分析
+const { task_id } = await fetch("http://127.0.0.1:8000/analyze-audio", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer <token>",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ asset_id: "a1b2c3d4-..." }),
+}).then(r => r.json()).then(d => d.data);
+
+// 步骤 2：连接 SSE 获取实时音频帧
 const response = await fetch(
-  "http://127.0.0.1:8000/analyze-audio?asset_id=xxx",
+  `http://127.0.0.1:8000/task/${task_id}/stream`,
   { headers: { Authorization: "Bearer <token>" } }
 );
 const reader = response.body.getReader();
@@ -1114,19 +1194,20 @@ while (true) {
   buffer += decoder.decode(value, { stream: true });
 
   const parts = buffer.split("\n\n");
-  buffer = parts.pop(); // 保留未完成的部分
+  buffer = parts.pop();
   for (const part of parts) {
     const line = part.trim();
     if (line.startsWith("data: ")) {
-      const frame = JSON.parse(line.slice(6));
-      updateWaveform(frame.time, frame.local.rms);
-      updateBPMDisplay(frame.running_global.estimated_bpm);
-      if (frame.is_last_frame) {
-        console.log("分析完成:", frame.running_global);
+      const data = JSON.parse(line.slice(6));
+      if (data.status === "completed") {
+        console.log("分析完成:", data.result);
+      } else if (data.time !== undefined) {
+        // 音频特征帧
+        updateWaveform(data.time, data.local.rms);
+        updateBPMDisplay(data.running_global.estimated_bpm);
       }
-    } else if (line.startsWith("event: error")) {
-      // 下一行 data: 中携带错误详情
     }
+    // 忽略 keepalive（以 ":" 开头的注释行）
   }
 }
 ```
@@ -1135,13 +1216,15 @@ while (true) {
 
 | HTTP 状态码 | message | 说明 |
 |---|---|---|
-| 400 | `缺少 asset_id 参数` | 未提供 asset_id 查询参数 |
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 400 | `缺少 asset_id 参数` | 请求体未提供 asset_id |
 | 400 | `不支持的文件类型 .xxx` | 文件扩展名不在允许列表中 |
 | 404 | `素材 xxx 不存在` | 该 asset_id 对应的记录不存在 |
 | 403 | `无权访问该素材` | 素材不属于当前用户 |
 | 500 | `源文件丢失` | 数据库记录存在但磁盘文件已丢失 |
 
-若分析开始后发生运行时错误，将发送 SSE `event: error` 消息（详见上方的"错误事件"）。
+若分析开始后发生运行时错误，任务状态变为 `failed`，通过 `GET /task/{task_id}` 的 `error` 字段获取详情。
 
 ---
 
@@ -1175,7 +1258,7 @@ while (true) {
 | 400 | `邮箱 xxx 已注册` | 注册时邮箱重复 |
 | 400 | `该账号通过 Google 登录注册，请使用 Google 登录` | OAuth 用户尝试密码登录 |
 | 400 | `不支持的文件类型` | 上传了非视频文件 |
-| 400 | `缺少 asset_id 参数` | 压缩/提取时未提供 asset_id |
+| 400 | `缺少 asset_id 参数` | 压缩/分析时未提供 asset_id |
 | 401 | `未提供认证令牌` | 请求头缺少 Authorization |
 | 401 | `令牌已过期或无效` | JWT 解码失败 |
 | 401 | `令牌格式无效` | JWT payload 缺少 user_id |
@@ -1212,12 +1295,17 @@ while (true) {
 
 ### 概述
 
-视频压缩 (`/compress`) 和 AI 分析 (`/analyze-script`、`/analyze-visual`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
+视频压缩 (`/compress`) 和 AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
+
+尤其对于 `/analyze-audio`，SSE 流会在任务运行期间**逐帧推送音频特征数据**，最终在任务完成时推送汇总结果。
 
 ### 工作流程
 
 ```
 POST /compress       → 202 { task_id }                    ← 立即返回
+POST /analyze-script → 202 { task_id }                    ← 立即返回
+POST /analyze-visual → 202 { task_id }                    ← 立即返回
+POST /analyze-audio  → 202 { task_id }                    ← 立即返回
                      → 连接 GET /task/{id}/stream (SSE)   ← 推荐：实时推送
 GET  /task/{id}      → 200 { status: "running" }           ← 轮询回退
 GET  /task/{id}      → 200 { status: "completed", ... }    ← 结果就绪
@@ -1238,6 +1326,7 @@ GET  /task/{id}      → 200 { status: "cancelled" }
 
 - **`/compress`**: 底层 `ffmpeg` 子进程被 `SIGKILL` 杀死，部分压缩文件被清理
 - **`/analyze-script` / `/analyze-visual`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
+- **`/analyze-audio`**: 底层 `ffmpeg` 和模型推理被 `asyncio.CancelledError` 中断，中间产物（storage/tmp 下的文件）由任务内部清理
 
 ### 注意事项
 
