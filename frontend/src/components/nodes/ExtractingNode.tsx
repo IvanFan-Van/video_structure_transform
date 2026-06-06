@@ -86,6 +86,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
     const stopAnalyzeVisual = useVideoStore((s) => s.stopAnalyzeVisual);
     const stopAnalyzeAudio = useVideoStore((s) => s.stopAnalyzeAudio);
     const audioStatus = useVideoStore((s) => s.audioStatus);
+    const audioTime = useVideoStore((s) => s.audioTime);
     const videoErrors = useVideoStore((s) => s.videoErrors);
     const hasError = videoErrors.some((e) => e.nodeId === "extracting");
 
@@ -105,6 +106,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
 
     const getTimeLabel = (key: string) => {
         if (key === "script") return formatTime(scriptTime);
+        if (key === "bgm") return formatTime(audioTime);
         if (key === "features") return formatTime(visualTime);
         return "";
     };

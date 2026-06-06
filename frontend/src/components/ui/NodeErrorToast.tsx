@@ -27,7 +27,8 @@ export function NodeErrorToast() {
                 display: "flex",
                 flexDirection: "column",
                 gap: "6px",
-                maxWidth: "360px",
+                width: "360px",
+                maxWidth: "calc(100vw - 40px)",
             }}
         >
             {errors.map((err) => {
@@ -41,6 +42,7 @@ export function NodeErrorToast() {
                             borderRadius: "6px",
                             boxShadow: "0 2px 12px rgba(239,68,68,0.10)",
                             overflow: "hidden",
+                            width: "100%",
                             fontFamily: "'JetBrains Mono', monospace",
                         }}
                     >
@@ -122,6 +124,7 @@ export function NodeErrorToast() {
                                         color: "#bbb",
                                         letterSpacing: "1px",
                                         marginBottom: "2px",
+                                        overflowWrap: "break-word",
                                     }}
                                 >
                                     CODE: {err.code}
