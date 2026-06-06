@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
+import { NodeErrorToast } from "../components/ui/NodeErrorToast";
 
 const pageStyle = {
     width: "100vw",
@@ -189,6 +190,7 @@ export function RegisterPage() {
                     </Link>
                 </div>
             </div>
+            <NodeErrorToast />
         </div>
     );
 }
