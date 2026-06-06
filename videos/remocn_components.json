@@ -1,60 +1,292 @@
 [
-  {"name": "BlurReveal", "description": "Text fades in from a heavy blur into sharp focus."},
-  {"name": "StaggeredFadeUp", "description": "Words rise from below with a soft cascading delay."},
-  {"name": "MaskedSlideReveal", "description": "Lines grow out from behind an invisible horizontal mask."},
-  {"name": "TrackingIn", "description": "Letter-spacing collapses from wide to normal with a spring snap."},
-  {"name": "InlineHighlight", "description": "Animates one word inside a sentence from a base color to a brand color."},
-  {"name": "MarkerHighlight", "description": "Marker bar sweeps in behind a phrase, optionally inverting the text color."},
-  {"name": "ShimmerSweep", "description": "Bright gradient sweeps across dim text, lighting it up."},
-  {"name": "Typewriter", "description": "Character-by-character text reveal with a deterministic blinking cursor."},
-  {"name": "TextFadeReplace", "description": "Cross-fades between two strings on the same line. Includes a StrikethroughReplace variant."},
-  {"name": "SlotMachineRoll", "description": "Numbers and characters roll into place like a casino reel."},
-  {"name": "InfiniteMarquee", "description": "Endlessly scrolling horizontal text band."},
-  {"name": "PerspectiveMarquee", "description": "Marquee tilted into 3D space with depth fade."},
-  {"name": "MatrixDecode", "description": "Random characters scramble and resolve into the target string."},
-  {"name": "RGBGlitchText", "description": "Three-channel RGB split with a brief horizontal jitter."},
-  {"name": "SpringPopIn", "description": "Elastic scale pop with configurable overshoot."},
-  {"name": "PulsingIndicator", "description": "Continuous sine-driven pulse for loading or activity states."},
-  {"name": "SuccessConfetti", "description": "Deterministic particle burst from a chosen origin point."},
-  {"name": "CursorFlow", "description": "Realistic mouse that arcs along Bezier paths and clicks targets that dip in response. Includes a SimulatedCursor variant."},
-  {"name": "BrushStrokeSimulator", "description": "A simulated fingertip drags a blur brush across an image, revealing a pixelated overlay along its trail via SVG mask."},
-  {"name": "BoundingBoxSelector", "description": "Figma-style selection rectangle that snaps around a target."},
-  {"name": "ToastNotification", "description": "System toast that springs in, holds, and slides away."},
-  {"name": "MeshGradientBg", "description": "Living gradient where soft color blobs drift on noise-driven coordinates."},
-  {"name": "DynamicGrid", "description": "Subtle moving grid or dot pattern background."},
-  {"name": "SpotlightCard", "description": "Cursor-tracked radial light that rims a card and lifts it from the dark."},
-  {"name": "GlassCodeBlock", "description": "Premium frosted-glass code window with rim light and traffic-light controls."},
-  {"name": "TerminalSimulator", "description": "CLI build simulation with chunked log output and step-function scrolling."},
-  {"name": "CodeAccordion", "description": "Long code blocks collapse mid-section, hiding noise behind a count badge."},
-  {"name": "CodeDiffWipe", "description": "Before/after comparison with a clip-path slider revealing the new code."},
-  {"name": "StaggeredBentoGrid", "description": "Bento grid where cards cascade in with per-cell sequences."},
-  {"name": "ChatToPreviewLayout", "description": "Two-column split where one panel shrinks and the other expands into view."},
-  {"name": "AIGenerateOverlay", "description": "AI 'thinking' overlay — source blurs under a shimmering dot grid while a glassy pill pulses, then the new image fades in."},
-  {"name": "ToolMenuSlideIn", "description": "A horizontal pill of tool icons whips up from below the canvas, then each icon pops in with a staggered spring."},
-  {"name": "AnimatedLineChart", "description": "SVG line chart drawn left-to-right via stroke-dashoffset."},
-  {"name": "AnimatedBarChart", "description": "Bars spring up from the baseline with deterministic stagger."},
-  {"name": "DragAndDropFlow", "description": "Cursor drags a file into a drop zone that lights up and starts a progress bar."},
-  {"name": "ZoomThroughTransition", "description": "Aggressive scale-in 'through' an element to the next scene."},
-  {"name": "DeviceMockupZoom", "description": "Pull back from a UI to reveal it inside a phone or laptop frame."},
-  {"name": "MorphingModal", "description": "Card lifts off a grid and expands into a full-screen modal."},
-  {"name": "ImageExpandToFullscreen", "description": "A thumbnail in a feed post lifts off the card and morphs seamlessly into a fullscreen editor."},
-  {"name": "DirectionalWipe", "description": "Slide one scene in while pushing the other out."},
-  {"name": "SwipeTransitionWipe", "description": "A mobile-style swipe transition with parallax background and a darkening trail on the outgoing scene."},
-  {"name": "SpatialPush", "description": "A new scene physically presses the old one back into the frame."},
-  {"name": "FrostedGlassWipe", "description": "Elegant scene transition through a sliding pane of frosted glass."},
-  {"name": "GridPixelateWipe", "description": "Dissolve from one scene to the next through a deterministic grid of mask cells."},
-  {"name": "ChromaticAberrationWipe", "description": "An ultra-fast slide transition with an RGB glitch on the peak frames."},
-  {"name": "HeroDeviceAssemble", "description": "Floating device layers spring into a laptop or phone, then the screen wakes with a shimmer."},
-  {"name": "EcosystemConstellation", "description": "Central logo orbited by integration satellites with pulsing data lines."},
-  {"name": "InfiniteBentoPan", "description": "Camera diagonally drifts across an oversized bento grid behind a soft vignette."},
-  {"name": "BrowserFlow", "description": "Full Safari/Chrome simulation: URL typing, loading bar, scroll, and click."},
-  {"name": "AIGenerationCanvas", "description": "Prompt input morphs into a header, then a skeleton dashboard flips into populated cards."},
-  {"name": "LiveCodeCompilation", "description": "Split-screen where typed code on the left snaps a live UI preview on the right."},
-  {"name": "TerminalToBrowserDeploy", "description": "CLI deploy completes, terminal blurs back, and a browser window springs from the deploy URL."},
-  {"name": "DashboardPopulate", "description": "Empty dashboard cascades to life with KPI count-ups, bar bounces, line traces, and a donut fill."},
-  {"name": "PipelineJourney", "description": "Kanban ticket flies between columns, triggering events on landing."},
-  {"name": "PricingTierFocus", "description": "Three pricing cards where the focused tier rises and brightens while siblings dim and blur."},
-  {"name": "ProductLaunchTrailer", "description": "Cinematic Product Hunt teaser with logo pulse, zoom-through, 3D bento fly-over, and a confetti version drop."},
-  {"name": "ChangelogBite", "description": "Seamlessly looping square card showing a before/after diff with a frosted glass wipe and a pulsing New pill."},
-  {"name": "VisualDocsSnippet", "description": "Calm tutorial flow — virtual cursor arcs to a button, clicks, and a bounding box plus tooltip explain what happened."}
+  {
+    "name": "BlurReveal",
+    "category": "Typography",
+    "description": "文字从严重模糊状态逐渐聚焦至清晰锐利，由虚到实单次进场。关键线索：字符从不可辨认的色块渐变为可读文字。区别于普通淡入：核心变化在于聚焦锐化而非透明度改变。"
+  },
+  {
+    "name": "StaggeredFadeUp",
+    "category": "Typography",
+    "description": "单词或字符分组从下方依次上浮并淡入，各组间存在微小延迟，如波浪逐级涌现。单次进场。关键线索：非整体同时上升，而是带有时序错位的层叠升起。区别于BlurReveal：运动方向自下而上且带有错峰节奏。"
+  },
+  {
+    "name": "MaskedSlideReveal",
+    "category": "Typography",
+    "description": "文字从不可见水平遮罩边缘向外生长展开，仿佛从缝隙中被拉出。单次进场。关键线索：生长点始终位于遮罩边界处而非文字整体滑动。区别于TrackingIn：是遮罩范围扩展而非字间距变化。"
+  },
+  {
+    "name": "TrackingIn",
+    "category": "Typography",
+    "description": "字间距从极宽状态快速弹缩至正常值，末端带有弹性过冲回弹。单次进场。关键线索：字符发生横向位移但内容不变，收束时有明显刹车回弹。区别于StaggeredFadeUp：变化维度是字间距而非垂直位移。"
+  },
+  {
+    "name": "InlineHighlight",
+    "category": "Typography",
+    "description": "句子中单个词或短语的颜从基础色渐变为高亮品牌色，其余文字保持静止。单次或循环。关键线索：仅局部变色，周围文字始终作为对比参照。区别于MarkerHighlight：是文字自身颜色变化而非背景色条覆盖。"
+  },
+  {
+    "name": "MarkerHighlight",
+    "category": "Typography",
+    "description": "半透明色条或笔刷痕迹从短语左侧扫入铺满短语后方，可伴随文字颜色反转。单次进场。关键线索：类似荧光笔划过纸面的遮盖效果，有扫掠方向性。区别于InlineHighlight：作用对象是文字背景而非文字颜色自身。"
+  },
+  {
+    "name": "ShimmerSweep",
+    "category": "Typography",
+    "description": "明亮渐变光带从暗色文字表面横向扫过，被照区瞬间变亮后恢复暗色。单次或循环。关键线索：光带本身沿文字移动且边界清晰，而非文字整体亮度变化。区别于普通渐变填充：光泽具有明确的移动方向和硬边界。"
+  },
+  {
+    "name": "Typewriter",
+    "category": "Typography",
+    "description": "字符在固定位置按顺序依次显现，可伴随末尾光标闪烁。单次播放无循环。关键线索：字符逐一出现而非整体淡入，已出现的字符保持固定不动。区别于word-reveal：是逐字符而非逐词逐个显现。"
+  },
+  {
+    "name": "TextFadeReplace",
+    "category": "Typography",
+    "description": "文字原地淡出旧字符并淡入新字符完成替换，可叠加删除线划过变体。单次播放。关键线索：新旧文字在同一位置交替，淡出淡入可部分重叠。区别于Typewriter：是整体替换而非逐字符追加新内容。"
+  },
+  {
+    "name": "SlotMachineRoll",
+    "category": "Typography",
+    "description": "数字或字符沿纵轴高速滚动如老虎机转轮，逐渐减速并停在目标值。单次播放。关键线索：字符沿垂直方向循环滚动经过，有旋转滚筒的视觉错觉。区别于MatrixDecode：滚动方向为垂直而非在固定位置随机跳变。"
+  },
+  {
+    "name": "InfiniteMarquee",
+    "category": "Typography",
+    "description": "文字或图标在水平方向匀速持续滚动，内容首尾无缝拼接形成无限循环，无停顿或回弹。关键线索：内容从一侧连续进入另一侧持续离开，永不消失重置。区别于普通滚动：无起始和结束状态，始终保持恒速运动。"
+  },
+  {
+    "name": "PerspectiveMarquee",
+    "category": "Typography",
+    "description": "横幅文字倾斜入三维空间，近大远小，边缘融入背景产生深度退晕。无限循环。关键线索：文字带透视变形和边缘深度模糊，具空间纵深感。区别于InfiniteMarquee：核心差异在于三维透视变形和景深虚化而非纯平面滚动。"
+  },
+  {
+    "name": "MatrixDecode",
+    "category": "Typography",
+    "description": "随机乱码在目标位置高速跳变逐步收敛，最终解码为正确字符串。单次播放。关键线索：每个位置字符多次随机跳变后锁定，整体从混乱到有序收敛。区别于SlotMachineRoll：在固定位置乱序跳变而非沿纵轴纵向滚动。"
+  },
+  {
+    "name": "RGBGlitchText",
+    "category": "Typography",
+    "description": "文字红绿蓝三通道短暂水平错位分离，伴随横向抖动后迅速归位复原。单次或间歇触发。关键线索：文字边缘出现红蓝重影撕裂现象，类似信号干扰画面。区别于ChromaticAberrationWipe：作用于单个文字元素而非整个场景画面过渡。"
+  },
+  {
+    "name": "SpringPopIn",
+    "category": "Core Primitives",
+    "description": "目标元素从无到有以弹性缩放方式弹出，先过冲目标尺寸再回弹至最终大小。单次进场。关键线索：出现时有明显的弹跳过冲惯性，先超过再回缩。区别于普通缩放：关键特征在于弹性过冲和回弹的物理感。"
+  },
+  {
+    "name": "PulsingIndicator",
+    "category": "Core Primitives",
+    "description": "圆形或点状指示器以正弦波持续循环缩放闪烁，模拟心跳或加载状态。无限循环。关键线索：规律性的一明一暗呼吸节奏，无突然跳变。区别于SpringPopIn：是永久匀速循环而非一次性弹跳进场。"
+  },
+  {
+    "name": "SuccessConfetti",
+    "category": "Core Primitives",
+    "description": "大量彩色碎片从指定原点向四周迸发散落，带有重力和旋转，轨迹可复现。单次播放。关键线索：粒子群从中心点高速向外扩散后受重力飘落。区别于随机粒子特效：运动轨迹是确定性可复现的固定路径。"
+  },
+  {
+    "name": "CursorFlow",
+    "category": "Core Primitives",
+    "description": "鼠标指针沿贝塞尔弧线平滑移动至目标，点击后触发目标的下陷按压反馈。单次播放。关键线索：指针轨迹为弧线而非直线，目标被点击时有明显下陷响应。区别于BrowserFlow：聚焦于指针自身的弧线运动路径和点击交互反馈。"
+  },
+  {
+    "name": "BrushStrokeSimulator",
+    "category": "Core Primitives",
+    "description": "模拟指尖圆点在图像上拖拽，经其轨迹露出底层像素化覆层。单次播放。关键线索：类似手指在起雾玻璃上划出痕迹的擦除效果，轨迹边缘模糊。区别于固定方向擦除过渡：是不规则的自由笔画而非固定扫掠。"
+  },
+  {
+    "name": "BoundingBoxSelector",
+    "category": "Core Primitives",
+    "description": "半透明选择框从某处拉伸展开，最终吸附并包围目标元素边缘。单次进场。关键线索：矩形框四角有抓手标记，框内外区域有视觉区分。区别于MorphingModal：选择框为轻型选区标识而非内容容器形态变化。"
+  },
+  {
+    "name": "ToastNotification",
+    "category": "Core Primitives",
+    "description": "通知条从屏幕边缘弹入悬停数秒后滑出消失，入场带弹性过冲。单次播放含驻留和退场三段式时序。关键线索：典型的系统通知行为——弹入、驻留、滑出三个连续阶段。区别于普通弹出：有明确的自动退场阶段。"
+  },
+  {
+    "name": "MeshGradientBg",
+    "category": "Environment & Lighting",
+    "description": "大面积柔和色块在画布上以噪声驱动缓慢漂移，色块边缘互相渗透融合。无限循环。关键线索：色彩运动极慢且方向无规律，类似流动的水彩颜料。区别于静态渐变：色块位置持续在变但速度极缓如流体。"
+  },
+  {
+    "name": "DynamicGrid",
+    "category": "Environment & Lighting",
+    "description": "由点阵或线条构成的网格背景，整体持续做微小运动或波动。无限循环。关键线索：网格结构始终可见但局部节点在做细微偏移，产生活的呼吸感。区别于静态网格：整体保持动势但模式不破不散。"
+  },
+  {
+    "name": "SpotlightCard",
+    "category": "Environment & Lighting",
+    "description": "跟随光标位置移动的径向光源照射卡片表面，被照区浮起暗处沉入阴影。实时跟随光标。关键线索：光源外区域明显变暗，被照区域有立体浮起感。区别于普通悬停高亮：光源实时跟随交互位置持续移动。"
+  },
+  {
+    "name": "GlassCodeBlock",
+    "category": "UI Blocks",
+    "description": "代码窗口呈磨砂玻璃质感，边缘有微弱轮廓光，顶部带红黄绿三色圆点控件。静态展示可叠加其他动画。关键线索：具有通透的玻璃肌理和macOS风格色彩圆点装饰。区别于普通代码块：核心辨识点是磨砂玻璃美学。"
+  },
+  {
+    "name": "TerminalSimulator",
+    "category": "UI Blocks",
+    "description": "终端界面命令行输出以分块方式逐批打印，伴随自动滚动到底部的阶梯式滚动。单次播放。关键线索：文本按批次整块输出而非逐字符出现，每次输出后自动滚动到底。区别于Typewriter：是整行整块批量输出而非逐字符追加。"
+  },
+  {
+    "name": "CodeAccordion",
+    "category": "UI Blocks",
+    "description": "长代码块中间段落折叠隐藏，折叠处以数字徽章标识被隐藏行数。交互式展开收起。关键线索：代码中存在一道折叠缝，其上有行数标记。区别于普通折叠面板：保留了代码段落上下文的连续性感知。"
+  },
+  {
+    "name": "CodeDiffWipe",
+    "category": "UI Blocks",
+    "description": "通过可拖动的裁剪分界线，左侧显示旧代码右侧显示新代码，分界线扫过时完成对比揭示。交互或单次播放。关键线索：新旧代码在同一视口内左右共存，分界线像拉链揭示差异。区别于普通对比：是空间左右并置而非时间先后交替。"
+  },
+  {
+    "name": "StaggeredBentoGrid",
+    "category": "UI Blocks",
+    "description": "多个卡片以网格排列，各卡片按格位序号依次错峰入场形成波浪式涌现。单次进场。关键线索：非整行整列同时出现，而是每个单元格有独立延迟。区别于普通网格动画：错峰模式基于单元格而非按行或按列驱动。"
+  },
+  {
+    "name": "ChatToPreviewLayout",
+    "category": "UI Blocks",
+    "description": "双栏布局中一侧面板逐渐收窄，另一侧面板同时扩展填充空间。单次播放。关键线索：两个面板宽度此消彼长，中间有明确分隔线。区别于MorphingModal：是面板比例动态重分配而非单一元素形态变化。"
+  },
+  {
+    "name": "AIGenerateOverlay",
+    "category": "UI Blocks",
+    "description": "源图像先模糊处理，上方叠加闪烁点阵和脉动胶囊提示条，随后新图像淡入替代。单次播放。关键线索：模糊源图加闪烁粒子层加脉动提示条的三层叠加结构。区别于普通加载遮罩：有明确的\"思考中\"三层视觉隐喻。"
+  },
+  {
+    "name": "ToolMenuSlideIn",
+    "category": "UI Blocks",
+    "description": "横排工具图标从画布下方弹跳升起，随后每个图标依次以弹性弹出逐个显现。单次进场。关键线索：整排先整体入场，再逐图标错峰弹入，有两级时序。区别于普通菜单动画：入场分两个阶段——整体升起再逐个弹出。"
+  },
+  {
+    "name": "AnimatedLineChart",
+    "category": "UI Blocks",
+    "description": "折线从左到右逐步描边绘制，线末端在前进中显现，如被画出而非整体出现。单次进场。关键线索：线段从无到有的延伸过程有被描绘的笔触感。区别于AnimatedBarChart：视觉形式是线的水平延伸而非柱的垂直生长。"
+  },
+  {
+    "name": "AnimatedBarChart",
+    "category": "UI Blocks",
+    "description": "柱状图柱体从基线向上弹起，各柱之间存在确定性错峰延迟。单次进场。关键线索：每根柱子都有从零高度弹射至最终高度的弹性过程。区别于AnimatedLineChart：是纵向柱体生长而非横向线条描画。"
+  },
+  {
+    "name": "DragAndDropFlow",
+    "category": "UI Blocks",
+    "description": "光标拖拽文件缩略图至目标区域上方，该区域高亮响应，释放后触发进度条。单次播放。关键线索：被拖拽元素跟随光标移动，目标区域悬停时有明显视觉反馈。区别于CursorFlow：核心叙事是拖拽操作而非光标自身的弧线运动。"
+  },
+  {
+    "name": "ZoomThroughTransition",
+    "category": "Transitions",
+    "description": "画面以激进速度放大，仿佛摄像机穿透当前场景中某元素进入下一场景。单次过渡。关键线索：缩放极快且幅度极大，产生穿越空间的方向感。区别于普通缩放过渡：速度更猛烈且有穿过空间而非切换的连续性。"
+  },
+  {
+    "name": "DeviceMockupZoom",
+    "category": "Transitions",
+    "description": "画面从UI界面局部特写向外拉远，逐渐揭示其嵌入在手机或笔记本外壳框架内。单次过渡。关键线索：设备外框在拉远中逐步显现最终呈现完整设备模型。区别于ZoomThroughTransition：是拉远而非推近，揭示外壳而非穿透。"
+  },
+  {
+    "name": "MorphingModal",
+    "category": "Transitions",
+    "description": "卡片从网格排列中抬起，形态渐进拉伸扩展为全屏模态窗口。单次过渡。关键线索：源卡片和目标模态是同一元素，形态在飞行中渐进变化。区别于ImageExpandToFullscreen：起始形态为卡片而目标形态是模态框窗口。"
+  },
+  {
+    "name": "ImageExpandToFullscreen",
+    "category": "Transitions",
+    "description": "列表缩略图从卡片中分离升起，形态无缝变为全屏编辑器界面。单次过渡。关键线索：缩略图扩展中保持内容连续，最终形态为编辑器界面。区别于MorphingModal：目标是编辑器界面而非模态弹出窗口。"
+  },
+  {
+    "name": "DirectionalWipe",
+    "category": "Transitions",
+    "description": "一个场景从指定方向滑入画面，同时将当前场景向相反方向推出。单次过渡。关键线索：两个场景间有一条清晰的滑动分界线，一推一走。区别于SwipeTransitionWipe：场景间是简单平推关系，无背景视差和暗影效果。"
+  },
+  {
+    "name": "SwipeTransitionWipe",
+    "category": "Transitions",
+    "description": "模拟移动端手势滑动切换场景，背景带视差偏移，退场场景叠加渐变暗影。单次过渡。关键线索：退场页面颜色渐暗，背景层移动速度慢于前景层。区别于DirectionalWipe：多了背景视差偏移和退场暗化两个视觉层次。"
+  },
+  {
+    "name": "SpatialPush",
+    "category": "Transitions",
+    "description": "新场景像物理实体将旧场景向后推入画面深处，产生明显Z轴纵深感。单次过渡。关键线索：旧场景缩小并向远处退去，新场景从前方占据画面。区别于DirectionalWipe：是Z轴深度推动位移而非仅X/Y轴的平面滑动。"
+  },
+  {
+    "name": "FrostedGlassWipe",
+    "category": "Transitions",
+    "description": "一块磨砂玻璃面板从画面一侧滑过，经过处旧场景模糊遮挡、新场景在玻璃后显现。单次过渡。关键线索：过渡中介是一块可见的毛玻璃平面，具模糊和半透明质感。区别于GridPixelateWipe：中介物是连续面板而非离散小格子。"
+  },
+  {
+    "name": "GridPixelateWipe",
+    "category": "Transitions",
+    "description": "画面被划分为网格单元，每单元按序翻转或消失，逐格揭示下一场景。单次过渡。关键线索：过渡逐格发生，每格如马赛克块翻转可见离散网格结构。区别于FrostedGlassWipe：是离散格子逐块溶解而非连续面板滑过。"
+  },
+  {
+    "name": "ChromaticAberrationWipe",
+    "category": "Transitions",
+    "description": "场景在极短时间切换，速度峰值帧出现RGB三通道色差撕裂效果。单次过渡。关键线索：仅在过渡最快瞬间出现红蓝分离，其余时间画面正常。区别于RGBGlitchText：作用于整个场景画面切换而非单个文字元素。"
+  },
+  {
+    "name": "HeroDeviceAssemble",
+    "category": "Compositions",
+    "description": "多个设备外壳层从四周浮入，弹性拼合组装成完整笔记本或手机，随后屏幕点亮带光泽扫过。单次播放。关键线索：设备各部分像磁吸一样从浮动状态聚拢拼合。区别于DeviceMockupZoom：是零件组装拼合过程而非镜头从特写拉远揭示外壳。"
+  },
+  {
+    "name": "EcosystemConstellation",
+    "category": "Compositions",
+    "description": "中央Logo被多个集成服务图标卫星式环绕，之间以脉动数据连线相连。循环或单次。关键线索：视觉结构似星图——中心体加轨道卫星加流动光点连线。区别于普通图标网格：有轨道环绕运动和脉动连线流动。"
+  },
+  {
+    "name": "InfiniteBentoPan",
+    "category": "Compositions",
+    "description": "摄像机在超大Bento网格上方沿对角线持续漂移，画面边缘带柔和暗角。无限循环。关键线索：镜头永远在移动但场景无边界，暗角增强画面纵深。区别于StaggeredBentoGrid：是镜头在卡片上巡航而非卡片自身错峰动画。"
+  },
+  {
+    "name": "BrowserFlow",
+    "category": "Compositions",
+    "description": "完整模拟浏览器操作流程——地址栏输入URL、加载条前进、页面滚动、鼠标点击。单次播放。关键线索：包含完整的浏览器UI元素和操作序列。区别于CursorFlow：重点在浏览器完整界面模拟而非仅指针弧线移动。"
+  },
+  {
+    "name": "AIGenerationCanvas",
+    "category": "Compositions",
+    "description": "提示词输入框变形为页面标题，随后骨架屏仪表盘逐区翻转填充为真实数据卡片。单次播放。关键线索：有三个连续阶段——输入框变形、骨架屏、数据填充，形成完整生成叙事。区别于AIGenerateOverlay：是多阶段页面级流程而非单一叠加层。"
+  },
+  {
+    "name": "LiveCodeCompilation",
+    "category": "Compositions",
+    "description": "左右分屏——左侧代码逐行键入，右侧UI预览实时同步更新。单次播放。关键线索：代码输入和界面更新在同一画面内实时对应有因果联动。区别于TerminalSimulator：核心是代码与UI的实时联动而非命令行输出模拟。"
+  },
+  {
+    "name": "TerminalToBrowserDeploy",
+    "category": "Compositions",
+    "description": "终端完成部署指令后背景虚化，一个浏览器窗口从部署URL处弹跳出现。单次播放。关键线索：场景从终端无缝过渡到浏览器，浏览器以弹性动画出现。区别于BrowserFlow：核心是终端到浏览器的场景转换叙事而非全程操作模拟。"
+  },
+  {
+    "name": "DashboardPopulate",
+    "category": "Compositions",
+    "description": "空白仪表盘逐步激活——KPI数字滚动、柱状图弹起、折线图描画、环形图填充。单次播放。关键线索：多个图表组件在同一画面内按次序逐个激活形成整体活过来的效果。区别于单一图表动画：是仪表盘级别的多组件协同激活。"
+  },
+  {
+    "name": "PipelineJourney",
+    "category": "Compositions",
+    "description": "看板卡片从一列飞入沿弧线落入下一列，落地时触发该列的视觉反馈。单次或循环。关键线索：卡片有明确的起飞-飞行-着陆三段轨迹，着陆点有响应效果。区别于DragAndDropFlow：是自动弧线飞行而非光标手动拖拽。"
+  },
+  {
+    "name": "PricingTierFocus",
+    "category": "Compositions",
+    "description": "三张定价卡片中被聚焦者升起增亮，其余两下沉变暗模糊。单次或交互切换。关键线索：聚焦与非聚焦卡间有明显层级和亮度对比，焦点转移立即转换。区别于普通卡片高亮：是三卡联动的焦点层次化效果。"
+  },
+  {
+    "name": "ProductLaunchTrailer",
+    "category": "Compositions",
+    "description": "包含Logo脉动、穿透缩放、3D Bento飞越、彩纸版本发布等多场景连续的电影级预告。单次播放。关键线索：由多个独立动画段落按顺序拼接构成完整叙事弧线。区别于单一特效组件：是多种特效的编排组合成片。"
+  },
+  {
+    "name": "ChangelogBite",
+    "category": "Compositions",
+    "description": "方形卡片内通过毛玻璃擦除过渡展示diff对比，角落带脉动New标签。无缝循环。关键线索：在紧凑方形画幅内完成完整更新展示叙事。区别于CodeDiffWipe：自带毛玻璃过渡和New标签装饰，画幅限定为正方形。"
+  },
+  {
+    "name": "VisualDocsSnippet",
+    "category": "Compositions",
+    "description": "虚拟光标弧线移至按钮点击，随后出现选择框和提示标注解释操作含义。单次播放。关键线索：操作后叠加选择框和文字标注进行教学解释。区别于CursorFlow：本体加入了教学标注层而非仅展示操作。"
+  }
 ]
