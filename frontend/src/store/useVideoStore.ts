@@ -100,7 +100,7 @@ function generateThumbnail(file: File): Promise<string> {
         video.playsInline = true;
         video.src = url;
         video.onloadeddata = () => {
-            video.currentTime = 1;
+            video.currentTime = Math.min(1, video.duration / 2);
         };
         video.onseeked = () => {
             const canvas = document.createElement("canvas");
@@ -150,10 +150,22 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
     uploadVideo: async (file) => {
         const token = useAuthStore.getState().token;
-        if (sseAbortController) { sseAbortController.abort(); sseAbortController = null; }
-        if (compressSseController) { compressSseController.abort(); compressSseController = null; }
-        if (scriptSseController) { scriptSseController.abort(); scriptSseController = null; }
-        if (visualSseController) { visualSseController.abort(); visualSseController = null; }
+        if (sseAbortController) {
+            sseAbortController.abort();
+            sseAbortController = null;
+        }
+        if (compressSseController) {
+            compressSseController.abort();
+            compressSseController = null;
+        }
+        if (scriptSseController) {
+            scriptSseController.abort();
+            scriptSseController = null;
+        }
+        if (visualSseController) {
+            visualSseController.abort();
+            visualSseController = null;
+        }
         set({
             isUploading: true,
             uploadProgress: 0,
@@ -593,7 +605,8 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             } catch (error: any) {
                 if (axios.isAxiosError(error)) {
                     const axiosError = error as AxiosError<ApiErrorResponse>;
-                    const msg = axiosError.message || "Failed to cancel analysis";
+                    const msg =
+                        axiosError.message || "Failed to cancel analysis";
                     const code = error.response?.statusText || "CANCEL_FAILED";
                     const details = axiosError.response?.data.message || "";
                     set((s) => ({
