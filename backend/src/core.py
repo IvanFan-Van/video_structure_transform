@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import uuid
 from pathlib import Path
 
 import instructor
@@ -11,19 +12,29 @@ from sqlmodel import Session
 from audio import extract_bgm, stream_audio_features
 from models import (
     Asset,
+    CutPointList,
     VideoStructure,
     VideoVisualAnalysis,
     compute_text_density_curve,
     engine,
 )
 from prompts import (
+    SPLIT_DETECTION_SYSTEM_PROMPT,
+    SPLIT_DETECTION_USER_PROMPT,
     TRANSCRIPT_EXTRACTION_SYSTEM_PROMPT,
     TRANSCRIPT_EXTRACTION_USER_PROMPT,
     VIDEO_VISUAL_ANALYSIS_SYSTEM_PROMPT,
     VIDEO_VISUAL_ANALYSIS_USER_PROMPT,
 )
 from task_registry import task_registry
-from video import compress_video_async, probe_video, video_to_base64
+from video import (
+    compress_video_async,
+    detect_scenes_scenedetect,
+    get_video_duration,
+    probe_video,
+    split_video_by_segments,
+    video_to_base64,
+)
 
 _STREAM_EOF = object()
 
@@ -239,6 +250,152 @@ async def run_audio_analysis(
                 "audio_asset_id": audio_asset_id,
                 "bgm_path": str(bgm_path),
                 **last_frame["running_global"],
+            },
+        )
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        task_registry.set_error(task_id, str(e))
+
+
+async def detect_cut_points_ai(video_path: str, duration: float) -> CutPointList:
+    instructor_client = instructor.from_openai(async_client)
+    video_b64 = video_to_base64(video_path)
+
+    return await instructor_client.chat.completions.create(
+        model=os.getenv("MODEL"),
+        response_model=CutPointList,
+        messages=[
+            {"role": "system", "content": SPLIT_DETECTION_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": SPLIT_DETECTION_USER_PROMPT.format(duration=duration),
+                    },
+                    {
+                        "type": "video_url",
+                        "video_url": {"url": f"data:video/mp4;base64,{video_b64}"},
+                    },
+                ],
+            },  # type: ignore
+        ],
+    )
+
+
+def cut_points_to_segments(cut_points: CutPointList, duration: float) -> list[dict]:
+    timestamps = sorted([cp.timestamp for cp in cut_points.cut_points])
+    boundaries = [0.0] + timestamps + [duration]
+
+    segments = []
+    for i in range(len(boundaries) - 1):
+        start = boundaries[i]
+        end = boundaries[i + 1]
+        segments.append(
+            {
+                "index": i,
+                "start_sec": round(start, 2),
+                "end_sec": round(end, 2),
+                "duration": round(end - start, 2),
+                "reason": next(
+                    (
+                        cp.reason
+                        for cp in cut_points.cut_points
+                        if abs(cp.timestamp - end) < 0.01
+                    ),
+                    None,
+                ),
+            }
+        )
+
+    return segments
+
+
+async def run_split_task(
+    task_id: str,
+    user_id: str,
+    source_asset_id: str,
+    video_path_str: str,
+    use_ai: bool,
+    threshold: float,
+    min_scene_len: int,
+) -> None:
+    try:
+        loop = asyncio.get_running_loop()
+
+        if use_ai:
+            duration = await loop.run_in_executor(
+                None, get_video_duration, video_path_str
+            )
+            cut_points = await detect_cut_points_ai(video_path_str, duration)
+            segments_raw = cut_points_to_segments(cut_points, duration)
+            method = "ai"
+        else:
+            segments_raw = await loop.run_in_executor(
+                None,
+                detect_scenes_scenedetect,
+                video_path_str,
+                threshold,
+                min_scene_len,
+            )
+            method = "scenedetect"
+
+        output_dir = Path("storage/videos")
+        clip_prefix = str(uuid.uuid4())
+        clip_paths = await loop.run_in_executor(
+            None,
+            split_video_by_segments,
+            video_path_str,
+            segments_raw,
+            output_dir,
+            clip_prefix,
+        )
+
+        clip_assets = []
+        with Session(engine) as session:
+            for i, clip_path in enumerate(clip_paths):
+                meta = probe_video(clip_path)
+                asset = Asset(
+                    asset_id=str(uuid.uuid4()),
+                    user_id=user_id,
+                    source_asset_id=source_asset_id,
+                    path=str(clip_path),
+                    type="video",
+                )
+                session.add(asset)
+                session.commit()
+                clip_assets.append(
+                    {
+                        "asset_id": asset.asset_id,
+                        "index": i,
+                        "path": str(clip_path),
+                        "metadata": meta.to_dict(),
+                    }
+                )
+
+        segments = []
+        for s in segments_raw:
+            seg = {
+                "index": s["index"],
+                "start_sec": s["start_sec"],
+                "end_sec": s["end_sec"],
+                "duration": s["duration"],
+            }
+            if method == "scenedetect":
+                seg["cut_score"] = s.get("cut_score")
+            else:
+                seg["reason"] = s.get("reason")
+            segments.append(seg)
+
+        task_registry.set_result(
+            task_id,
+            {
+                "source_asset_id": source_asset_id,
+                "method": method,
+                "total_segments": len(segments),
+                "segments": segments,
+                "clip_assets": clip_assets,
             },
         )
     except asyncio.CancelledError:

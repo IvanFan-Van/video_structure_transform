@@ -24,3 +24,10 @@ class CompressRequest(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     asset_id: str
+
+
+class SplitRequest(BaseModel):
+    asset_id: str
+    use_ai: bool = False
+    threshold: float = 25.0
+    min_scene_len: int = 15

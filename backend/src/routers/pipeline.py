@@ -12,11 +12,12 @@ from core import (
     run_audio_analysis,
     run_compress_task,
     run_script_analysis,
+    run_split_task,
     run_visual_analysis,
 )
 from deps import get_current_user, get_video_asset
 from models import Asset, User, engine
-from schemas import AnalyzeRequest, CompressRequest
+from schemas import AnalyzeRequest, CompressRequest, SplitRequest
 from task_registry import task_registry
 from video import probe_video
 
@@ -272,6 +273,46 @@ async def analyze_audio_endpoint(
             video_path_str=video_path_str,
             audio_asset_id=audio_asset_id,
             dst_dir=str(AUDIO_STORAGE_DIR),
+        )
+    )
+    info.task = asyncio_task
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "status": "success",
+            "data": {"task_id": task_id},
+        },
+    )
+
+
+@router.post("/split")
+async def split_video_endpoint(
+    req: SplitRequest,
+    current_user: User = Depends(get_current_user),
+):
+    source_asset, video_path = get_video_asset(req.asset_id, current_user)
+    video_path_str = str(video_path)
+
+    task_id = str(uuid.uuid4())
+
+    info = task_registry.register(
+        task_id=task_id,
+        user_id=current_user.user_id,
+        type="split",
+        resource_id=req.asset_id,
+        task=None,
+    )
+
+    asyncio_task = asyncio.create_task(
+        run_split_task(
+            task_id=task_id,
+            user_id=current_user.user_id,
+            source_asset_id=req.asset_id,
+            video_path_str=video_path_str,
+            use_ai=req.use_ai,
+            threshold=req.threshold,
+            min_scene_len=req.min_scene_len,
         )
     )
     info.task = asyncio_task

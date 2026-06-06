@@ -77,6 +77,12 @@ Base URL: `http://127.0.0.1:8000`
     - [安全校验](#安全校验)
     - [成功响应](#成功响应-200-3)
     - [错误响应](#错误响应-10)
+  - [13. POST /split — 视频切割](#13-post-split--视频切割)
+    - [请求参数](#请求参数-9)
+    - [请求示例](#请求示例-9)
+    - [成功响应](#成功响应-202-4)
+    - [任务结果结构](#任务结果结构)
+    - [错误响应](#错误响应-11)
   - [附录 A: VideoMeta 元数据字段](#附录-a-videometa-元数据字段)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
@@ -774,7 +780,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ## 8. GET /task/{task_id} — 查询异步任务状态（轮询）
 
-查询由 `/compress`、`/analyze-script`、`/analyze-visual` 或 `/analyze-audio` 提交的异步任务的当前状态和结果。
+查询由 `/compress`、`/analyze-script`、`/analyze-visual`、`/analyze-audio` 或 `/split` 提交的异步任务的当前状态和结果。
 
 > **推荐使用 SSE**：`GET /task/{task_id}/stream` 提供实时推送，无需轮询。此端点在客户端不支持 SSE 时作为降级回退使用。
 
@@ -859,7 +865,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `task_id` | string | 任务唯一标识 |
-| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` |
+| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` / `split` |
 | `resource_id` | string | 关联的资源 ID（如 asset_id） |
 | `status` | string | 任务状态：`running` / `completed` / `failed` / `cancelled` |
 | `created_at` | string | 任务创建时间（ISO 8601） |
@@ -1297,7 +1303,138 @@ curl "http://127.0.0.1:8000/files/c3d4e5f6-a7b8-9012-cdef-234567890123_bgm.wav" 
 
 ---
 
-## 附录 A: VideoMeta 元数据字段
+## 13. POST /split — 视频切割
+
+对已上传的视频进行场景切分，支持两种检测方式：基于 `scenedetect` 的程序化检测（默认）或基于多模态 LLM 的语义切割。切割后的每个片段保存为独立 Asset，通过 `/files/{asset_id}.mp4` 访问。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `POST` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | `application/json` |
+
+### 请求参数
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `asset_id` | string | **是** | — | 源视频的 asset_id（由 `/upload` 返回） |
+| `use_ai` | bool | 否 | `false` | 是否使用 LLM 进行语义切割；`false` 使用 scenedetect ContentDetector |
+| `threshold` | float | 否 | `25.0` | ContentDetector 灵敏度阈值（仅 `use_ai: false` 时生效） |
+| `min_scene_len` | int | 否 | `15` | 最小场景长度（帧数，仅 `use_ai: false` 时生效） |
+
+> **两种检测方式对比：**
+>
+> | | scenedetect (`use_ai: false`) | AI (`use_ai: true`) |
+> |---|---|---|
+> | 原理 | 逐帧内容差异 (`content_val`) | LLM 多模态语义理解 |
+> | 速度 | 快（秒级） | 慢（取决于模型响应） |
+> | 切割依据 | 画面变化幅度 | 特效对象边界 |
+> | 输出 | `cut_score`（置信度） | `reason`（切割原因） |
+
+### 请求示例
+
+```bash
+# scenedetect 方式（默认）
+curl -X POST http://127.0.0.1:8000/split \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"asset_id": "a1b2c3d4-..."}'
+
+# AI 方式
+curl -X POST http://127.0.0.1:8000/split \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"asset_id": "a1b2c3d4-...", "use_ai": true}'
+
+# 自定义 scenedetect 参数
+curl -X POST http://127.0.0.1:8000/split \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"asset_id": "a1b2c3d4-...", "threshold": 20.0, "min_scene_len": 30}'
+```
+
+### 成功响应 (202)
+
+切割任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "gggggggg-gggg-gggg-gggg-gggggggggggg"
+  }
+}
+```
+
+### 任务结果结构
+
+任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下结构：
+
+```json
+{
+  "source_asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "method": "scenedetect",
+  "total_segments": 5,
+  "segments": [
+    {
+      "index": 0,
+      "start_sec": 0.0,
+      "end_sec": 3.2,
+      "duration": 3.2,
+      "cut_score": 12.5
+    },
+    {
+      "index": 1,
+      "start_sec": 3.2,
+      "end_sec": 7.8,
+      "duration": 4.6,
+      "cut_score": 8.3
+    }
+  ],
+  "clip_assets": [
+    {
+      "asset_id": "c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1",
+      "index": 0,
+      "path": "storage/videos/c1c1c1c1-..._000.mp4",
+      "metadata": {
+        "filepath": "D:\\...\\storage\\videos\\c1c1..._000.mp4",
+        "codec": "h264",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30.0,
+        "duration": 3.2
+      }
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `source_asset_id` | string | 源视频 asset_id |
+| `method` | string | 切割方式：`scenedetect` 或 `ai` |
+| `total_segments` | int | 切割出的片段总数 |
+| `segments[].index` | int | 片段序号（从 0 开始） |
+| `segments[].start_sec` | float | 片段开始时间（秒） |
+| `segments[].end_sec` | float | 片段结束时间（秒） |
+| `segments[].duration` | float | 片段时长（秒） |
+| `segments[].cut_score` | float \| null | 切割点置信度（仅 scenedetect） |
+| `segments[].reason` | string \| null | 切割原因（仅 AI） |
+| `clip_assets[].asset_id` | string | 片段对应的 Asset ID，可通过 `/files/{asset_id}.mp4` 下载 |
+| `clip_assets[].path` | string | 片段文件路径 |
+| `clip_assets[].metadata` | object | 片段视频元数据（同 VideoMeta） |
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 400 | `缺少 asset_id 参数` | 请求体未提供 asset_id |
+| 404 | `素材 xxx 不存在` | 该 asset_id 对应的记录不存在 |
+| 403 | `无权访问该素材` | 素材不属于当前用户 |
+| 500 | `源文件丢失` | 数据库记录存在但磁盘文件已丢失 |
+
+运行时错误（如 ffmpeg 切割失败）通过任务 `status: "failed"` 的 `error` 字段返回。
 
 上传和压缩接口返回的 `metadata` 对象包含以下字段：
 
@@ -1364,7 +1501,7 @@ curl "http://127.0.0.1:8000/files/c3d4e5f6-a7b8-9012-cdef-234567890123_bgm.wav" 
 
 ### 概述
 
-视频压缩 (`/compress`) 和 AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
+视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`) 和视频切割 (`/split`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
 
 尤其对于 `/analyze-audio`，SSE 流会在任务运行期间**逐帧推送音频特征数据**，最终在任务完成时推送汇总结果。
 
@@ -1375,6 +1512,7 @@ POST /compress       → 202 { task_id }                    ← 立即返回
 POST /analyze-script → 202 { task_id }                    ← 立即返回
 POST /analyze-visual → 202 { task_id }                    ← 立即返回
 POST /analyze-audio  → 202 { task_id }                    ← 立即返回
+POST /split          → 202 { task_id }                    ← 立即返回
                      → 连接 GET /task/{id}/stream (SSE)   ← 推荐：实时推送
 GET  /task/{id}      → 200 { status: "running" }           ← 轮询回退
 GET  /task/{id}      → 200 { status: "completed", ... }    ← 结果就绪
@@ -1396,6 +1534,7 @@ GET  /task/{id}      → 200 { status: "cancelled" }
 - **`/compress`**: 底层 `ffmpeg` 子进程被 `SIGKILL` 杀死，部分压缩文件被清理
 - **`/analyze-script` / `/analyze-visual`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
 - **`/analyze-audio`**: 底层 `ffmpeg` 和模型推理被 `asyncio.CancelledError` 中断，中间产物（storage/tmp 下的文件）由任务内部清理
+- **`/split`**: 底层 `ffmpeg` 子进程被终止，已生成的临时切割文件被清理
 
 ### 注意事项
 

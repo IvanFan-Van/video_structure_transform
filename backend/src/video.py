@@ -3,6 +3,7 @@ import base64
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+import cv2
 import ffmpeg
 
 
@@ -187,7 +188,10 @@ async def compress_video_async(
         raise
 
     if process.returncode != 0:
-        stderr = await process.stderr.read()
+        if process.stderr:
+            stderr = await process.stderr.read()
+        else:
+            stderr = b""
         raise RuntimeError(
             f"ffmpeg exited with code {process.returncode}: {stderr.decode()}"
         )
@@ -216,6 +220,79 @@ def format_video_meta(meta: VideoMeta) -> str:
         f"Size: {meta.size} bytes\n"
         f"Duration: {meta.duration}s"
     )
+
+
+def get_video_duration(video_path: str | Path) -> float:
+    cap = cv2.VideoCapture(str(video_path))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    cap.release()
+    return frame_count / fps if fps > 0 else 0.0
+
+
+def detect_scenes_scenedetect(
+    video_path: str | Path,
+    threshold: float = 25.0,
+    min_scene_len: int = 15,
+) -> list[dict]:
+    from scenedetect import SceneManager, StatsManager, open_video
+    from scenedetect.detectors import ContentDetector
+
+    video = open_video(str(video_path))
+    stats_manager = StatsManager()
+    scene_manager = SceneManager(stats_manager=stats_manager)
+    scene_manager.add_detector(
+        ContentDetector(threshold=threshold, min_scene_len=min_scene_len)
+    )
+    scene_manager.detect_scenes(video)
+
+    scene_list = scene_manager.get_scene_list()
+
+    frame_scores = {}
+    if stats_manager is not None:
+        for frame_num, metrics in stats_manager._frame_metrics.items():
+            frame_scores[frame_num] = metrics.get("content_val", 0)
+
+    segments = []
+    for i, (start, end) in enumerate(scene_list):
+        end_frame = end.frame_num
+        nearby_scores = [
+            frame_scores.get(end_frame + offset, 0) for offset in range(-2, 3)
+        ]
+        cut_score = max(nearby_scores) if nearby_scores else 0
+
+        segments.append(
+            {
+                "index": i,
+                "start_sec": start.get_seconds(),
+                "end_sec": end.get_seconds(),
+                "duration": end.get_seconds() - start.get_seconds(),
+                "cut_score": round(cut_score, 4),
+            }
+        )
+
+    return segments
+
+
+def split_video_by_segments(
+    video_path: str | Path,
+    segments: list[dict],
+    output_dir: Path,
+    clip_prefix: str = "clip",
+) -> list[Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_paths = []
+    for seg in segments:
+        output_path = output_dir / f"{clip_prefix}_{seg['index']:03d}.mp4"
+        (
+            ffmpeg.input(str(video_path), ss=seg["start_sec"], t=seg["duration"])
+            .output(str(output_path), c="copy")
+            .run(overwrite_output=True, capture_stdout=True, capture_stderr=True)
+        )
+        output_paths.append(output_path)
+
+    return output_paths
 
 
 if __name__ == "__main__":
