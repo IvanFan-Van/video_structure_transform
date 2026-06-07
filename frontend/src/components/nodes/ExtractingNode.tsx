@@ -1,6 +1,8 @@
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
 import { NodeStatus } from "../../store/types";
+import { useNodeError } from "../../hooks/useNodeError";
+import { ActionButton } from "../ui/ActionButton";
 
 interface Props {
     x: number;
@@ -87,8 +89,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
     const stopAnalyzeAudio = useVideoStore((s) => s.stopAnalyzeAudio);
     const audioStatus = useVideoStore((s) => s.audioStatus);
     const audioTime = useVideoStore((s) => s.audioTime);
-    const videoErrors = useVideoStore((s) => s.videoErrors);
-    const hasError = videoErrors.some((e) => e.nodeId === "extracting");
+    const { hasError } = useNodeError("extracting");
 
     injectStyles();
 
@@ -138,28 +139,17 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
             >
                 {!isExtractingFlow && (
-                    <button
+                    <ActionButton
+                        variant="primary"
+                        label="▶ START EXTRACTING"
+                        enabled={!!compressResult}
+                        accent="#333"
                         onClick={() => {
                             startAnalyzeScript();
                             startAnalyzeAudio();
                             startAnalyzeVisual();
                         }}
-                        disabled={!compressResult}
-                        style={{
-                            padding: "10px",
-                            fontSize: "11px",
-                            fontWeight: 600,
-                            fontFamily: "inherit",
-                            letterSpacing: "1px",
-                            background: compressResult ? "#333" : "#e8e8e8",
-                            color: compressResult ? "#fff" : "#bbb",
-                            border: "none",
-                            borderRadius: "3px",
-                            cursor: compressResult ? "pointer" : "not-allowed",
-                        }}
-                    >
-                        ▶ START EXTRACTING
-                    </button>
+                    />
                 )}
 
                 {isExtractingFlow && (
@@ -260,47 +250,25 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                         })}
 
                         {allSettled ? (
-                            <button
+                            <ActionButton
+                                variant="muted"
+                                label="↻ RESTART"
                                 onClick={() => {
                                     startAnalyzeScript();
                                     startAnalyzeAudio();
                                     startAnalyzeVisual();
                                 }}
-                                style={{
-                                    padding: "5px",
-                                    fontSize: "9px",
-                                    fontFamily: "inherit",
-                                    background: "transparent",
-                                    border: "1px solid #e0e0e0",
-                                    borderRadius: "3px",
-                                    color: "#999",
-                                    cursor: "pointer",
-                                    marginTop: "2px",
-                                }}
-                            >
-                                ↻ RESTART
-                            </button>
+                            />
                         ) : (
-                            <button
+                            <ActionButton
+                                variant="muted"
+                                label="■ STOP"
                                 onClick={() => {
                                     stopAnalyzeScript();
                                     stopAnalyzeAudio();
                                     stopAnalyzeVisual();
                                 }}
-                                style={{
-                                    padding: "5px",
-                                    fontSize: "9px",
-                                    fontFamily: "inherit",
-                                    background: "transparent",
-                                    border: "1px solid #e0e0e0",
-                                    borderRadius: "3px",
-                                    color: "#999",
-                                    cursor: "pointer",
-                                    marginTop: "2px",
-                                }}
-                            >
-                                ■ STOP
-                            </button>
+                            />
                         )}
                     </div>
                 )}

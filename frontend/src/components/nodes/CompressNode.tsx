@@ -1,6 +1,9 @@
 import { useVideoStore } from '../../store/useVideoStore';
 import { BaseNode } from '../ui/BaseNode';
+import { useNodeError } from '../../hooks/useNodeError';
+import { ActionButton } from '../ui/ActionButton';
 import { CoverImage } from '../ui/CoverImage';
+import { StatusHeader } from '../ui/StatusHeader';
 import { fmtSize } from '../../utils';
 
 interface Props { x: number; y: number; onPosChange: (id: string, x: number, y: number, w: number, h: number) => void; }
@@ -19,9 +22,8 @@ export function CompressNode({ x, y, onPosChange }: Props) {
   const isCompressing = useVideoStore((s) => s.isCompressing);
   const compressResult = useVideoStore((s) => s.compressResult);
   const startCompress = useVideoStore((s) => s.startCompress);
-  const stopCompress = useVideoStore((s) => s.stopCompress);
-  const videoErrors = useVideoStore((s) => s.videoErrors);
-  const hasError = videoErrors.some((e) => e.nodeId === 'compress');
+    const stopCompress = useVideoStore((s) => s.stopCompress);
+    const { hasError } = useNodeError("compress");
 
   const savingsPct = compressResult && uploadResult
     ? Math.round((1 - (compressResult.metadata.size ?? 0) / (uploadResult.metadata.size ?? 1)) * 100)
@@ -31,31 +33,27 @@ export function CompressNode({ x, y, onPosChange }: Props) {
     <BaseNode x={x} y={y} w={300} title="Compress" active={!!uploadResult || !!compressResult} accent="#06b6d4" error={hasError} id="compress" onPosChange={onPosChange}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {!isCompressing && !compressResult && (
-          <button onClick={startCompress} disabled={!uploadResult}
-            style={{
-              padding: '10px', fontSize: '11px', fontWeight: 600, fontFamily: 'inherit', letterSpacing: '1px',
-              background: uploadResult ? '#06b6d4' : '#e8e8e8', color: uploadResult ? '#fff' : '#bbb',
-              border: 'none', borderRadius: '3px', cursor: uploadResult ? 'pointer' : 'not-allowed',
-            }}>▶ COMPRESS</button>
+          <ActionButton
+            variant="primary"
+            label="▶ COMPRESS"
+            enabled={!!uploadResult}
+            accent="#06b6d4"
+            onClick={startCompress}
+          />
         )}
         {isCompressing && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-            <div style={{
-              fontSize: '10px', fontWeight: 600, color: '#06b6d4', letterSpacing: '1px',
-            }}>Compressing...</div>
-            <button
+            <StatusHeader variant="loading" label="Compressing..." accent="#06b6d4" />
+            <ActionButton
+              variant="muted"
+              label="■ STOP"
               onClick={stopCompress}
-              style={{
-                padding: '5px', fontSize: '9px', fontFamily: 'inherit',
-                background: 'transparent', border: '1px solid #e0e0e0',
-                borderRadius: '3px', color: '#999', cursor: 'pointer',
-              }}
-            >■ STOP</button>
+            />
           </div>
         )}
         {compressResult && (
           <>
-            <div style={{ fontSize: '10px', fontWeight: 600, color: '#06b6d4', letterSpacing: '2px', textAlign: 'center', marginBottom: '4px' }}>✓ COMPRESSED</div>
+            <StatusHeader variant="success" label="COMPRESSED" accent="#06b6d4" />
             <CoverImage
                 coverImageAssetId={compressResult.cover_image_asset_id}
                 videoAssetId={compressResult.asset_id}
@@ -77,10 +75,11 @@ export function CompressNode({ x, y, onPosChange }: Props) {
                 )}
               </div>
             )}
-            <button onClick={startCompress} disabled={isCompressing}
-              style={{ padding: '5px 10px', fontSize: '9px', fontFamily: 'inherit', background: 'transparent', border: '1px solid #e0e0e0', borderRadius: '3px', color: '#999', cursor: 'pointer', alignSelf: 'center' }}>
-              RECOMPRESS
-            </button>
+            <ActionButton
+              variant="muted"
+              label="RECOMPRESS"
+              onClick={startCompress}
+            />
           </>
         )}
       </div>

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
+import { StatusHeader } from "../ui/StatusHeader";
+import { AccordionItem } from "../ui/AccordionItem";
 import { TranscriptResult, TranscriptStage } from "../../store/types";
 
 interface Props {
@@ -100,47 +102,16 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
                 {!transcriptResult && (scriptStatus === "idle" || scriptStatus === "cancelled") && (
-                    <div
-                        style={{
-                            fontSize: "9px",
-                            color: "#bbb",
-                            textAlign: "center",
-                            padding: "12px 0",
-                        }}
-                    >
-                        Waiting for extraction...
-                    </div>
+                    <StatusHeader variant="idle" label="Waiting for extraction..." />
                 )}
 
                 {!transcriptResult && scriptStatus === "loading" && (
-                    <div
-                        style={{
-                            fontSize: "10px",
-                            fontWeight: 600,
-                            color: "#10b981",
-                            letterSpacing: "2px",
-                            textAlign: "center",
-                            padding: "12px 0",
-                        }}
-                    >
-                        Analyzing...
-                    </div>
+                    <StatusHeader variant="loading" label="Analyzing..." accent="#10b981" />
                 )}
 
                 {transcriptResult && (
                     <>
-                        <div
-                            style={{
-                                fontSize: "10px",
-                                fontWeight: 600,
-color: "#10b981",
-                            letterSpacing: "2px",
-                            textAlign: "center",
-                            marginBottom: "2px",
-                        }}
-                    >
-                        ✓ ANALYZED
-                        </div>
+                        <StatusHeader variant="success" label="ANALYZED" accent="#10b981" />
                         {perspectiveLabel && (
                             <div
                                 style={{
@@ -173,252 +144,184 @@ color: "#10b981",
                         {stages.map(({ key, label, data }) => {
                             const open = expanded[key] ?? false;
                             return (
-                                <div key={key}>
-                                    <div
-                                        onClick={() => toggle(key)}
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            padding: "6px 8px",
-                                            borderRadius: "3px",
-                                            background: open
-                                                ? "#ecfdf5"
-                                                : "#fafafa",
-                                            border: open
-                                                ? "1px solid #a7f3d0"
-                                                : "1px solid #f0f0f0",
-                                            cursor: "pointer",
-                                            transition:
-                                                "background 0.15s, border-color 0.15s",
-                                        }}
-                                    >
+                                <AccordionItem
+                                    key={key}
+                                    open={open}
+                                    onToggle={() => toggle(key)}
+                                    title={label}
+                                    subtitle={`${data.start_time.toFixed(1)}s \u2014 ${data.end_time.toFixed(1)}s`}
+                                    accent="#10b981"
+                                    accentBg="#ecfdf5"
+                                    accentBorder="#a7f3d0"
+                                >
+                                    <div style={{ marginBottom: "6px" }}>
+                                        <div
+                                            style={{
+                                                fontSize: "7px",
+                                                fontWeight: 600,
+                                                letterSpacing: "1px",
+                                                color: "#bbb",
+                                                marginBottom: "3px",
+                                            }}
+                                        >
+                                            VISUAL TEXT
+                                        </div>
+                                        <div
+                                            style={{
+                                                color: "#333",
+                                                whiteSpace: "pre-wrap",
+                                            }}
+                                        >
+                                            {data.visual_text ||
+                                                "(empty)"}
+                                        </div>
+                                    </div>
+                                    <div style={{ marginBottom: "6px" }}>
+                                        <div
+                                            style={{
+                                                fontSize: "7px",
+                                                fontWeight: 600,
+                                                letterSpacing: "1px",
+                                                color: "#bbb",
+                                                marginBottom: "3px",
+                                            }}
+                                        >
+                                            AUDIO TEXT
+                                        </div>
+                                        <div
+                                            style={{
+                                                color: "#333",
+                                                whiteSpace: "pre-wrap",
+                                            }}
+                                        >
+                                            {data.audio_text ||
+                                                "(empty)"}
+                                        </div>
+                                    </div>
+                                    {(data.emotional_tone ||
+                                        data.hook_type ||
+                                        data.cta_type) && (
                                         <div
                                             style={{
                                                 display: "flex",
-                                                alignItems: "center",
-                                                gap: "6px",
+                                                flexDirection: "column",
+                                                gap: "3px",
                                             }}
                                         >
-                                            <span
-                                                style={{
-                                                    fontSize: "8px",
-                                                    color: open
-                                                        ? "#10b981"
-                                                        : "#bbb",
-                                                }}
-                                            >
-                                                {open ? "▼" : "▶"}
-                                            </span>
-                                            <span
-                                                style={{
-                                                    fontSize: "9px",
-                                                    fontWeight: 600,
-                                                    color: open
-                                                        ? "#065f46"
-                                                        : "#555",
-                                                }}
-                                            >
-                                                {label}
-                                            </span>
-                                        </div>
-                                        <span
-                                            style={{
-                                                fontSize: "8px",
-                                                color: "#bbb",
-                                            }}
-                                        >
-                                            {data.start_time.toFixed(1)}s —{" "}
-                                            {data.end_time.toFixed(1)}s
-                                        </span>
-                                    </div>
-                                    {open && (
-                                        <div
-                                            style={{
-                                                marginTop: "4px",
-                                                padding: "8px",
-                                                background: "#fafafa",
-                                                borderRadius: "3px",
-                                                border: "1px solid #f0f0f0",
-                                                fontSize: "8px",
-                                                color: "#555",
-                                                lineHeight: "1.6",
-                                            }}
-                                        >
-                                            <div
-                                                style={{ marginBottom: "6px" }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        fontSize: "7px",
-                                                        fontWeight: 600,
-                                                        letterSpacing: "1px",
-                                                        color: "#bbb",
-                                                        marginBottom: "3px",
-                                                    }}
-                                                >
-                                                    VISUAL TEXT
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        color: "#333",
-                                                        whiteSpace: "pre-wrap",
-                                                    }}
-                                                >
-                                                    {data.visual_text ||
-                                                        "(empty)"}
-                                                </div>
-                                            </div>
-                                            <div
-                                                style={{ marginBottom: "6px" }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        fontSize: "7px",
-                                                        fontWeight: 600,
-                                                        letterSpacing: "1px",
-                                                        color: "#bbb",
-                                                        marginBottom: "3px",
-                                                    }}
-                                                >
-                                                    AUDIO TEXT
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        color: "#333",
-                                                        whiteSpace: "pre-wrap",
-                                                    }}
-                                                >
-                                                    {data.audio_text ||
-                                                        "(empty)"}
-                                                </div>
-                                            </div>
-                                            {(data.emotional_tone ||
-                                                data.hook_type ||
-                                                data.cta_type) && (
+                                            {data.emotional_tone && (
                                                 <div
                                                     style={{
                                                         display: "flex",
-                                                        flexDirection: "column",
-                                                        gap: "3px",
+                                                        justifyContent:
+                                                            "space-between",
+                                                        alignItems:
+                                                            "center",
                                                     }}
                                                 >
-                                                    {data.emotional_tone && (
-                                                        <div
-                                                            style={{
-                                                                display: "flex",
-                                                                justifyContent:
-                                                                    "space-between",
-                                                                alignItems:
-                                                                    "center",
-                                                            }}
-                                                        >
-                                                            <span
-                                                                style={{
-                                                                    fontSize:
-                                                                        "7px",
-                                                                    fontWeight: 600,
-                                                                    letterSpacing:
-                                                                        "1px",
-                                                                    color: "#bbb",
-                                                                }}
-                                                            >
-                                                                EMOTIONAL TONE
-                                                            </span>
-                                                            <span
-                                                                style={{
-                                                                    fontSize:
-                                                                        "7px",
-                                                                    color: "#555",
-                                                                }}
-                                                            >
-                                                                {EMOTIONAL_TONE_LABELS[
-                                                                    data
-                                                                        .emotional_tone
-                                                                ] ||
-                                                                    data.emotional_tone}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    {data.hook_type && (
-                                                        <div
-                                                            style={{
-                                                                display: "flex",
-                                                                justifyContent:
-                                                                    "space-between",
-                                                                alignItems:
-                                                                    "center",
-                                                            }}
-                                                        >
-                                                            <span
-                                                                style={{
-                                                                    fontSize:
-                                                                        "7px",
-                                                                    fontWeight: 600,
-                                                                    letterSpacing:
-                                                                        "1px",
-                                                                    color: "#bbb",
-                                                                }}
-                                                            >
-                                                                HOOK TYPE
-                                                            </span>
-                                                            <span
-                                                                style={{
-                                                                    fontSize:
-                                                                        "7px",
-                                                                    color: "#555",
-                                                                }}
-                                                            >
-                                                                {HOOK_TYPE_LABELS[
-                                                                    data
-                                                                        .hook_type
-                                                                ] ||
-                                                                    data.hook_type}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    {data.cta_type && (
-                                                        <div
-                                                            style={{
-                                                                display: "flex",
-                                                                justifyContent:
-                                                                    "space-between",
-                                                                alignItems:
-                                                                    "center",
-                                                            }}
-                                                        >
-                                                            <span
-                                                                style={{
-                                                                    fontSize:
-                                                                        "7px",
-                                                                    fontWeight: 600,
-                                                                    letterSpacing:
-                                                                        "1px",
-                                                                    color: "#bbb",
-                                                                }}
-                                                            >
-                                                                CTA TYPE
-                                                            </span>
-                                                            <span
-                                                                style={{
-                                                                    fontSize:
-                                                                        "7px",
-                                                                    color: "#555",
-                                                                }}
-                                                            >
-                                                                {CTA_TYPE_LABELS[
-                                                                    data
-                                                                        .cta_type
-                                                                ] ||
-                                                                    data.cta_type}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                    <span
+                                                        style={{
+                                                            fontSize:
+                                                                "7px",
+                                                            fontWeight: 600,
+                                                            letterSpacing:
+                                                                "1px",
+                                                            color: "#bbb",
+                                                        }}
+                                                    >
+                                                        EMOTIONAL TONE
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize:
+                                                                "7px",
+                                                            color: "#555",
+                                                        }}
+                                                    >
+                                                        {EMOTIONAL_TONE_LABELS[
+                                                            data
+                                                                .emotional_tone
+                                                        ] ||
+                                                            data.emotional_tone}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {data.hook_type && (
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        justifyContent:
+                                                            "space-between",
+                                                        alignItems:
+                                                            "center",
+                                                    }}
+                                                >
+                                                    <span
+                                                        style={{
+                                                            fontSize:
+                                                                "7px",
+                                                            fontWeight: 600,
+                                                            letterSpacing:
+                                                                "1px",
+                                                            color: "#bbb",
+                                                        }}
+                                                    >
+                                                        HOOK TYPE
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize:
+                                                                "7px",
+                                                            color: "#555",
+                                                        }}
+                                                    >
+                                                        {HOOK_TYPE_LABELS[
+                                                            data
+                                                                .hook_type
+                                                        ] ||
+                                                            data.hook_type}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {data.cta_type && (
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        justifyContent:
+                                                            "space-between",
+                                                        alignItems:
+                                                            "center",
+                                                    }}
+                                                >
+                                                    <span
+                                                        style={{
+                                                            fontSize:
+                                                                "7px",
+                                                            fontWeight: 600,
+                                                            letterSpacing:
+                                                                "1px",
+                                                            color: "#bbb",
+                                                        }}
+                                                    >
+                                                        CTA TYPE
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize:
+                                                                "7px",
+                                                            color: "#555",
+                                                        }}
+                                                    >
+                                                        {CTA_TYPE_LABELS[
+                                                            data
+                                                                .cta_type
+                                                        ] ||
+                                                            data.cta_type}
+                                                    </span>
                                                 </div>
                                             )}
                                         </div>
                                     )}
-                                </div>
+                                </AccordionItem>
                             );
                         })}
                     </>

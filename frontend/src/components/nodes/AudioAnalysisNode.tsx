@@ -4,6 +4,8 @@ import { EnergyChart } from "../charts/EnergyChart";
 import { CentroidChart } from "../charts/CentroidChart";
 import { FluxChart } from "../charts/FluxChart";
 import { OnsetChart } from "../charts/OnsetChart";
+import { StatusHeader } from "../ui/StatusHeader";
+import { useNodeError } from "../../hooks/useNodeError";
 
 interface Props {
     x: number;
@@ -21,8 +23,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
     const audioStatus = useVideoStore((s) => s.audioStatus);
     const audioGlobal = useVideoStore((s) => s.audioGlobal);
     const streamArr = useVideoStore((s) => s.streamArr);
-    const videoErrors = useVideoStore((s) => s.videoErrors);
-    const hasError = videoErrors.some((e) => e.nodeId === "audio");
+    const { hasError } = useNodeError("audio");
 
     const hasData = audioStatus !== "idle" && audioStatus !== "cancelled";
 
@@ -42,34 +43,16 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
                 {(audioStatus === "idle" || audioStatus === "cancelled") && (
-                    <div
-                        style={{
-                            fontSize: "9px",
-                            color: "#bbb",
-                            textAlign: "center",
-                            padding: "12px 0",
-                        }}
-                    >
-                        Waiting for extraction...
-                    </div>
+                    <StatusHeader variant="idle" label="Waiting for extraction..." />
                 )}
 
                 {hasData && (
                     <>
-                        <div
-                            style={{
-                                fontSize: "10px",
-                                fontWeight: 600,
-                                color: "#f59e0b",
-                                letterSpacing: "2px",
-                                textAlign: "center",
-                                marginBottom: "2px",
-                            }}
-                        >
-                            {audioStatus === "success"
-                                ? "✓ ANALYZED"
-                                : "Analyzing..."}
-                        </div>
+                        <StatusHeader
+                            variant={audioStatus === "success" ? "success" : "loading"}
+                            label="ANALYZED"
+                            accent="#f59e0b"
+                        />
 
                         {audioGlobal && (
                             <div

@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
 import { CoverImage } from "../ui/CoverImage";
+import { useNodeError } from "../../hooks/useNodeError";
 import { fmtSize } from "../../utils";
 
 interface Props {
@@ -22,8 +23,7 @@ export function ReferenceNode({ x, y, onPosChange }: Props) {
     const uploadProgress = useVideoStore((s) => s.uploadProgress);
     const uploadResult = useVideoStore((s) => s.uploadResult);
     const uploadVideo = useVideoStore((s) => s.uploadVideo);
-    const videoErrors = useVideoStore((s) => s.videoErrors);
-    const hasError = videoErrors.some((e) => e.nodeId === "reference");
+    const { hasError } = useNodeError("reference");
 
     const handleFile = (file: File) => uploadVideo(file);
 

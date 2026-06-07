@@ -1,5 +1,8 @@
 import { BaseNode } from "../ui/BaseNode";
+import { ActionButton } from "../ui/ActionButton";
+import { StatusHeader } from "../ui/StatusHeader";
 import { useVideoStore } from "../../store/useVideoStore";
+import { useNodeError } from "../../hooks/useNodeError";
 
 interface Props {
     x: number;
@@ -22,8 +25,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
     const splitResult = useVideoStore((s) => s.splitResult);
     const startSplit = useVideoStore((s) => s.startSplit);
     const stopSplit = useVideoStore((s) => s.stopSplit);
-    const videoErrors = useVideoStore((s) => s.videoErrors);
-    const hasError = videoErrors.some((e) => e.nodeId === "split");
+    const { hasError } = useNodeError("split");
 
     const ready = !!compressResult && !isSplitting && splitStatus !== "loading";
 
@@ -196,24 +198,13 @@ export function SplitNode({ x, y, onPosChange }: Props) {
 
                 {/* ── START / STOP / RESTART button ── */}
                 {ready && splitStatus === "idle" && (
-                    <button
+                    <ActionButton
+                        variant="primary"
+                        label="▶ START SPLIT"
+                        enabled={!!compressResult}
+                        accent="#f97316"
                         onClick={startSplit}
-                        disabled={!compressResult}
-                        style={{
-                            padding: "6px 0",
-                            fontSize: "10px",
-                            fontFamily: "inherit",
-                            fontWeight: 600,
-                            letterSpacing: "2px",
-                            color: "#fff",
-                            background: compressResult ? "#f97316" : "#e0e0e0",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: compressResult ? "pointer" : "not-allowed",
-                        }}
-                    >
-                        ▶ START SPLIT
-                    </button>
+                    />
                 )}
 
                 {isSplitting && (
@@ -226,16 +217,11 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                             padding: "8px 0",
                         }}
                     >
-                        <span
-                            style={{
-                                fontSize: "10px",
-                                color: "#f97316",
-                                fontWeight: 600,
-                                letterSpacing: "2px",
-                            }}
-                        >
-                            SPLITTING...
-                        </span>
+                    <StatusHeader
+                        variant="loading"
+                        label="SPLITTING..."
+                        accent="#f97316"
+                    />
                         <button
                             onClick={stopSplit}
                             style={{
@@ -243,14 +229,14 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                 padding: "4px 12px",
                                 fontSize: "9px",
                                 fontFamily: "inherit",
-                                color: "#ef4444",
-                                background: "#fef2f2",
-                                border: "1px solid #fecaca",
-                                borderRadius: "4px",
+                                background: "transparent",
+                                border: "1px solid #e0e0e0",
+                                borderRadius: "3px",
+                                color: "#999",
                                 cursor: "pointer",
                             }}
                         >
-                            STOP
+                            ■ STOP
                         </button>
                     </div>
                 )}
@@ -267,16 +253,11 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                 borderBottom: "1px solid #f0f0f0",
                             }}
                         >
-                            <span
-                                style={{
-                                    fontSize: "10px",
-                                    color: "#22c55e",
-                                    fontWeight: 600,
-                                    letterSpacing: "1px",
-                                }}
-                            >
-                                ✓ SPLIT COMPLETE
-                            </span>
+                    <StatusHeader
+                        variant="success"
+                        label="SPLIT COMPLETE"
+                        accent="#22c55e"
+                    />
                         </div>
                         <div
                             style={{
@@ -299,24 +280,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                 value={`${totalDuration.toFixed(1)}s`}
                             />
                         </div>
-                        <button
-                            onClick={startSplit}
-                            style={{
-                                marginTop: "4px",
-                                padding: "5px 0",
-                                fontSize: "9px",
-                                fontFamily: "inherit",
-                                fontWeight: 600,
-                                letterSpacing: "2px",
-                                color: "#f97316",
-                                background: "#fff7ed",
-                                border: "1px solid #fed7aa",
-                                borderRadius: "4px",
-                                cursor: "pointer",
-                            }}
-                        >
-                            RESTART
-                        </button>
+                        <ActionButton variant="muted" label="↻ RESTART" onClick={startSplit} />
                         <style
                             dangerouslySetInnerHTML={{
                                 __html: `

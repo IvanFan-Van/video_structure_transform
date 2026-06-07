@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
+import { StatusHeader } from "../ui/StatusHeader";
+import { AccordionItem } from "../ui/AccordionItem";
 import { VisualShot, VisualTextElement } from "../../store/types";
 
 interface Props {
@@ -103,47 +105,16 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
                 {!visualResult && (visualStatus === "idle" || visualStatus === "cancelled") && (
-                    <div
-                        style={{
-                            fontSize: "9px",
-                            color: "#bbb",
-                            textAlign: "center",
-                            padding: "12px 0",
-                        }}
-                    >
-                        Waiting for extraction...
-                    </div>
+                    <StatusHeader variant="idle" label="Waiting for extraction..." />
                 )}
 
                 {!visualResult && visualStatus === "loading" && (
-                    <div
-                        style={{
-                            fontSize: "10px",
-                            fontWeight: 600,
-                            color: accent,
-                            letterSpacing: "2px",
-                            textAlign: "center",
-                            padding: "12px 0",
-                        }}
-                    >
-                        Analyzing...
-                    </div>
+                    <StatusHeader variant="loading" label="Analyzing..." accent={accent} />
                 )}
 
                 {visualResult && (
                     <>
-                        <div
-                            style={{
-                                fontSize: "10px",
-                                fontWeight: 600,
-                                color: accent,
-                                letterSpacing: "2px",
-                                textAlign: "center",
-                                marginBottom: "2px",
-                            }}
-                        >
-                            ✓ ANALYZED
-                        </div>
+                        <StatusHeader variant="success" label="ANALYZED" accent={accent} />
 
                         {/* Pacing Summary */}
                         <div
@@ -152,69 +123,97 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                 gridTemplateColumns: "1fr 1fr",
                                 gap: "4px",
                                 fontSize: "10px",
-                                marginBottom: "2px",
                             }}
                         >
-                            {[
-                                {
-                                    label: "PACE",
-                                    value: PACING_LABELS[
-                                        visualResult.pacing.pacing_category
-                                    ] || visualResult.pacing.pacing_category,
-                                },
-                                {
-                                    label: "AVG SHOT",
-                                    value: `${visualResult.pacing.avg_shot_duration.toFixed(1)}s`,
-                                },
-                                {
-                                    label: "SHOTS",
-                                    value: String(visualResult.shots.length),
-                                },
-                                {
-                                    label: "DURATION",
-                                    value: `${visualResult.total_duration?.toFixed(1)}s`,
-                                },
-                                {
-                                    label: "TEXT EL.",
-                                    value: String(
-                                        visualResult.text_elements.length,
-                                    ),
-                                },
-                                {
-                                    label: "TRANS.",
-                                    value: String(
-                                        visualResult.transitions.length,
-                                    ),
-                                },
-                            ].map(({ label, value }) => (
-                                <div
-                                    key={label}
+                            <div
+                                style={{
+                                    background: "#f8f8f8",
+                                    borderRadius: "3px",
+                                    padding: "5px 7px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <span
                                     style={{
-                                        background: "#f8f8f8",
-                                        borderRadius: "3px",
-                                        padding: "5px 7px",
+                                        fontSize: "7px",
+                                        color: "#bbb",
+                                        letterSpacing: "1px",
                                     }}
                                 >
-                                    <div
-                                        style={{
-                                            fontSize: "7px",
-                                            color: "#bbb",
-                                            letterSpacing: "1px",
-                                        }}
-                                    >
-                                        {label}
-                                    </div>
-                                    <div
-                                        style={{
-                                            fontWeight: 700,
-                                            color: "#333",
-                                            fontSize: "10px",
-                                        }}
-                                    >
-                                        {value}
-                                    </div>
-                                </div>
-                            ))}
+                                    PACE
+                                </span>
+                                <span
+                                    style={{
+                                        fontWeight: 700,
+                                        color: "#333",
+                                        fontSize: "10px",
+                                    }}
+                                >
+                                    {PACING_LABELS[visualResult.pacing.pacing_category] ||
+                                        visualResult.pacing.pacing_category}
+                                </span>
+                            </div>
+                            <div
+                                style={{
+                                    background: "#f8f8f8",
+                                    borderRadius: "3px",
+                                    padding: "5px 7px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontSize: "7px",
+                                        color: "#bbb",
+                                        letterSpacing: "1px",
+                                    }}
+                                >
+                                    AVG SHOT
+                                </span>
+                                <span
+                                    style={{
+                                        fontWeight: 700,
+                                        color: "#333",
+                                        fontSize: "10px",
+                                    }}
+                                >
+                                    {visualResult.pacing.avg_shot_duration.toFixed(2)}s
+                                </span>
+                            </div>
+                            <div
+                                style={{
+                                    background: "#f8f8f8",
+                                    borderRadius: "3px",
+                                    padding: "5px 7px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    gridColumn: "1 / -1",
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontSize: "7px",
+                                        color: "#bbb",
+                                        letterSpacing: "1px",
+                                    }}
+                                >
+                                    DURATION
+                                </span>
+                                <span
+                                    style={{
+                                        fontWeight: 700,
+                                        color: "#333",
+                                        fontSize: "10px",
+                                    }}
+                                >
+                                    {visualResult.total_duration.toFixed(1)}s
+                                </span>
+                            </div>
                         </div>
 
                         {/* Shots */}
@@ -224,8 +223,7 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                 fontWeight: 600,
                                 letterSpacing: "1px",
                                 color: "#bbb",
-                                marginTop: "4px",
-                                marginBottom: "2px",
+                                marginBottom: "-2px",
                             }}
                         >
                             SHOTS
@@ -236,54 +234,13 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                 (t) => t.after_shot_index === shot.shot_index,
                             );
                             return (
-                                <div key={shot.shot_index}>
-                                    <div
-                                        onClick={() =>
-                                            toggleShot(shot.shot_index)
-                                        }
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            padding: "5px 8px",
-                                            borderRadius: "3px",
-                                            background: open
-                                                ? "#ecfeff"
-                                                : "#fafafa",
-                                            border: open
-                                                ? "1px solid #cffafe"
-                                                : "1px solid #f0f0f0",
-                                            cursor: "pointer",
-                                            transition:
-                                                "background 0.15s, border-color 0.15s",
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "6px",
-                                            }}
-                                        >
-                                            <span
-                                                style={{
-                                                    fontSize: "8px",
-                                                    color: open
-                                                        ? accent
-                                                        : "#bbb",
-                                                }}
-                                            >
-                                                {open ? "▼" : "▶"}
-                                            </span>
-                                            <span
-                                                style={{
-                                                    fontSize: "9px",
-                                                    fontWeight: 600,
-                                                    color: open
-                                                        ? "#0891b2"
-                                                        : "#555",
-                                                }}
-                                            >
+                                <AccordionItem
+                                    key={shot.shot_index}
+                                    open={open}
+                                    onToggle={() => toggleShot(shot.shot_index)}
+                                    title={
+                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                            <span style={{ color: open ? "#0891b2" : "#555" }}>
                                                 Shot #{shot.shot_index}
                                             </span>
                                             {shot.is_text_frame && (
@@ -300,355 +257,250 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                 </span>
                                             )}
                                         </div>
-                                        <span
-                                            style={{
-                                                fontSize: "8px",
-                                                color: "#bbb",
-                                            }}
-                                        >
-                                            {shot.start_time.toFixed(1)}s —{" "}
-                                            {shot.end_time.toFixed(1)}s
-                                        </span>
-                                    </div>
-                                    {open && (
+                                    }
+                                    subtitle={`${shot.start_time.toFixed(1)}s \u2014 ${shot.end_time.toFixed(1)}s`}
+                                    accent={accent}
+                                    accentBg="#ecfeff"
+                                    accentBorder="#cffafe"
+                                >
+                                    <div style={{ marginBottom: "6px" }}>
                                         <div
                                             style={{
-                                                marginTop: "4px",
-                                                padding: "8px",
-                                                background: "#fafafa",
-                                                borderRadius: "3px",
-                                                border: "1px solid #f0f0f0",
-                                                fontSize: "8px",
-                                                color: "#555",
-                                                lineHeight: "1.6",
+                                                fontSize: "7px",
+                                                fontWeight: 600,
+                                                letterSpacing: "1px",
+                                                color: "#bbb",
+                                                marginBottom: "3px",
                                             }}
                                         >
-                                            <div style={{ marginBottom: "6px" }}>
-                                                <div
+                                            DESCRIPTION
+                                        </div>
+                                        <div style={{ color: "#333" }}>
+                                            {shot.description || "(empty)"}
+                                        </div>
+                                    </div>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "3px",
+                                        }}
+                                    >
+                                        {shot.camera_movement && (
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                <span
                                                     style={{
                                                         fontSize: "7px",
                                                         fontWeight: 600,
                                                         letterSpacing: "1px",
                                                         color: "#bbb",
-                                                        marginBottom: "3px",
                                                     }}
                                                 >
-                                                    DESCRIPTION
-                                                </div>
-                                                <div style={{ color: "#333" }}>
-                                                    {shot.description ||
-                                                        "(empty)"}
-                                                </div>
-                                            </div>
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    flexDirection: "column",
-                                                    gap: "3px",
-                                                }}
-                                            >
-                                                {shot.camera_movement && (
-                                                    <div
-                                                        style={{
-                                                            display: "flex",
-                                                            justifyContent:
-                                                                "space-between",
-                                                            alignItems:
-                                                                "center",
-                                                        }}
-                                                    >
-                                                        <span
-                                                            style={{
-                                                                fontSize:
-                                                                    "7px",
-                                                                fontWeight: 600,
-                                                                letterSpacing:
-                                                                    "1px",
-                                                                color: "#bbb",
-                                                            }}
-                                                        >
-                                                            CAMERA
-                                                        </span>
-                                                        <span
-                                                            style={{
-                                                                fontSize:
-                                                                    "7px",
-                                                                color: "#555",
-                                                            }}
-                                                        >
-                                                            {CAMERA_LABELS[
-                                                                shot
-                                                                    .camera_movement
-                                                            ] ||
-                                                                shot.camera_movement}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {transition && (
-                                                <div
+                                                    CAMERA
+                                                </span>
+                                                <span
                                                     style={{
-                                                        marginTop: "6px",
-                                                        padding: "4px 6px",
-                                                        background: "#f0fdfa",
-                                                        borderRadius: "2px",
                                                         fontSize: "7px",
-                                                        color: "#0f766e",
+                                                        color: "#555",
                                                     }}
                                                 >
-                                                    Transition{" "}
-                                                    {TRANSITION_LABELS[
-                                                        transition.type
-                                                    ] || transition.type}
-                                                    {transition.duration > 0 &&
-                                                        ` (${transition.duration.toFixed(1)}s)`}
-                                                </div>
-                                            )}
+                                                    {CAMERA_LABELS[shot.camera_movement] ||
+                                                        shot.camera_movement}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {transition && (
+                                        <div
+                                            style={{
+                                                marginTop: "6px",
+                                                padding: "4px 6px",
+                                                background: "#f0fdfa",
+                                                borderRadius: "2px",
+                                                fontSize: "7px",
+                                                color: "#0f766e",
+                                            }}
+                                        >
+                                            Transition{" "}
+                                            {TRANSITION_LABELS[transition.type] ||
+                                                transition.type}
+                                            {transition.duration > 0 &&
+                                                ` (${transition.duration.toFixed(1)}s)`}
                                         </div>
                                     )}
-                                </div>
+                                </AccordionItem>
                             );
                         })}
 
                         {/* Text Elements */}
-                        {visualResult.text_elements.length > 0 && (
-                            <>
-                                <div
-                                    style={{
-                                        fontSize: "7px",
-                                        fontWeight: 600,
-                                        letterSpacing: "1px",
-                                        color: "#bbb",
-                                        marginTop: "8px",
-                                        marginBottom: "2px",
-                                    }}
-                                >
-                                    TEXT ELEMENTS
-                                </div>
-                                {visualResult.text_elements.map(
-                                    (el: VisualTextElement, idx: number) => {
-                                        const open =
-                                            expandedTextElements[idx] ?? false;
-                                        const preview =
-                                            el.text.length > 35
-                                                ? el.text.slice(0, 35) + "..."
-                                                : el.text;
-                                        return (
-                                            <div key={idx}>
-                                                <div
-                                                    onClick={() =>
-                                                        toggleTextElement(idx)
-                                                    }
+                        <div
+                            style={{
+                                fontSize: "7px",
+                                fontWeight: 600,
+                                letterSpacing: "1px",
+                                color: "#bbb",
+                                marginTop: "4px",
+                                marginBottom: "-2px",
+                            }}
+                        >
+                            TEXT ELEMENTS
+                        </div>
+                        {visualResult.text_elements.map(
+                            (el: VisualTextElement, idx: number) => {
+                                const open =
+                                    expandedTextElements[idx] ?? false;
+                                const preview =
+                                    el.text.length > 35
+                                        ? el.text.slice(0, 35) + "..."
+                                        : el.text;
+                                return (
+                                    <AccordionItem
+                                        key={idx}
+                                        open={open}
+                                        onToggle={() => toggleTextElement(idx)}
+                                        title={preview}
+                                        accent={accent}
+                                        accentBg="#ecfeff"
+                                        accentBorder="#cffafe"
+                                    >
+                                        <div style={{ marginBottom: "6px" }}>
+                                            <div
+                                                style={{
+                                                    fontSize: "7px",
+                                                    fontWeight: 600,
+                                                    letterSpacing: "1px",
+                                                    color: "#bbb",
+                                                    marginBottom: "3px",
+                                                }}
+                                            >
+                                                FULL TEXT
+                                            </div>
+                                            <div
+                                                style={{
+                                                    color: "#333",
+                                                    whiteSpace: "pre-wrap",
+                                                }}
+                                            >
+                                                {el.text}
+                                            </div>
+                                        </div>
+                                        {el.appear_time !== undefined && (
+                                            <div style={{ marginBottom: "4px" }}>
+                                                <span
                                                     style={{
-                                                        display: "flex",
-                                                        justifyContent:
-                                                            "space-between",
-                                                        alignItems: "center",
-                                                        padding: "5px 8px",
-                                                        borderRadius: "3px",
-                                                        background: open
-                                                            ? "#ecfeff"
-                                                            : "#fafafa",
-                                                        border: open
-                                                            ? "1px solid #cffafe"
-                                                            : "1px solid #f0f0f0",
-                                                        cursor: "pointer",
-                                                        transition:
-                                                            "background 0.15s, border-color 0.15s",
+                                                        fontSize: "7px",
+                                                        color: "#bbb",
                                                     }}
                                                 >
-                                                    <div
-                                                        style={{
-                                                            display: "flex",
-                                                            alignItems:
-                                                                "center",
-                                                            gap: "6px",
-                                                            maxWidth: "70%",
-                                                        }}
-                                                    >
-                                                        <span
-                                                            style={{
-                                                                fontSize:
-                                                                    "8px",
-                                                                color: open
-                                                                    ? accent
-                                                                    : "#bbb",
-                                                                flexShrink: 0,
-                                                            }}
-                                                        >
-                                                            {open ? "▼" : "▶"}
-                                                        </span>
-                                                        <span
-                                                            style={{
-                                                                fontSize:
-                                                                    "9px",
-                                                                fontWeight: 600,
-                                                                color: open
-                                                                    ? "#0891b2"
-                                                                    : "#555",
-                                                                overflow:
-                                                                    "hidden",
-                                                                textOverflow:
-                                                                    "ellipsis",
-                                                                whiteSpace:
-                                                                    "nowrap",
-                                                            }}
-                                                        >
-                                                            {open
-                                                                ? el.text
-                                                                : preview}
-                                                        </span>
-                                                    </div>
+                                                    {el.appear_time.toFixed(1)}s —{" "}
+                                                    {el.disappear_time.toFixed(1)}s
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "3px",
+                                            }}
+                                        >
+                                            {el.position && (
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        justifyContent: "space-between",
+                                                        alignItems: "center",
+                                                    }}
+                                                >
                                                     <span
                                                         style={{
-                                                            fontSize: "8px",
+                                                            fontSize: "7px",
+                                                            fontWeight: 600,
+                                                            letterSpacing: "1px",
                                                             color: "#bbb",
-                                                            flexShrink: 0,
-                                                            marginLeft: "6px",
                                                         }}
                                                     >
-                                                        {el.appear_time.toFixed(
-                                                            1,
-                                                        )}
-                                                        s —{" "}
-                                                        {el.disappear_time.toFixed(
-                                                            1,
-                                                        )}
-                                                        s
+                                                        POSITION
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: "7px",
+                                                            color: "#555",
+                                                        }}
+                                                    >
+                                                        {POSITION_LABELS[el.position] ||
+                                                            el.position}
                                                     </span>
                                                 </div>
-                                                {open && (
-                                                    <div
+                                            )}
+                                            {el.appear_style && (
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        justifyContent: "space-between",
+                                                        alignItems: "center",
+                                                    }}
+                                                >
+                                                    <span
                                                         style={{
-                                                            marginTop: "4px",
-                                                            padding: "8px",
-                                                            background:
-                                                                "#fafafa",
-                                                            borderRadius:
-                                                                "3px",
-                                                            border: "1px solid #f0f0f0",
-                                                            fontSize: "8px",
-                                                            color: "#555",
-                                                            lineHeight: "1.6",
+                                                            fontSize: "7px",
+                                                            fontWeight: 600,
+                                                            letterSpacing: "1px",
+                                                            color: "#bbb",
                                                         }}
                                                     >
-                                                        <div
-                                                            style={{
-                                                                display: "flex",
-                                                                flexDirection:
-                                                                    "column",
-                                                                gap: "3px",
-                                                                fontSize:
-                                                                    "7px",
-                                                            }}
-                                                        >
-                                                            <div
-                                                                style={{
-                                                                    display:
-                                                                        "flex",
-                                                                    justifyContent:
-                                                                        "space-between",
-                                                                }}
-                                                            >
-                                                                <span
-                                                                    style={{
-                                                                        color: "#bbb",
-                                                                    }}
-                                                                >
-                                                                    POSITION
-                                                                </span>
-                                                                <span>
-                                                                    {el.position
-                                                                        ? POSITION_LABELS[
-                                                                              el.position
-                                                                          ] ||
-                                                                          el.position
-                                                                        : "—"}
-                                                                </span>
-                                                            </div>
-                                                            <div
-                                                                style={{
-                                                                    display:
-                                                                        "flex",
-                                                                    justifyContent:
-                                                                        "space-between",
-                                                                }}
-                                                            >
-                                                                <span
-                                                                    style={{
-                                                                        color: "#bbb",
-                                                                    }}
-                                                                >
-                                                                    APPEAR
-                                                                </span>
-                                                                <span>
-                                                                    {el.appear_style
-                                                                        ? APPEAR_LABELS[
-                                                                              el.appear_style
-                                                                          ] ||
-                                                                          el.appear_style
-                                                                        : "—"}
-                                                                </span>
-                                                            </div>
-                                                            {el.emphasis && (
-                                                                <div
-                                                                    style={{
-                                                                        display:
-                                                                            "flex",
-                                                                        justifyContent:
-                                                                            "space-between",
-                                                                    }}
-                                                                >
-                                                                    <span
-                                                                        style={{
-                                                                            color: "#bbb",
-                                                                        }}
-                                                                    >
-                                                                        EMPHASIS
-                                                                    </span>
-                                                                    <span>
-                                                                        {EMPHASIS_LABELS[
-                                                                            el
-                                                                                .emphasis
-                                                                        ] ||
-                                                                            el.emphasis}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            <div
-                                                                style={{
-                                                                    display:
-                                                                        "flex",
-                                                                    justifyContent:
-                                                                        "space-between",
-                                                                }}
-                                                            >
-                                                                <span
-                                                                    style={{
-                                                                        color: "#bbb",
-                                                                    }}
-                                                                >
-                                                                    TIME
-                                                                </span>
-                                                                <span>
-                                                                    {el.appear_time.toFixed(
-                                                                        1,
-                                                                    )}
-                                                                    s —{" "}
-                                                                    {el.disappear_time.toFixed(
-                                                                        1,
-                                                                    )}
-                                                                    s
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    },
-                                )}
-                            </>
+                                                        APPEAR
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: "7px",
+                                                            color: "#555",
+                                                        }}
+                                                    >
+                                                        {APPEAR_LABELS[el.appear_style] ||
+                                                            el.appear_style}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {el.emphasis && (
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        justifyContent: "space-between",
+                                                        alignItems: "center",
+                                                    }}
+                                                >
+                                                    <span
+                                                        style={{
+                                                            fontSize: "7px",
+                                                            fontWeight: 600,
+                                                            letterSpacing: "1px",
+                                                            color: "#bbb",
+                                                        }}
+                                                    >
+                                                        EMPHASIS
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: "7px",
+                                                            color: "#555",
+                                                        }}
+                                                    >
+                                                        {EMPHASIS_LABELS[el.emphasis] ||
+                                                            el.emphasis}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </AccordionItem>
+                                );
+                            },
                         )}
                     </>
                 )}
