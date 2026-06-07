@@ -1,6 +1,5 @@
 import asyncio
 import base64
-from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import cv2
@@ -8,24 +7,7 @@ import ffmpeg
 import numpy as np
 from PIL import Image
 
-
-@dataclass
-class VideoMeta:
-    filepath: str
-    codec: str | None = None
-    width: int | None = None
-    height: int | None = None
-    fps: float | None = None
-    v_bitrate: int | None = None
-    total_bitrate: int | None = None
-    audio_sample_rate: int | None = None
-    audio_channels: int | None = None
-    a_bitrate: int | None = None
-    size: int | None = None
-    duration: float | None = None
-
-    def to_dict(self) -> dict:
-        return asdict(self)
+from .schemas import VideoMeta
 
 
 def probe_video(video_path: str | Path) -> VideoMeta:
@@ -289,7 +271,7 @@ def split_video_by_segments(
         output_path = output_dir / f"{clip_prefix}_{seg['index']:03d}.mp4"
         (
             ffmpeg.input(str(video_path), ss=seg["start_sec"], t=seg["duration"])
-            .output(str(output_path), c="copy")
+            .output(str(output_path))
             .run(overwrite_output=True, capture_stdout=True, capture_stderr=True)
         )
         output_paths.append(output_path)
@@ -298,71 +280,64 @@ def split_video_by_segments(
 
 
 def extract_cover_image(video_path: str) -> Image.Image:
-    """
-    从视频中提取第一个有效关键帧作为封面图。
-    跳过亮度过低的静默帧（黑屏、带水印黑屏等），返回 PIL Image 对象。
-
-    Args:
-        video_path: 视频文件路径
-
-    Returns:
-        PIL.Image.Image: 封面图像
-    """
-    PIXEL_BRIGHTNESS_THRESHOLD = 15  # 单个像素亮度阈值 (0-255)
-    CONTENT_RATIO_THRESHOLD = 0.1  # 至少 10% 的像素有内容才算有效帧
-    MAX_KEYFRAMES = 10  # 最多检查前 N 个关键帧
-
-    # 获取视频元信息（宽高）
-    probe = ffmpeg.probe(video_path)
-    video_stream = next(s for s in probe["streams"] if s["codec_type"] == "video")
+    probe = ffmpeg.probe(str(video_path))
+    video_stream = next(v for v in probe["streams"] if v["codec_type"] == "video")
     width = int(video_stream["width"])
     height = int(video_stream["height"])
 
-    # 抽取前 MAX_KEYFRAMES 个 I 帧，输出原始 RGB 字节流
     out, _ = (
-        ffmpeg.input(video_path)
-        .video.filter("select", f"lte(n,{MAX_KEYFRAMES})*eq(pict_type,I)")
-        .output("pipe:", format="rawvideo", pix_fmt="rgb24", vsync="vfr")
-        .run(capture_stdout=True, capture_stderr=True, quiet=True)
+        ffmpeg.input(str(video_path), skip_frame="nokey")
+        .output("pipe:", vsync="vfr", format="rawvideo", pix_fmt="bgr24")
+        .run(capture_stdout=True, capture_stderr=True)
     )
 
-    frame_size = width * height * 3  # bytes per frame (RGB24)
+    if not out:
+        raise RuntimeError(
+            f"Failed to extract frames from an empty video: {video_path}"
+        )
 
-    if len(out) < frame_size:
-        raise ValueError(f"未能从视频中抽取到任何关键帧: {video_path}")
+    frames_array = np.frombuffer(out, dtype=np.uint8)
+    frames = frames_array.reshape((-1, height, width, 3))
+
+    # blur detection
+    def get_blur_score(image: np.ndarray) -> float:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        return cv2.Laplacian(gray, cv2.CV_64F).var()
+
+    # brightness detection
+    def get_brightness_score(image: np.ndarray) -> float:
+        ycrcb = cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)
+        y_channel = ycrcb[:, :, 0]
+        return cv2.mean(y_channel)[0]
 
     def is_valid_frame(frame: np.ndarray) -> bool:
-        """判断帧是否为有效内容帧（非静默帧、非纯水印黑屏）"""
-        gray = frame.mean(axis=2)  # (H, W) 灰度
-        content_ratio = (gray > PIXEL_BRIGHTNESS_THRESHOLD).sum() / gray.size
-        return content_ratio >= CONTENT_RATIO_THRESHOLD
+        blur_score = get_blur_score(frame)
+        brightness_score = get_brightness_score(frame)
+        # print(
+        #     f"Frame blur score: {blur_score:.2f}, brightness score: {brightness_score:.2f}"
+        # )
+        return blur_score > 50.0 and (
+            brightness_score > 40.0 and brightness_score < 220.0
+        )
 
-    # 逐帧检查，返回第一个有效帧
-    num_frames = min(MAX_KEYFRAMES, len(out) // frame_size)
-    for i in range(num_frames):
-        raw = out[i * frame_size : (i + 1) * frame_size]
-        frame = np.frombuffer(raw, dtype=np.uint8).reshape((height, width, 3))
+    valid_frame = None
+    for frame in frames:
         if is_valid_frame(frame):
-            return Image.fromarray(frame)
+            valid_frame = frame
+            break
 
-    # 所有关键帧均为静默帧，退而返回最后一个关键帧
-    raw = out[(num_frames - 1) * frame_size : num_frames * frame_size]
-    frame = np.frombuffer(raw, dtype=np.uint8).reshape((height, width, 3))
-    return Image.fromarray(frame)
+    if valid_frame is None:
+        valid_frame = frames[-1]
+
+    return Image.fromarray(cv2.cvtColor(valid_frame, cv2.COLOR_BGR2RGB))
 
 
 if __name__ == "__main__":
-    input_path = Path("tests/videos/抖音2026529-207530.mp4")
-    output_path = Path("tests/videos/compressed_output.mp4")
+    from PIL import Image
 
-    meta = probe_video(input_path)
-    print("原视频信息：")
-    print(format_video_meta(meta))
-
-    compressed_path = compress_video(input_path, output_path)
-    compressed_meta = probe_video(compressed_path)
-
-    print("\n压缩后视频信息：")
-    print(format_video_meta(compressed_meta))
-
-    compressed_path.unlink()
+    # video_path = Path.cwd() / "tests" / "videos" / "6.mp4"
+    video_path = Path.cwd() / "notebooks" / "output" / "clips" / "hook_0.0s-4.0s.mp4"
+    print(video_path)
+    frame = extract_cover_image(str(video_path))
+    img = Image.fromarray(frame)  # type: ignore
+    img.save("cover.jpg")

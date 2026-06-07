@@ -9,24 +9,23 @@ from dotenv import find_dotenv, load_dotenv
 from openai import AsyncOpenAI, OpenAI
 from sqlmodel import Session
 
+from database import engine
 from lib.audio import extract_bgm, stream_audio_features
+from lib.schemas import (
+    CutPointList,
+    VideoStructure,
+    VideoVisualAnalysis,
+    compute_text_density_curve,
+)
 from lib.video import (
     compress_video_async,
     detect_scenes_scenedetect,
-    extract_cover_image,
     get_video_duration,
     probe_video,
     split_video_by_segments,
     video_to_base64,
 )
-from models import (
-    Asset,
-    CutPointList,
-    VideoStructure,
-    VideoVisualAnalysis,
-    compute_text_density_curve,
-    engine,
-)
+from models import Asset
 from prompts import (
     SPLIT_DETECTION_SYSTEM_PROMPT,
     SPLIT_DETECTION_USER_PROMPT,
@@ -35,40 +34,8 @@ from prompts import (
     VIDEO_VISUAL_ANALYSIS_SYSTEM_PROMPT,
     VIDEO_VISUAL_ANALYSIS_USER_PROMPT,
 )
-from task_registry import task_registry
-
-_STREAM_EOF = object()
-STORAGE_IMAGES = Path("storage/images")
-
-
-def save_cover_for_video(
-    video_path: str,
-    user_id: str,
-    source_asset_id: str | None = None,
-) -> str | None:
-    try:
-        img = extract_cover_image(video_path)
-    except Exception:
-        return None
-
-    STORAGE_IMAGES.mkdir(parents=True, exist_ok=True)
-    cover_id = str(uuid.uuid4())
-    cover_path = STORAGE_IMAGES / f"{cover_id}.jpg"
-    img.save(str(cover_path), "JPEG", quality=85)
-
-    with Session(engine) as session:
-        asset = Asset(
-            asset_id=cover_id,
-            user_id=user_id,
-            source_asset_id=source_asset_id,
-            path=str(cover_path),
-            type="image",
-        )
-        session.add(asset)
-        session.commit()
-
-    return cover_id
-
+from services.cover import extract_cover_for_video
+from tasks import _STREAM_EOF, task_registry
 
 load_dotenv(find_dotenv(), override=True)
 PROJECT_DIR = Path.cwd()
@@ -187,7 +154,7 @@ async def run_compress_task(
         loop = asyncio.get_running_loop()
         cover_id = await loop.run_in_executor(
             None,
-            save_cover_for_video,
+            extract_cover_for_video,
             str(compressed_path),
             user_id,
             compressed_asset_id,
@@ -409,7 +376,7 @@ async def run_split_task(
 
                 cover_id = await loop.run_in_executor(
                     None,
-                    save_cover_for_video,
+                    extract_cover_for_video,
                     str(clip_path),
                     user_id,
                     asset.asset_id,

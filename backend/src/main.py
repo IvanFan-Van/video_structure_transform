@@ -1,43 +1,50 @@
+from contextlib import asynccontextmanager
+
 from dotenv import find_dotenv, load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlmodel import SQLModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from routers.auth import router as auth_router
-from routers.files import router as files_router
-from routers.pipeline import router as pipeline_router
-from routers.task import router as task_router
+from database import engine
+from routers import auth_router, files_router, pipeline_router, task_router
 
 load_dotenv(find_dotenv())
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    SQLModel.metadata.create_all(engine)
+    yield
+    engine.dispose()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    if 400 <= exc.status_code < 500:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"status": "fail", "message": exc.detail},
-        )
+    """全局 HTTP 异常处理器，根据状态码区分客户端错误和服务器错误"""
+    status = "fail" if 400 <= exc.status_code < 500 else "error"
     return JSONResponse(
         status_code=exc.status_code,
-        content={"status": "error", "message": exc.detail},
+        content={
+            "status": status,
+            "message": exc.detail,
+        },
     )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    messages = []
-    for err in exc.errors():
-        loc = ".".join(str(p) for p in err["loc"])
-        messages.append(f"{loc}: {err['msg']}")
+    """全局请求验证异常处理器，当请求数据不符合预期时返回详细的错误信息"""
     return JSONResponse(
         status_code=422,
         content={
             "status": "fail",
-            "message": "; ".join(messages),
+            "message": "请求数据验证失败",
+            "data": exc.errors(),
         },
     )
 

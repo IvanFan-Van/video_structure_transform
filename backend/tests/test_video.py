@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from src.video import (
+from src.lib.video import (
     VideoMeta,
     compress_video,
     detect_scenes_scenedetect,
