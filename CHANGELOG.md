@@ -26,5 +26,6 @@
 23. [x] `feat`: 我希望新添加一个 EffectAnalysis 节点, 其能够将视频按照 scene 切分 (2026.06.06)
 24. [ ] `feat`: 逐个 scene 分析其特效构成部分
 25. [x] `feat`: 将 cover image 等添加一个 /files/{file_id} 链接. (让后端生成 cover image) (2026.06.06)
-26. [ ] `refac`: 重构 backend 代码, 使其符合 MVC 架构
+26. [x] `refac`: 重构 backend 代码, 使其符合 MVC 架构 (2026.06.07)
 27. [ ] `feat`: 可以框选多个节点一起移动
+28. [ ] `bug`: 没有保存 image asset

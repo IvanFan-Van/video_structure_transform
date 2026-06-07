@@ -4,7 +4,13 @@ import { useVideoStore } from "../../store/useVideoStore";
 interface Props {
     x: number;
     y: number;
-    onPosChange: (id: string, x: number, y: number, w: number, h: number) => void;
+    onPosChange: (
+        id: string,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+    ) => void;
 }
 
 export function SplitNode({ x, y, onPosChange }: Props) {
@@ -49,7 +55,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
             >
                 {/* ── Config panels ── */}
-                {!isSplitting && splitStatus !== "success" && (
+                {!isSplitting && splitStatus !== "loading" && (
                     <>
                         <div
                             style={{
@@ -104,13 +110,14 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                         position: "absolute",
                                         height: "14px",
                                         width: "14px",
-                                        left: splitConfig.use_ai ? "19px" : "3px",
+                                        left: splitConfig.use_ai
+                                            ? "19px"
+                                            : "3px",
                                         bottom: "3px",
                                         background: "#fff",
                                         borderRadius: "50%",
                                         transition: "left 0.2s",
-                                        boxShadow:
-                                            "0 1px 3px rgba(0,0,0,0.15)",
+                                        boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
                                     }}
                                 />
                             </label>
@@ -166,9 +173,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                             }}
                         >
                             <span>Min Scene Len</span>
-                            <span
-                                style={{ color: "#999", fontSize: "9px" }}
-                            >
+                            <span style={{ color: "#999", fontSize: "9px" }}>
                                 {splitConfig.min_scene_len} frames
                             </span>
                         </div>
@@ -190,7 +195,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                 )}
 
                 {/* ── START / STOP / RESTART button ── */}
-                {ready && (
+                {ready && splitStatus === "idle" && (
                     <button
                         onClick={startSplit}
                         disabled={!compressResult}
@@ -201,14 +206,10 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                             fontWeight: 600,
                             letterSpacing: "2px",
                             color: "#fff",
-                            background: compressResult
-                                ? "#f97316"
-                                : "#e0e0e0",
+                            background: compressResult ? "#f97316" : "#e0e0e0",
                             border: "none",
                             borderRadius: "4px",
-                            cursor: compressResult
-                                ? "pointer"
-                                : "not-allowed",
+                            cursor: compressResult ? "pointer" : "not-allowed",
                         }}
                     >
                         ▶ START SPLIT
@@ -225,18 +226,6 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                             padding: "8px 0",
                         }}
                     >
-                        <div
-                            className="split-loader"
-                            style={{
-                                width: "16px",
-                                height: "16px",
-                                border: "2px solid #e0e0e0",
-                                borderTopColor: "#f97316",
-                                borderRadius: "50%",
-                                animation:
-                                    "split-spin 0.8s linear infinite",
-                            }}
-                        />
                         <span
                             style={{
                                 fontSize: "10px",
@@ -344,13 +333,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
     );
 }
 
-function SummaryKV({
-    label,
-    value,
-}: {
-    label: string;
-    value: string;
-}) {
+function SummaryKV({ label, value }: { label: string; value: string }) {
     return (
         <div
             style={{
@@ -362,7 +345,9 @@ function SummaryKV({
                 borderRadius: "4px",
             }}
         >
-            <span style={{ fontSize: "8px", color: "#bbb", letterSpacing: "1px" }}>
+            <span
+                style={{ fontSize: "8px", color: "#bbb", letterSpacing: "1px" }}
+            >
                 {label}
             </span>
             <span style={{ fontSize: "10px", color: "#555", fontWeight: 600 }}>
