@@ -17,10 +17,10 @@ from core import (
     save_cover_for_video,
 )
 from deps import get_current_user, get_video_asset
+from lib.video import probe_video
 from models import Asset, User, engine
 from schemas import AnalyzeRequest, CompressRequest, SplitRequest
 from task_registry import task_registry
-from video import probe_video
 
 router = APIRouter(tags=["pipeline"])
 

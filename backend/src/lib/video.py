@@ -266,9 +266,9 @@ def detect_scenes_scenedetect(
         segments.append(
             {
                 "index": i,
-                "start_sec": start.get_seconds(),
-                "end_sec": end.get_seconds(),
-                "duration": end.get_seconds() - start.get_seconds(),
+                "start_sec": start.seconds,
+                "end_sec": end.seconds,
+                "duration": end.seconds - start.seconds,
                 "cut_score": round(cut_score, 4),
             }
         )

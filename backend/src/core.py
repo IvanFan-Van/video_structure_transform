@@ -9,7 +9,16 @@ from dotenv import find_dotenv, load_dotenv
 from openai import AsyncOpenAI, OpenAI
 from sqlmodel import Session
 
-from audio import extract_bgm, stream_audio_features
+from lib.audio import extract_bgm, stream_audio_features
+from lib.video import (
+    compress_video_async,
+    detect_scenes_scenedetect,
+    extract_cover_image,
+    get_video_duration,
+    probe_video,
+    split_video_by_segments,
+    video_to_base64,
+)
 from models import (
     Asset,
     CutPointList,
@@ -27,15 +36,6 @@ from prompts import (
     VIDEO_VISUAL_ANALYSIS_USER_PROMPT,
 )
 from task_registry import task_registry
-from video import (
-    compress_video_async,
-    detect_scenes_scenedetect,
-    extract_cover_image,
-    get_video_duration,
-    probe_video,
-    split_video_by_segments,
-    video_to_base64,
-)
 
 _STREAM_EOF = object()
 STORAGE_IMAGES = Path("storage/images")

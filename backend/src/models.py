@@ -283,12 +283,3 @@ class SplitResult(BaseModel):
 
 engine = create_engine("sqlite:///database.db", echo=False)
 SQLModel.metadata.create_all(engine)
-
-try:
-    with engine.connect() as conn:
-        conn.exec_driver_sql(
-            "ALTER TABLE asset ADD COLUMN source_asset_id VARCHAR"
-        )
-        conn.commit()
-except Exception:
-    pass
