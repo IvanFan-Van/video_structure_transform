@@ -1,0 +1,48 @@
+{
+  "theme": "儿童零食推荐——谢逸牌蛋糕",
+  "target_audience": "宝妈群体",
+  "output_ratio": "9:16",
+  "user_materials": ["text", "voiceover"],
+  "voiceover_text": "",
+  "slots": {
+    "hook": {
+      "text": "我家孩子把这个谢逸牌蛋糕分享给幼儿园小伙伴吃啊，没想到全群的家长都来找我要这个链接",
+      "user_video": null,
+      "user_image": null,
+      "variables": {
+        "零食名称": "谢逸牌蛋糕",
+        "对应场景": "幼儿园"
+      }
+    },
+    "product_show": {
+      "text": "打开袋子就闻到浓浓的蛋香味，每一片都做的又酥又脆",
+      "user_video": null,
+      "user_image": null,
+      "variables": {
+        "产品核心香气描述": "蛋香味",
+        "产品核心工艺特点": "又酥又脆"
+      }
+    },
+    "usage_scene": {
+      "text": "吃起来是酥松绵密，浓浓的蛋香混合着坚果香，一口下去超满足",
+      "user_video": null,
+      "user_image": null,
+      "variables": {
+        "核心口感描述": "酥松绵密",
+        "风味1": "浓浓的蛋香",
+        "风味2": "坚果香"
+      }
+    },
+    "outro": {
+      "text": "抖音×今日头条，来抖音关注热点事件，蛋糕有哪些营养价值？",
+      "user_video": null,
+      "user_image": null,
+      "variables": {
+        "平台合作方A": "抖音",
+        "平台合作方B": "今日头条",
+        "平台名称": "抖音",
+        "相关品类知识问题": "蛋糕有哪些营养价值"
+      }
+    }
+  }
+}

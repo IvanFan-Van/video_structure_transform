@@ -1,0 +1,7 @@
+output/
+.env
+**/*/__pycache__/
+**/*.pyc
+input_videos/
+remotion-video/node_modules/
+remotion-video/out/
