@@ -2,6 +2,7 @@ from .asset import serve_asset_file
 from .auth import login_user, register_user
 from .pipeline import (
     check_analysis_size_limit,
+    extract_cover_for_video,
     start_audio_analysis,
     start_compress_task,
     start_effect_analysis,
@@ -26,4 +27,5 @@ __all__ = [
     "start_audio_analysis",
     "start_split_task",
     "upload_video",
+    "extract_cover_for_video",
 ]

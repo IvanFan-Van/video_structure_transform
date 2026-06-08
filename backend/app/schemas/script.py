@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.utils import null_str_validator
+from app.schemas.utils import null_str_validator
 
 EmotionalTone = Literal["positive", "negative", "neutral", "suspenseful"]
 HookType = Literal[

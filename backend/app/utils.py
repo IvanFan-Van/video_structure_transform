@@ -7,18 +7,8 @@ from functools import wraps
 
 import bcrypt
 from jose import jwt
-from pydantic import field_validator
 
-
-def null_str_validator(*field_names: str):
-    @field_validator(*field_names, mode="before")
-    @classmethod
-    def _coerce_null_strings(cls, v):
-        if v == "null":
-            return None
-        return v
-
-    return _coerce_null_strings
+from app.schemas import TextDensityPoint, TextElement
 
 
 def hash_password(password: str) -> str:
@@ -89,6 +79,23 @@ def timer(func):
         return result  # 返回原函数的执行结果
 
     return wrapper
+
+
+def compute_text_density_curve(
+    text_elements: list[TextElement],
+) -> list[TextDensityPoint]:
+    events: list[tuple[float, int]] = []
+    for elem in text_elements:
+        events.append((elem.appear_time, +1))
+        events.append((elem.disappear_time, -1))
+    events.sort(key=lambda x: x[0])
+
+    points: list[TextDensityPoint] = []
+    count = 0
+    for t, delta in events:
+        count += delta
+        points.append(TextDensityPoint(time=t, text_count=max(count, 0)))
+    return points
 
 
 # --- 实战测试 ---

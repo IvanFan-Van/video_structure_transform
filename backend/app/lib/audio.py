@@ -30,6 +30,7 @@ import ffmpeg
 from audio_separator.separator import Separator
 
 STORAGE_TMP = Path("storage/tmp")
+STREAM_EOF = object()
 
 _separator: Separator | None = None
 _separator_lock = threading.Lock()

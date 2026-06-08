@@ -40,7 +40,9 @@ dev = [
 ]
 
 [tool.ruff]
-select = ["I", "UP", "E", "F", "W", "C90"]
+lint.select = ["I", "UP", "E", "F", "W", "C90"]
+lint.ignore = ["E501"]
+exclude = ["app/prompts.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

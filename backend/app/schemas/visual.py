@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.utils import null_str_validator
+from app.schemas.utils import null_str_validator
 
 TransitionType = Literal["cut", "dissolve", "wipe", "fade_in", "fade_out"]
 CameraMovement = Literal["static", "zoom_in", "zoom_out", "pan", "tilt", "handheld"]
@@ -98,20 +98,3 @@ class VideoVisualAnalysis(BaseModel):
         default_factory=list,
         description="文字密度曲线，由后处理代码计算填充",
     )
-
-
-def compute_text_density_curve(
-    text_elements: list[TextElement],
-) -> list[TextDensityPoint]:
-    events: list[tuple[float, int]] = []
-    for elem in text_elements:
-        events.append((elem.appear_time, +1))
-        events.append((elem.disappear_time, -1))
-    events.sort(key=lambda x: x[0])
-
-    points: list[TextDensityPoint] = []
-    count = 0
-    for time, delta in events:
-        count += delta
-        points.append(TextDensityPoint(time=time, text_count=max(count, 0)))
-    return points

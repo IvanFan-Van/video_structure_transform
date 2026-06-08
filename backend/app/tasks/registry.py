@@ -3,7 +3,6 @@ from typing import Any
 
 from .model import TaskInfo
 
-STREAM_EOF = object()
 HEARTBEAT_INTERVAL = 15.0
 
 

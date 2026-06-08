@@ -4,8 +4,30 @@ from collections.abc import AsyncGenerator
 
 from fastapi import HTTPException
 
+from app.lib.audio import STREAM_EOF
 from app.models import User
-from app.tasks.registry import HEARTBEAT_INTERVAL, STREAM_EOF, task_registry
+from app.tasks.registry import HEARTBEAT_INTERVAL, task_registry
+
+
+def register_and_launch(
+    task_id: str,
+    user_id: str,
+    task_type: str,
+    resource_id: str,
+    coro,
+    stream_queue: asyncio.Queue | None = None,
+) -> None:
+    info = task_registry.register(
+        task_id=task_id,
+        user_id=user_id,
+        type=task_type,
+        resource_id=resource_id,
+        task=None,
+    )
+    if stream_queue is not None:
+        info._stream_queue = stream_queue
+    asyncio_task = asyncio.create_task(coro)
+    info.task = asyncio_task
 
 
 def get_task_for_user(task_id: str, current_user: User):

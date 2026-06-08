@@ -4,7 +4,7 @@ from .compress import CompressRequest
 from .effect import EffectAnalysisResult, EffectMatch
 from .script import VideoStructure
 from .split import CutPointList, SplitRequest, SplitResult
-from .visual import VideoVisualAnalysis, compute_text_density_curve
+from .visual import TextDensityPoint, TextElement, VideoVisualAnalysis
 
 __all__ = [
     "AnalyzeRequest",
@@ -14,8 +14,9 @@ __all__ = [
     "EffectMatch",
     "VideoStructure",
     "VideoVisualAnalysis",
-    "compute_text_density_curve",
     "CompressRequest",
+    "TextElement",
+    "TextDensityPoint",
     "SplitResult",
     "SplitRequest",
     "CutPointList",

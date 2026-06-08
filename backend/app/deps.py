@@ -6,13 +6,16 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlmodel import Session, select
 
-from app.database import engine
+from app.database import engine, get_session
 from app.models import Asset, User
+from app.repositories import get_user_by_id
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
 
 
-async def get_current_user(token: str | None = Depends(oauth2_scheme)):
+async def get_current_user(
+    token: str | None = Depends(oauth2_scheme), session: Session = Depends(get_session)
+):
     if token is None:
         raise HTTPException(status_code=401, detail="未提供认证令牌")
 
@@ -29,16 +32,14 @@ async def get_current_user(token: str | None = Depends(oauth2_scheme)):
     if user_id is None:
         raise HTTPException(status_code=401, detail="令牌格式无效")
 
-    with Session(engine) as session:
-        statement = select(User).where(User.user_id == user_id)
-        user = session.exec(statement).first()
-        if user is None:
-            raise HTTPException(status_code=401, detail="用户不存在或已注销")
+    user = get_user_by_id(session, user_id)
+    if user is None:
+        raise HTTPException(status_code=401, detail="用户不存在或已注销")
 
-        return user
+    return user
 
 
-def get_video_asset(asset_id: str, current_user: User) -> tuple[Asset, Path]:
+def get_video_asset(asset_id: str, current_user: User) -> Asset:
     with Session(engine) as session:
         statement = select(Asset).where(Asset.asset_id == asset_id)
         asset = session.exec(statement).first()
@@ -49,4 +50,4 @@ def get_video_asset(asset_id: str, current_user: User) -> tuple[Asset, Path]:
         video_path = Path(asset.path)
         if not video_path.exists():
             raise HTTPException(status_code=500, detail="源文件丢失")
-        return asset, video_path
+        return asset

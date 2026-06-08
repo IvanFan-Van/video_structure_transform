@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
@@ -42,9 +44,12 @@ async def upload_video_endpoint(
 async def compress_video_endpoint(
     req: CompressRequest,
     current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
-    source_asset, source_path = get_video_asset(req.asset_id, current_user)
-    task_id = start_compress_task(current_user, req.asset_id, str(source_path), req)
+    source_asset = get_video_asset(req.asset_id, current_user)
+    task_id = start_compress_task(
+        session, current_user, req.asset_id, str(source_asset.path), req
+    )
     return JSONResponse(
         status_code=202, content={"status": "success", "data": {"task_id": task_id}}
     )
@@ -55,13 +60,11 @@ async def analyze_script_endpoint(
     req: AnalyzeRequest,
     current_user: User = Depends(get_current_user),
 ):
-    source_asset, video_path = get_video_asset(req.asset_id, current_user)
-    video_path_str = str(video_path)
-
-    meta = probe_video(video_path)
+    source_asset = get_video_asset(req.asset_id, current_user)
+    meta = probe_video(source_asset.path)
     check_analysis_size_limit(meta)
 
-    task_id = start_script_analysis(current_user, video_path_str, req.asset_id)
+    task_id = start_script_analysis(current_user, source_asset.path, req.asset_id)
     return JSONResponse(
         status_code=202, content={"status": "success", "data": {"task_id": task_id}}
     )
@@ -72,13 +75,11 @@ async def analyze_visual_endpoint(
     req: AnalyzeRequest,
     current_user: User = Depends(get_current_user),
 ):
-    source_asset, video_path = get_video_asset(req.asset_id, current_user)
-    video_path_str = str(video_path)
-
-    meta = probe_video(video_path)
+    source_asset = get_video_asset(req.asset_id, current_user)
+    meta = probe_video(source_asset.path)
     check_analysis_size_limit(meta)
 
-    task_id = start_visual_analysis(current_user, video_path_str, req.asset_id)
+    task_id = start_visual_analysis(current_user, source_asset.path, req.asset_id)
     return JSONResponse(
         status_code=202, content={"status": "success", "data": {"task_id": task_id}}
     )
@@ -88,14 +89,17 @@ async def analyze_visual_endpoint(
 async def analyze_audio_endpoint(
     req: AnalyzeRequest,
     current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
-    source_asset, video_path = get_video_asset(req.asset_id, current_user)
+    source_asset = get_video_asset(req.asset_id, current_user)
 
-    ext = video_path.suffix.lower()
+    ext = Path(source_asset.path).suffix.lower()
     if ext not in ALLOWED_VIDEO_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"不支持的文件类型 {ext}")
 
-    task_id, _ = start_audio_analysis(current_user, str(video_path), req.asset_id)
+    task_id = start_audio_analysis(
+        session, current_user, source_asset.path, req.asset_id
+    )
     return JSONResponse(
         status_code=202, content={"status": "success", "data": {"task_id": task_id}}
     )
@@ -105,9 +109,12 @@ async def analyze_audio_endpoint(
 async def split_video_endpoint(
     req: SplitRequest,
     current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
-    source_asset, video_path = get_video_asset(req.asset_id, current_user)
-    task_id = start_split_task(current_user, str(video_path), req.asset_id, req)
+    source_asset = get_video_asset(req.asset_id, current_user)
+    task_id = start_split_task(
+        session, current_user, source_asset.path, req.asset_id, req
+    )
     return JSONResponse(
         status_code=202, content={"status": "success", "data": {"task_id": task_id}}
     )
@@ -118,13 +125,11 @@ async def analyze_effect_endpoint(
     req: AnalyzeRequest,
     current_user: User = Depends(get_current_user),
 ):
-    source_asset, video_path = get_video_asset(req.asset_id, current_user)
-    video_path_str = str(video_path)
-
-    meta = probe_video(video_path)
+    source_asset = get_video_asset(req.asset_id, current_user)
+    meta = probe_video(source_asset.path)
     check_analysis_size_limit(meta)
 
-    task_id = start_effect_analysis(current_user, video_path_str, req.asset_id)
+    task_id = start_effect_analysis(current_user, source_asset.path, req.asset_id)
     return JSONResponse(
         status_code=202, content={"status": "success", "data": {"task_id": task_id}}
     )

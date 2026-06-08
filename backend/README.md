@@ -103,3 +103,15 @@ curl -N "http://127.0.0.1:8000/analyze-audio?asset_id=xxx" \
     "message": "xxx"
 }
 ```
+
+## Quickstart
+
+初始化环境
+```
+uv sync
+```
+
+启动后端
+```
+uv run uvicorn app.main:app
+```

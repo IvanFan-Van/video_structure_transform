@@ -7,6 +7,10 @@ def get_user_by_email(session: Session, email: str) -> User | None:
     return session.exec(select(User).where(User.email == email)).first()
 
 
+def get_user_by_id(session: Session, user_id: str) -> User | None:
+    return session.exec(select(User).where(User.user_id == user_id)).first()
+
+
 def create_user(session: Session, user: User) -> User:
     session.add(user)
     session.commit()
