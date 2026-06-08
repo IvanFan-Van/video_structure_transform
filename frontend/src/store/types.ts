@@ -241,4 +241,14 @@ export interface SplitResult {
     clip_assets: SplitClipAsset[];
 }
 
+export interface EffectItem {
+    name: string;
+    evidence: string;
+}
+
+export interface EffectResult {
+    observations: string;
+    effects: EffectItem[];
+}
+
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;

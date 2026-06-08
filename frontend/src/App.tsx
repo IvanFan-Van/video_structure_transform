@@ -15,7 +15,7 @@ import { ScriptAnalysisNode } from "./components/nodes/ScriptAnalysisNode";
 import { AudioAnalysisNode } from "./components/nodes/AudioAnalysisNode";
 import { VisualAnalysisNode } from "./components/nodes/VisualAnalysisNode";
 import { SplitNode } from "./components/nodes/SplitNode";
-import { SplitSegmentNode } from "./components/nodes/SplitSegmentNode";
+import { EffectAnalysisNode } from "./components/nodes/EffectAnalysisNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
@@ -87,7 +87,7 @@ function App() {
         const base = [...WIRES];
         if (splitResult?.segments) {
             for (let i = 0; i < splitResult.segments.length; i++) {
-                base.push(["split", `split_segment_${i}`]);
+                base.push(["split", `effect_segment_${i}`]);
             }
         }
         return base;
@@ -271,15 +271,6 @@ function App() {
                         height: `calc(100% / ${zoom})`,
                     }}
                 >
-                    {/* <DatasetNode x={offset} y={80} onPosChange={updatePos} />
-            <TokenizerNode x={offset} y={380} onPosChange={updatePos} />
-
-            <ArchitectureNode x={offset + 310} y={80} onPosChange={updatePos} />
-            <TrainingNode x={offset + 310} y={440} onPosChange={updatePos} />
-
-            <MetricsNode x={offset + 640} y={80} onPosChange={updatePos} />
-            <GenerateNode x={offset + 640} y={440} onPosChange={updatePos} /> */}
-
                     <ReferenceNode x={offset} y={30} onPosChange={updatePos} />
                     <CompressConfigNode
                         x={offset + 310}
@@ -302,10 +293,10 @@ function App() {
                         onPosChange={updatePos}
                     />
                     {splitResult?.segments?.map((seg, i) => (
-                        <SplitSegmentNode
+                        <EffectAnalysisNode
                             key={`seg_${i}`}
                             x={offset + 1430}
-                            y={30 + i * 200}
+                            y={30 + i * 260}
                             segment={seg}
                             clip={splitResult.clip_assets?.find(
                                 (c) => c.index === i,

@@ -16,6 +16,7 @@ import {
     NodeStatus,
     SplitConfig,
     SplitResult,
+    EffectResult,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -24,6 +25,7 @@ import { useAuthStore } from "./useAuthStore";
 const streamControllers: Record<string, AbortController | null> = {
     audio: null,
     compress: null,
+    effect: null,
     script: null,
     split: null,
     visual: null,
@@ -114,11 +116,15 @@ async function subscribeTaskStream<TResult>(
     streamControllers[controllerKey] = new AbortController();
     const signal = streamControllers[controllerKey]!.signal;
 
-    const setNetworkError = (elapsed: number) => {
+    const elapsed = () => (Date.now() - t0) / 1000;
+    const filterErrors = (errors: NodeError[]) =>
+        errors.filter((e: NodeError) => e.nodeId !== nodeId);
+
+    const setNetworkError = () => {
         set((s: any) => ({
-            ...opts.onFailed(elapsed),
+            ...opts.onFailed(elapsed()),
             videoErrors: [
-                ...s.videoErrors.filter((e: NodeError) => e.nodeId !== nodeId),
+                ...filterErrors(s.videoErrors),
                 makeError(
                     nodeId,
                     "Network error",
@@ -130,85 +136,62 @@ async function subscribeTaskStream<TResult>(
     };
 
     try {
-        const response = await fetch(`/api/task/${taskId}/stream`, {
-            headers: { Authorization: `Bearer ${token}` },
+        await fetchEventSource(`/api/task/${taskId}/stream`, {
+            headers: { Authorization: `Bearer ${token ?? ""}` },
             signal,
-        });
-
-        if (!response.ok || !response.body) {
-            setNetworkError((Date.now() - t0) / 1000);
-            return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        outer: while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() ?? "";
-
-            for (const raw of lines) {
-                const line = raw.trim();
-                if (
-                    !line ||
-                    line.startsWith(":") ||
-                    /^(event|id|retry):/.test(line)
-                )
-                    continue;
-
-                const jsonStr = line.startsWith("data:")
-                    ? line.slice(5).trim()
-                    : line;
-                if (!jsonStr) continue;
-
+            onopen: async (response) => {
+                if (!response.ok) {
+                    setNetworkError();
+                    throw new Error("Bad response status");
+                }
+            },
+            onmessage: (event) => {
+                if (!event.data) return;
                 try {
-                    const info: TaskInfo = JSON.parse(jsonStr);
-                    const elapsed = (Date.now() - t0) / 1000;
-
-                    if (info.status === "completed") {
-                        set((s: any) => ({
-                            ...opts.onCompleted(
-                                info.result as TResult,
-                                elapsed,
-                            ),
-                            videoErrors: s.videoErrors.filter(
-                                (e: NodeError) => e.nodeId !== nodeId,
-                            ),
-                        }));
-                        break outer;
-                    } else if (info.status === "failed") {
-                        set((s: any) => ({
-                            ...opts.onFailed(elapsed),
-                            videoErrors: [
-                                ...s.videoErrors.filter(
-                                    (e: NodeError) => e.nodeId !== nodeId,
+                    const info: TaskInfo = JSON.parse(event.data);
+                    switch (info.status) {
+                        case "completed":
+                            set((s: any) => ({
+                                ...opts.onCompleted(
+                                    info.result as TResult,
+                                    elapsed(),
                                 ),
-                                makeError(
-                                    nodeId,
-                                    failureLabel,
-                                    "TASK_FAILED",
-                                    info.error || "",
-                                ),
-                            ],
-                        }));
-                        break outer;
-                    } else if (info.status === "cancelled") {
-                        set(opts.onCancelled());
-                        break outer;
+                                videoErrors: filterErrors(s.videoErrors),
+                            }));
+                            abortStream(controllerKey); // 主动关闭，阻止重连
+                            break;
+                        case "failed":
+                            set((s: any) => ({
+                                ...opts.onFailed(elapsed()),
+                                videoErrors: [
+                                    ...filterErrors(s.videoErrors),
+                                    makeError(
+                                        nodeId,
+                                        failureLabel,
+                                        "TASK_FAILED",
+                                        info.error ?? "",
+                                    ),
+                                ],
+                            }));
+                            abortStream(controllerKey);
+                            break;
+                        case "cancelled":
+                            set(opts.onCancelled());
+                            abortStream(controllerKey);
+                            break;
                     }
                 } catch {
-                    // Malformed JSON line — skip
+                    // Malformed JSON — skip
                 }
-            }
-        }
+            },
+            onerror: (err) => {
+                if (err?.name === "AbortError") throw err; // 让库停止，不触发 setNetworkError
+                setNetworkError();
+                throw err; // 抛出阻止自动重试
+            },
+        });
     } catch (err: any) {
-        if (err?.name === "AbortError") return;
-        setNetworkError((Date.now() - t0) / 1000);
+        // AbortError 和 FatalError 都会冒泡到这里，忽略即可
     }
 }
 
@@ -250,6 +233,9 @@ interface VideoState {
     splitTaskId: string | null;
     splitResult: SplitResult | null;
 
+    effectStatuses: Record<number, NodeStatus>;
+    effectResults: Record<number, EffectResult | null>;
+
     videoErrors: NodeError[];
 }
 
@@ -271,6 +257,7 @@ interface VideoActions {
     ) => void;
     startSplit: () => Promise<void>;
     stopSplit: () => Promise<void>;
+    analyzeEffect: (assetId: string, segmentIndex: number) => Promise<void>;
     dismissError: (id: number) => void;
 }
 
@@ -327,6 +314,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     isSplitting: false,
     splitTaskId: null,
     splitResult: null,
+
+    effectStatuses: {},
+    effectResults: {},
 
     videoErrors: [],
 
@@ -900,7 +890,13 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         const token = useAuthStore.getState().token;
         const t0 = Date.now();
 
-        set({ isSplitting: true, splitStatus: "loading", splitTime: null, splitTaskId: null, splitResult: null });
+        set({
+            isSplitting: true,
+            splitStatus: "loading",
+            splitTime: null,
+            splitTaskId: null,
+            splitResult: null,
+        });
 
         try {
             const res = await axios.post(
@@ -965,7 +961,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 splitStatus: "error",
                 videoErrors: [
                     ...s.videoErrors.filter((e) => e.nodeId !== "split"),
-                    makeError("split", "Network error", "NETWORK_ERROR", NETWORK_ERROR_DETAILS),
+                    makeError(
+                        "split",
+                        "Network error",
+                        "NETWORK_ERROR",
+                        NETWORK_ERROR_DETAILS,
+                    ),
                 ],
             }));
         }
@@ -982,6 +983,91 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             splitResult: null,
             splitTime: null,
         });
+    },
+
+    analyzeEffect: async (assetId, segmentIndex) => {
+        const token = useAuthStore.getState().token;
+        const t0 = Date.now();
+        const controllerKey = `effect`; // single global controller — only one effect analysis at a time
+
+        set((s) => ({
+            effectStatuses: { ...s.effectStatuses, [segmentIndex]: "loading" },
+            effectResults: { ...s.effectResults, [segmentIndex]: null },
+        }));
+
+        try {
+            const res = await axios.post(
+                "/api/analyze-effect",
+                { asset_id: assetId },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (res.data.status !== "success") {
+                const elapsed = (Date.now() - t0) / 1000;
+                set((s) => ({
+                    effectStatuses: {
+                        ...s.effectStatuses,
+                        [segmentIndex]: "error",
+                    },
+                }));
+                return;
+            }
+
+            const taskId: string = res.data.data.task_id;
+
+            await subscribeTaskStream<EffectResult>(taskId, token, {
+                controllerKey,
+                t0,
+                set,
+                nodeId: `effect_segment_${segmentIndex}`,
+                failureLabel: "Effect analysis failed",
+                onCompleted: (result, elapsed) => ({
+                    effectResults: {
+                        ...get().effectResults,
+                        [segmentIndex]: result,
+                    },
+                    effectStatuses: {
+                        ...get().effectStatuses,
+                        [segmentIndex]: "success" as NodeStatus,
+                    },
+                }),
+                onFailed: (elapsed) => ({
+                    effectStatuses: {
+                        ...get().effectStatuses,
+                        [segmentIndex]: "error" as NodeStatus,
+                    },
+                }),
+                onCancelled: () => ({
+                    effectStatuses: {
+                        ...get().effectStatuses,
+                        [segmentIndex]: "idle" as NodeStatus,
+                    },
+                }),
+            });
+        } catch {
+            set((s) => ({
+                effectStatuses: {
+                    ...s.effectStatuses,
+                    [segmentIndex]: "error",
+                },
+                videoErrors: [
+                    ...s.videoErrors.filter(
+                        (e) => e.nodeId !== `effect_segment_${segmentIndex}`,
+                    ),
+                    makeError(
+                        `effect_segment_${segmentIndex}`,
+                        "Network error",
+                        "NETWORK_ERROR",
+                        NETWORK_ERROR_DETAILS,
+                    ),
+                ],
+            }));
+        }
     },
 
     dismissError: (id) => {
