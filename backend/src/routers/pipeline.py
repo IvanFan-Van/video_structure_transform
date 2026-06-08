@@ -12,6 +12,7 @@ from services import (
     check_analysis_size_limit,
     start_audio_analysis,
     start_compress_task,
+    start_effect_analysis,
     start_script_analysis,
     start_split_task,
     start_visual_analysis,
@@ -108,6 +109,23 @@ async def split_video_endpoint(
 ):
     source_asset, video_path = get_video_asset(req.asset_id, current_user)
     task_id = start_split_task(current_user, str(video_path), req.asset_id, req)
+    return JSONResponse(
+        status_code=202, content={"status": "success", "data": {"task_id": task_id}}
+    )
+
+
+@router.post("/analyze-effect")
+async def analyze_effect_endpoint(
+    req: AnalyzeRequest,
+    current_user: User = Depends(get_current_user),
+):
+    source_asset, video_path = get_video_asset(req.asset_id, current_user)
+    video_path_str = str(video_path)
+
+    meta = probe_video(video_path)
+    check_analysis_size_limit(meta)
+
+    task_id = start_effect_analysis(current_user, video_path_str, req.asset_id)
     return JSONResponse(
         status_code=202, content={"status": "success", "data": {"task_id": task_id}}
     )

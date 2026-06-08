@@ -83,6 +83,12 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应](#成功响应-202-4)
     - [任务结果结构](#任务结果结构)
     - [错误响应](#错误响应-11)
+  - [14. POST /analyze-effect — 视频特效分析](#14-post-analyze-effect--视频特效分析)
+    - [请求参数](#请求参数-10)
+    - [请求示例](#请求示例-10)
+    - [成功响应](#成功响应-202-5)
+    - [响应字段说明](#响应字段说明-2)
+    - [错误响应](#错误响应-12)
   - [附录 A: VideoMeta 元数据字段](#附录-a-videometa-元数据字段)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
@@ -784,7 +790,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ## 8. GET /task/{task_id} — 查询异步任务状态（轮询）
 
-查询由 `/compress`、`/analyze-script`、`/analyze-visual`、`/analyze-audio` 或 `/split` 提交的异步任务的当前状态和结果。
+查询由 `/compress`、`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect` 或 `/split` 提交的异步任务的当前状态和结果。
 
 > **推荐使用 SSE**：`GET /task/{task_id}/stream` 提供实时推送，无需轮询。此端点在客户端不支持 SSE 时作为降级回退使用。
 
@@ -869,7 +875,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `task_id` | string | 任务唯一标识 |
-| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` / `split` |
+| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` / `analyze-effect` / `split` |
 | `resource_id` | string | 关联的资源 ID（如 asset_id） |
 | `status` | string | 任务状态：`running` / `completed` / `failed` / `cancelled` |
 | `created_at` | string | 任务创建时间（ISO 8601） |
@@ -927,7 +933,7 @@ data: {"task_id":"dddddddd-...","type":"analyze-script","resource_id":"a1b2...",
 
 **任务运行中（连接时任务仍在执行）：**
 
-普通任务（compress/analyze-script/visual）先推送运行状态，然后每 15 秒发送 keepalive，最后推送最终状态：
+普通任务（compress/analyze-script/visual/effect）先推送运行状态，然后每 15 秒发送 keepalive，最后推送最终状态：
 
 ```
 data: {"task_id":"dddddddd-...","status":"running"}
@@ -1446,6 +1452,105 @@ curl -X POST http://127.0.0.1:8000/split \
 
 运行时错误（如 ffmpeg 切割失败）通过任务 `status: "failed"` 的 `error` 字段返回。
 
+---
+
+## 14. POST /analyze-effect — 视频特效分析
+
+使用 AI 多模态模型分析视频中包含的 UI/动效设计视觉特效，匹配内置特效库识别特效类型。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `POST` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | `application/json` |
+
+### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `asset_id` | string | **是** | 源视频的 asset_id（由 `/upload` 返回） |
+
+### 请求示例
+
+```bash
+curl -X POST http://127.0.0.1:8000/analyze-effect \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"}'
+```
+
+### 成功响应 (202)
+
+分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "hhhhhhhh-hhhh-hhhh-hhhh-hhhhhhhhhhhh"
+  }
+}
+```
+
+任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下特效分析结果：
+
+```json
+{
+  "observations": "视频开头出现大字标题，以逐字弹出的方式出现，伴有缩放动效。中段有快速的光效闪过转场。背景有噪点纹理覆盖。结尾文字淡出消失。",
+  "effects": [
+    {
+      "name": "Typewriter Text",
+      "evidence": "标题文字逐字出现，有打字机光标效果"
+    },
+    {
+      "name": "Pop Entry",
+      "evidence": "文字以缩放弹出方式进入画面"
+    },
+    {
+      "name": "Light Leak Transition",
+      "evidence": "镜头切换时出现快速光效闪过"
+    },
+    {
+      "name": "Film Grain Overlay",
+      "evidence": "画面全程覆盖细微噪点纹理"
+    }
+  ]
+}
+```
+
+### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `observations` | string | 对视频中所有视觉现象的自由形式描述（模型在匹配特效库之前先进行纯观察），聚焦于视觉呈现的"如何"而非内容"是什么" |
+| `effects` | array | 匹配到的特效列表，仅包含有明确视觉证据的特效 |
+| `effects[].name` | string | 特效名称，与内置特效库中的名称精确匹配 |
+| `effects[].evidence` | string | 支持该匹配的具体视觉现象描述（≤20词） |
+
+> **内置特效库**：模型从 `src/lib/components_description.json` 加载特效库，按类别（文字动效、转场、画面效果等）分组，仅识别库中已定义的特效类型。每个匹配必须基于观察中的具体视觉现象作为证据，宁可少报也不误报。
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+| 401 | `令牌格式无效` | JWT 缺少 user_id |
+| 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
+| 400 | `缺少 asset_id 参数` | 请求体未提供 asset_id |
+| 400 | `视频文件过大（xx MB），超过分析上限 xx MB。请先调用 /compress 压缩后再分析。` | 视频文件超过 `MAX_ANALYZE_SIZE_MB` 限制 |
+| 404 | `素材 xxx 不存在` | 该 asset_id 对应的记录不存在 |
+| 403 | `无权访问该素材` | 素材不属于当前用户 |
+
+**服务端错误（附带 error code）：**
+
+| HTTP 状态码 | data.code | 说明 |
+|---|---|---|
+| 500 | `FILE_MISSING` | 数据库记录存在但磁盘文件已丢失 |
+| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 `GET /task/{task_id}` 查询 `status: "failed"` 获取详情） |
+
+---
+
 上传和压缩接口返回的 `metadata` 对象包含以下字段：
 
 | 字段 | 类型 | 说明 | 示例 |
@@ -1511,7 +1616,7 @@ curl -X POST http://127.0.0.1:8000/split \
 
 ### 概述
 
-视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`) 和视频切割 (`/split`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
+视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`) 和视频切割 (`/split`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
 
 尤其对于 `/analyze-audio`，SSE 流会在任务运行期间**逐帧推送音频特征数据**，最终在任务完成时推送汇总结果。
 
@@ -1522,6 +1627,7 @@ POST /compress       → 202 { task_id }                    ← 立即返回
 POST /analyze-script → 202 { task_id }                    ← 立即返回
 POST /analyze-visual → 202 { task_id }                    ← 立即返回
 POST /analyze-audio  → 202 { task_id }                    ← 立即返回
+POST /analyze-effect → 202 { task_id }                    ← 立即返回
 POST /split          → 202 { task_id }                    ← 立即返回
                      → 连接 GET /task/{id}/stream (SSE)   ← 推荐：实时推送
 GET  /task/{id}      → 200 { status: "running" }           ← 轮询回退
@@ -1542,7 +1648,7 @@ GET  /task/{id}      → 200 { status: "cancelled" }
 ### 取消机制
 
 - **`/compress`**: 底层 `ffmpeg` 子进程被 `SIGKILL` 杀死，部分压缩文件被清理
-- **`/analyze-script` / `/analyze-visual`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
+- **`/analyze-script` / `/analyze-visual` / `/analyze-effect`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
 - **`/analyze-audio`**: 底层 `ffmpeg` 和模型推理被 `asyncio.CancelledError` 中断，中间产物（storage/tmp 下的文件）由任务内部清理
 - **`/split`**: 底层 `ffmpeg` 子进程被终止，已生成的临时切割文件被清理
 

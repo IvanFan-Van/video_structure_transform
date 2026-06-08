@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from core import (
     run_audio_analysis,
     run_compress_task,
+    run_effect_analysis,
     run_script_analysis,
     run_split_task,
     run_visual_analysis,
@@ -227,5 +228,17 @@ def start_split_task(
             threshold=req.threshold,
             min_scene_len=req.min_scene_len,
         ),
+    )
+    return task_id
+
+
+def start_effect_analysis(user: User, video_path_str: str, asset_id: str) -> str:
+    task_id = str(uuid.uuid4())
+    _register_and_launch(
+        task_id=task_id,
+        user_id=user.user_id,
+        task_type="analyze-effect",
+        resource_id=asset_id,
+        coro=run_effect_analysis(task_id, video_path_str),
     )
     return task_id

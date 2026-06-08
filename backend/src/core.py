@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import sys
 import uuid
@@ -13,6 +14,7 @@ from database import engine
 from lib.audio import extract_bgm, stream_audio_features
 from lib.schemas import (
     CutPointList,
+    EffectAnalysisResult,
     VideoStructure,
     VideoVisualAnalysis,
     compute_text_density_curve,
@@ -27,6 +29,8 @@ from lib.video import (
 )
 from models import Asset
 from prompts import (
+    EFFECT_ANALYSIS_SYSTEM_PROMPT_TEMPLATE,
+    EFFECT_ANALYSIS_USER_PROMPT,
     SPLIT_DETECTION_SYSTEM_PROMPT,
     SPLIT_DETECTION_USER_PROMPT,
     TRANSCRIPT_EXTRACTION_SYSTEM_PROMPT,
@@ -416,6 +420,72 @@ async def run_split_task(
                 "clip_assets": clip_assets,
             },
         )
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        task_registry.set_error(task_id, str(e))
+
+
+def format_effects_library(effects: list[dict]) -> str:
+    """按 category 分组格式化特效库，减少模型扫描压力。"""
+    grouped: dict[str, list[dict]] = {}
+    for effect in effects:
+        category = effect.get("category", "Other")
+        grouped.setdefault(category, []).append(effect)
+
+    lines = []
+    for category, items in grouped.items():
+        lines.append(f"### {category}")
+        for item in items:
+            lines.append(f"- **{item['name']}**: {item['description']}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def load_effects() -> list[dict]:
+    effects_path = Path(__file__).parent / "lib" / "components_description.json"
+    with open(effects_path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+async def analyze_video_effects_async(video_path: str | Path) -> EffectAnalysisResult:
+    """使用多模态模型分析视频中包含哪些视觉特效。"""
+    video_path = Path(video_path)
+
+    effects = load_effects()
+    effects_library_text = format_effects_library(effects)
+    system_prompt = EFFECT_ANALYSIS_SYSTEM_PROMPT_TEMPLATE.format(
+        effects_library=effects_library_text,
+    )
+
+    video_b64 = video_to_base64(video_path)
+
+    user_content: list[dict] = [
+        {"type": "text", "text": EFFECT_ANALYSIS_USER_PROMPT},
+        {
+            "type": "video_url",
+            "video_url": {"url": f"data:video/mp4;base64,{video_b64}"},
+        },
+    ]
+
+    instructor_client = instructor.from_openai(async_client)
+    result: EffectAnalysisResult = await instructor_client.chat.completions.create(
+        model=os.getenv("MODEL"),  # type: ignore
+        response_model=EffectAnalysisResult,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},  # type: ignore
+        ],
+    )
+
+    return result
+
+
+async def run_effect_analysis(task_id: str, video_path_str: str) -> None:
+    try:
+        result = await analyze_video_effects_async(video_path_str)
+        task_registry.set_result(task_id, result.model_dump())
     except asyncio.CancelledError:
         pass
     except Exception as e:
