@@ -25,7 +25,6 @@ import { useAuthStore } from "./useAuthStore";
 const streamControllers: Record<string, AbortController | null> = {
     audio: null,
     compress: null,
-    effect: null,
     script: null,
     split: null,
     visual: null,
@@ -988,7 +987,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     analyzeEffect: async (assetId, segmentIndex) => {
         const token = useAuthStore.getState().token;
         const t0 = Date.now();
-        const controllerKey = `effect`; // single global controller — only one effect analysis at a time
+        const controllerKey = `effect_${segmentIndex}`;
 
         set((s) => ({
             effectStatuses: { ...s.effectStatuses, [segmentIndex]: "loading" },
