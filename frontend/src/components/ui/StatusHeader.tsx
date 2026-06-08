@@ -37,6 +37,7 @@ export function StatusHeader({
                 letterSpacing: "2px",
                 textAlign: "center",
                 marginBottom: "2px",
+                display: "flex",
             }}
         >
             {prefix}

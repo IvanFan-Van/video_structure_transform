@@ -56,6 +56,23 @@ export function SplitNode({ x, y, onPosChange }: Props) {
             <div
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
             >
+                {/* ── Status Bar ── */}
+                {splitStatus === "loading" && (
+                    <StatusHeader
+                        variant="loading"
+                        label="SPLITTING..."
+                        accent="#f97316"
+                    />
+                )}
+
+                {splitStatus === "success" && (
+                    <StatusHeader
+                        variant="success"
+                        label="SPLIT COMPLETE"
+                        accent="#22c55e"
+                    />
+                )}
+
                 {/* ── Config panels ── */}
                 {!isSplitting && splitStatus !== "loading" && (
                     <>
@@ -208,57 +225,15 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                 )}
 
                 {isSplitting && (
-                    <div
-                        style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: "6px",
-                            padding: "8px 0",
-                        }}
-                    >
-                    <StatusHeader
-                        variant="loading"
-                        label="SPLITTING..."
-                        accent="#f97316"
+                    <ActionButton
+                        variant="muted"
+                        label="■ STOP"
+                        onClick={stopSplit}
                     />
-                        <button
-                            onClick={stopSplit}
-                            style={{
-                                marginTop: "4px",
-                                padding: "4px 12px",
-                                fontSize: "9px",
-                                fontFamily: "inherit",
-                                background: "transparent",
-                                border: "1px solid #e0e0e0",
-                                borderRadius: "3px",
-                                color: "#999",
-                                cursor: "pointer",
-                            }}
-                        >
-                            ■ STOP
-                        </button>
-                    </div>
                 )}
 
                 {splitStatus === "success" && splitResult && (
                     <>
-                        <div
-                            style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: "4px",
-                                padding: "6px 0",
-                                borderBottom: "1px solid #f0f0f0",
-                            }}
-                        >
-                    <StatusHeader
-                        variant="success"
-                        label="SPLIT COMPLETE"
-                        accent="#22c55e"
-                    />
-                        </div>
                         <div
                             style={{
                                 display: "grid",
@@ -280,7 +255,11 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                 value={`${totalDuration.toFixed(1)}s`}
                             />
                         </div>
-                        <ActionButton variant="muted" label="↻ RESTART" onClick={startSplit} />
+                        <ActionButton
+                            variant="muted"
+                            label="↻ RESTART"
+                            onClick={startSplit}
+                        />
                         <style
                             dangerouslySetInnerHTML={{
                                 __html: `

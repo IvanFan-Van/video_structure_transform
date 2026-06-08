@@ -84,7 +84,7 @@ export function CompressNode({ x, y, onPosChange }: Props) {
                     <>
                         <StatusHeader
                             variant="loading"
-                            label="Compressing..."
+                            label="Compressing"
                             accent="#06b6d4"
                         />
                         <ActionButton

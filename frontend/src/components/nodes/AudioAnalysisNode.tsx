@@ -54,7 +54,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                         {audioStatus === "loading" ? (
                             <StatusHeader
                                 variant="loading"
-                                label="Analyzing..."
+                                label="Analyzing"
                                 accent="#f59e0b"
                             />
                         ) : (
