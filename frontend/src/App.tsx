@@ -7,12 +7,6 @@ import { useAuthStore } from "./store/useAuthStore";
 import { useCanvasStore } from "./store/useCanvasStore";
 import { useVideoStore } from "./store/useVideoStore";
 import { WIRES } from "./constants";
-import { DatasetNode } from "./components/nodes/DatasetNode";
-import { TokenizerNode } from "./components/nodes/TokenizerNode";
-import { ArchitectureNode } from "./components/nodes/ArchitectureNode";
-import { TrainingNode } from "./components/nodes/TrainingNode";
-import { MetricsNode } from "./components/nodes/MetricsNode";
-import { GenerateNode } from "./components/nodes/GenerateNode";
 import { ReferenceNode } from "./components/nodes/ReferenceNode";
 import { CompressConfigNode } from "./components/nodes/CompressConfigNode";
 import { CompressNode } from "./components/nodes/CompressNode";
@@ -26,17 +20,6 @@ import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
 import { ZoomContext } from "./context/ZoomContext";
-
-const NODES = {
-    reference: ReferenceNode,
-    compress_config: CompressConfigNode,
-    compress: CompressNode,
-    extracting: ExtractingNode,
-    split: SplitNode,
-    script_analysis: ScriptAnalysisNode,
-    audio_analysis: AudioAnalysisNode,
-    visual_analysis: VisualAnalysisNode,
-};
 
 function App() {
     const { positions, update: updatePos } = useNodePositions();
