@@ -1,17 +1,32 @@
 ## Project Structure
 
-- storage: 对象存储
-- storage/videos: 存储用户上传的视频素材
-- storage/audios: 存储从视频中分离出的背景音乐（BGM）
-- storage/images: 存储用户上传的图像素材
-- src: 源码目录
-- src/main.py: 入口文件
-- src/models.py: 定义数据库模型, 例如 User, Asset 等
-- src/audio.py: 音频特征提取、BGM 分离、流式分析
-- src/utils.py: 定义一些辅助函数, 例如 `verify_password`, `hash_password`
-- src/video.py: 定义 `VideoClip` 类, 用于保存 Video 信息
-- tests/videos: 存放测试用的视频素材
-
+- backend/
+  - docs/: 文档目录
+  - notebooks/: jupyter notebook 资源, 项目相关 tutorial
+  - storage/: 后端数据存储
+    - images/
+    - videos/
+    - audios/
+  - tests/: 测试
+  - database.db: 数据库
+  - .env: 环境参数
+  - app/
+    - main.py: 入口文件, 定义 fastapi app, 挂在路由, 全局异常处理器, 数据库初始化等
+    - database.py: 数据库 engine 定义以及 get_session 依赖
+    - deps.py: 路由依赖, 负责鉴权, 依赖注入: get_current_user, get_video_asset, ...
+    - utils.py: 工具文件, 定义一些常用工具函数
+    - prompts.py: 定义大模型各个模块提示词
+    - llm.py: 提供 openai Client
+    - lib/: 第三方库相关模块
+      - video.py: 提供视频相关处理函数
+      - audio.py: 提供音频相关处理函数
+    - models/: 定义数据库 ORM 模型
+    - repositories/: 数据库层, 定义数据库相关操作, 例如 create_user 等
+    - services/: 服务层, 用于定义业务逻辑
+    - routers/: 路由层, 定义路由逻辑
+    - tasks/: 任务相关机制, 所有后端处理逻辑都会被封装以及注册为任务由任务管理器统一管理
+    - schemas/: 定义请求/响应模型
+  
 
 ## Quickstart
 
