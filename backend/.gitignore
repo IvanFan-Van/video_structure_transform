@@ -8,5 +8,5 @@ output/
 notebooks/*
 !notebooks/*.ipynb
 models/
-!src/models
+!app/models
 storage/

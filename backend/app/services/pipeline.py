@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 import uuid
 from pathlib import Path
@@ -7,8 +6,9 @@ from pathlib import Path
 import ffmpeg
 import instructor
 from fastapi import HTTPException, UploadFile
-from sqlmodel import Session
+from sqlmodel import Session, select
 
+from app.database import engine
 from app.lib.audio import STREAM_EOF, extract_bgm, stream_audio_features
 from app.lib.video import (
     compress_video_async,
@@ -20,7 +20,7 @@ from app.lib.video import (
     video_to_base64,
 )
 from app.llm import async_client
-from app.models import Asset, User
+from app.models import Asset, Effect, User
 from app.prompts import (
     EFFECT_ANALYSIS_SYSTEM_PROMPT_TEMPLATE,
     EFFECT_ANALYSIS_USER_PROMPT,
@@ -361,9 +361,12 @@ def format_effects_library(effects: list[dict]) -> str:
 
 
 def load_effects() -> list[dict]:
-    effects_path = Path(__file__).parent / "lib" / "components_description.json"
-    with open(effects_path, encoding="utf-8") as f:
-        return json.load(f)
+    with Session(engine) as session:
+        effects = session.exec(select(Effect)).all()
+        return [
+            {"name": e.name, "category": e.category, "description": e.description}
+            for e in effects
+        ]
 
 
 async def analyze_video_effects_async(video_path: str | Path) -> EffectAnalysisResult:
