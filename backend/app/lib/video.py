@@ -310,8 +310,15 @@ def extract_cover_image(video_path: str) -> Image.Image:
     )
 
     if not out:
+        out, _ = (
+            ffmpeg.input(str(video_path), ss=0)
+            .output("pipe:", vframes=1, format="rawvideo", pix_fmt="bgr24")
+            .run(capture_stdout=True, capture_stderr=True)
+        )
+
+    if not out:
         raise RuntimeError(
-            f"Failed to extract frames from an empty video: {video_path}"
+            f"Failed to extract frames from video: {video_path}"
         )
 
     frames_array = np.frombuffer(out, dtype=np.uint8)
