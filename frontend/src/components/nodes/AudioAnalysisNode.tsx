@@ -43,16 +43,27 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
                 {(audioStatus === "idle" || audioStatus === "cancelled") && (
-                    <StatusHeader variant="idle" label="Waiting for extraction..." />
+                    <StatusHeader
+                        variant="idle"
+                        label="Waiting for extraction..."
+                    />
                 )}
 
                 {hasData && (
                     <>
-                        <StatusHeader
-                            variant={audioStatus === "success" ? "success" : "loading"}
-                            label="ANALYZED"
-                            accent="#f59e0b"
-                        />
+                        {audioStatus === "loading" ? (
+                            <StatusHeader
+                                variant="loading"
+                                label="Analyzing..."
+                                accent="#f59e0b"
+                            />
+                        ) : (
+                            <StatusHeader
+                                variant="success"
+                                label="ANALYZED"
+                                accent="#f59e0b"
+                            />
+                        )}
 
                         {audioGlobal && (
                             <div

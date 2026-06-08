@@ -25,7 +25,8 @@ export function StatusHeader({
     }
 
     const color = variant === "error" ? "#ef4444" : accent;
-    const prefix = variant === "success" ? "✓ " : variant === "error" ? "✕ " : "";
+    const prefix =
+        variant === "success" ? "✓ " : variant === "error" ? "✕ " : "";
 
     return (
         <div

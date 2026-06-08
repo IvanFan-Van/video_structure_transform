@@ -66,9 +66,9 @@ const EMPHASIS_LABELS: Record<string, string> = {
 export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
     const visualResult = useVideoStore((s) => s.visualResult);
     const visualStatus = useVideoStore((s) => s.visualStatus);
-    const [expandedShots, setExpandedShots] = useState<
-        Record<number, boolean>
-    >({});
+    const [expandedShots, setExpandedShots] = useState<Record<number, boolean>>(
+        {},
+    );
 
     const toggleShot = (index: number) => {
         setExpandedShots((prev) => ({
@@ -104,17 +104,30 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
             <div
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
-                {!visualResult && (visualStatus === "idle" || visualStatus === "cancelled") && (
-                    <StatusHeader variant="idle" label="Waiting for extraction..." />
-                )}
+                {!visualResult &&
+                    (visualStatus === "idle" ||
+                        visualStatus === "cancelled") && (
+                        <StatusHeader
+                            variant="idle"
+                            label="Waiting for extraction..."
+                        />
+                    )}
 
                 {!visualResult && visualStatus === "loading" && (
-                    <StatusHeader variant="loading" label="Analyzing..." accent={accent} />
+                    <StatusHeader
+                        variant="loading"
+                        label="Analyzing..."
+                        accent={accent}
+                    />
                 )}
 
                 {visualResult && (
                     <>
-                        <StatusHeader variant="success" label="ANALYZED" accent={accent} />
+                        <StatusHeader
+                            variant="success"
+                            label="ANALYZED"
+                            accent={accent}
+                        />
 
                         {/* Pacing Summary */}
                         <div
@@ -151,8 +164,9 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                         fontSize: "10px",
                                     }}
                                 >
-                                    {PACING_LABELS[visualResult.pacing.pacing_category] ||
-                                        visualResult.pacing.pacing_category}
+                                    {PACING_LABELS[
+                                        visualResult.pacing.pacing_category
+                                    ] || visualResult.pacing.pacing_category}
                                 </span>
                             </div>
                             <div
@@ -181,7 +195,10 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                         fontSize: "10px",
                                     }}
                                 >
-                                    {visualResult.pacing.avg_shot_duration.toFixed(2)}s
+                                    {visualResult.pacing.avg_shot_duration.toFixed(
+                                        2,
+                                    )}
+                                    s
                                 </span>
                             </div>
                             <div
@@ -229,7 +246,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                             SHOTS
                         </div>
                         {visualResult.shots.map((shot: VisualShot) => {
-                            const open = expandedShots[shot.shot_index] ?? false;
+                            const open =
+                                expandedShots[shot.shot_index] ?? false;
                             const transition = visualResult.transitions.find(
                                 (t) => t.after_shot_index === shot.shot_index,
                             );
@@ -239,8 +257,20 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                     open={open}
                                     onToggle={() => toggleShot(shot.shot_index)}
                                     title={
-                                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                            <span style={{ color: open ? "#0891b2" : "#555" }}>
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "6px",
+                                            }}
+                                        >
+                                            <span
+                                                style={{
+                                                    color: open
+                                                        ? "#0891b2"
+                                                        : "#555",
+                                                }}
+                                            >
                                                 Shot #{shot.shot_index}
                                             </span>
                                             {shot.is_text_frame && (
@@ -290,7 +320,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                             <div
                                                 style={{
                                                     display: "flex",
-                                                    justifyContent: "space-between",
+                                                    justifyContent:
+                                                        "space-between",
                                                     alignItems: "center",
                                                 }}
                                             >
@@ -310,8 +341,9 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                         color: "#555",
                                                     }}
                                                 >
-                                                    {CAMERA_LABELS[shot.camera_movement] ||
-                                                        shot.camera_movement}
+                                                    {CAMERA_LABELS[
+                                                        shot.camera_movement
+                                                    ] || shot.camera_movement}
                                                 </span>
                                             </div>
                                         )}
@@ -328,8 +360,9 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                             }}
                                         >
                                             Transition{" "}
-                                            {TRANSITION_LABELS[transition.type] ||
-                                                transition.type}
+                                            {TRANSITION_LABELS[
+                                                transition.type
+                                            ] || transition.type}
                                             {transition.duration > 0 &&
                                                 ` (${transition.duration.toFixed(1)}s)`}
                                         </div>
@@ -353,8 +386,7 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                         </div>
                         {visualResult.text_elements.map(
                             (el: VisualTextElement, idx: number) => {
-                                const open =
-                                    expandedTextElements[idx] ?? false;
+                                const open = expandedTextElements[idx] ?? false;
                                 const preview =
                                     el.text.length > 35
                                         ? el.text.slice(0, 35) + "..."
@@ -391,15 +423,21 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                             </div>
                                         </div>
                                         {el.appear_time !== undefined && (
-                                            <div style={{ marginBottom: "4px" }}>
+                                            <div
+                                                style={{ marginBottom: "4px" }}
+                                            >
                                                 <span
                                                     style={{
                                                         fontSize: "7px",
                                                         color: "#bbb",
                                                     }}
                                                 >
-                                                    {el.appear_time.toFixed(1)}s —{" "}
-                                                    {el.disappear_time.toFixed(1)}s
+                                                    {el.appear_time.toFixed(1)}s
+                                                    —{" "}
+                                                    {el.disappear_time.toFixed(
+                                                        1,
+                                                    )}
+                                                    s
                                                 </span>
                                             </div>
                                         )}
@@ -414,7 +452,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                 <div
                                                     style={{
                                                         display: "flex",
-                                                        justifyContent: "space-between",
+                                                        justifyContent:
+                                                            "space-between",
                                                         alignItems: "center",
                                                     }}
                                                 >
@@ -422,7 +461,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                         style={{
                                                             fontSize: "7px",
                                                             fontWeight: 600,
-                                                            letterSpacing: "1px",
+                                                            letterSpacing:
+                                                                "1px",
                                                             color: "#bbb",
                                                         }}
                                                     >
@@ -434,8 +474,9 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                             color: "#555",
                                                         }}
                                                     >
-                                                        {POSITION_LABELS[el.position] ||
-                                                            el.position}
+                                                        {POSITION_LABELS[
+                                                            el.position
+                                                        ] || el.position}
                                                     </span>
                                                 </div>
                                             )}
@@ -443,7 +484,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                 <div
                                                     style={{
                                                         display: "flex",
-                                                        justifyContent: "space-between",
+                                                        justifyContent:
+                                                            "space-between",
                                                         alignItems: "center",
                                                     }}
                                                 >
@@ -451,7 +493,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                         style={{
                                                             fontSize: "7px",
                                                             fontWeight: 600,
-                                                            letterSpacing: "1px",
+                                                            letterSpacing:
+                                                                "1px",
                                                             color: "#bbb",
                                                         }}
                                                     >
@@ -463,8 +506,9 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                             color: "#555",
                                                         }}
                                                     >
-                                                        {APPEAR_LABELS[el.appear_style] ||
-                                                            el.appear_style}
+                                                        {APPEAR_LABELS[
+                                                            el.appear_style
+                                                        ] || el.appear_style}
                                                     </span>
                                                 </div>
                                             )}
@@ -472,7 +516,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                 <div
                                                     style={{
                                                         display: "flex",
-                                                        justifyContent: "space-between",
+                                                        justifyContent:
+                                                            "space-between",
                                                         alignItems: "center",
                                                     }}
                                                 >
@@ -480,7 +525,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                         style={{
                                                             fontSize: "7px",
                                                             fontWeight: 600,
-                                                            letterSpacing: "1px",
+                                                            letterSpacing:
+                                                                "1px",
                                                             color: "#bbb",
                                                         }}
                                                     >
@@ -492,8 +538,9 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                             color: "#555",
                                                         }}
                                                     >
-                                                        {EMPHASIS_LABELS[el.emphasis] ||
-                                                            el.emphasis}
+                                                        {EMPHASIS_LABELS[
+                                                            el.emphasis
+                                                        ] || el.emphasis}
                                                     </span>
                                                 </div>
                                             )}
