@@ -40,6 +40,7 @@ export function RenderNode({ x, y, onPosChange }: Props) {
     const renderProgress = useVideoStore((s) => s.renderProgress);
     const renderFrame = useVideoStore((s) => s.renderFrame);
     const renderTotalFrames = useVideoStore((s) => s.renderTotalFrames);
+    const renderErrorMessage = useVideoStore((s) => s.renderErrorMessage);
     const startRender = useVideoStore((s) => s.startRender);
     const stopRender = useVideoStore((s) => s.stopRender);
 
@@ -81,10 +82,28 @@ export function RenderNode({ x, y, onPosChange }: Props) {
                     renderStatus === "error") && (
                     <>
                         {renderStatus === "error" && (
-                            <StatusHeader
-                                variant="error"
-                                label="Render failed"
-                            />
+                            <>
+                                <StatusHeader
+                                    variant="error"
+                                    label="Render failed"
+                                />
+                                {renderErrorMessage && (
+                                    <div
+                                        style={{
+                                            fontSize: "8px",
+                                            color: "#ef4444",
+                                            background: "#fef2f2",
+                                            border: "1px solid #fecaca",
+                                            borderRadius: "3px",
+                                            padding: "6px 8px",
+                                            wordBreak: "break-all",
+                                            lineHeight: "1.4",
+                                        }}
+                                    >
+                                        {renderErrorMessage}
+                                    </div>
+                                )}
+                            </>
                         )}
                         <Tooltip
                             tip={

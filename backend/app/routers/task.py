@@ -31,6 +31,18 @@ async def stream_task_endpoint(
     )
 
 
+@router.get("/task/{task_id}")
+async def get_task_endpoint(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    task_info = get_task_for_user(task_id, current_user)
+    return {
+        "status": "success",
+        "data": task_info.to_dict(),
+    }
+
+
 @router.post("/task/{task_id}/cancel")
 async def cancel_task_endpoint(
     task_id: str,

@@ -101,7 +101,7 @@ interface TaskStreamOptions<TResult> {
     nodeId: string;
     failureLabel: string;
     onCompleted: (result: TResult, elapsed: number) => object;
-    onFailed: (elapsed: number) => object;
+    onFailed: (elapsed: number, error?: string) => object;
     onCancelled: () => object;
     onProgress?: (data: any) => void;
 }
@@ -171,7 +171,7 @@ async function subscribeTaskStream<TResult>(
                             break;
                         case "failed":
                             set((s: any) => ({
-                                ...opts.onFailed(elapsed()),
+                                ...opts.onFailed(elapsed(), info.error),
                                 videoErrors: [
                                     ...filterErrors(s.videoErrors),
                                     makeError(
@@ -271,6 +271,7 @@ interface VideoState {
     renderProgress: number;
     renderFrame: number;
     renderTotalFrames: number;
+    renderErrorMessage: string | null;
 
     videoErrors: NodeError[];
 }
@@ -391,6 +392,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     renderProgress: 0,
     renderFrame: 0,
     renderTotalFrames: 0,
+    renderErrorMessage: null,
 
     videoErrors: [],
 
@@ -439,6 +441,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             renderProgress: 0,
             renderFrame: 0,
             renderTotalFrames: 0,
+            renderErrorMessage: null,
         });
 
         const formData = new FormData();
@@ -1411,9 +1414,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
             if (get().generateStatus === "success") {
                 try {
-                    const planRes = await apiAxios.get(
-                        `/api/task/${planResult.plan_id}/stream`,
-                    );
+                        const planRes = await apiAxios.get(
+                            `/api/task/${planResult.plan_id}`,
+                        );
                     if (
                         planRes.data.status === "success" &&
                         planRes.data.data?.result
@@ -1471,6 +1474,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             renderProgress: 0,
             renderFrame: 0,
             renderTotalFrames: 0,
+            renderErrorMessage: null,
         });
 
         try {
@@ -1486,6 +1490,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 );
                 set((s) => ({
                     renderStatus: "error",
+                    renderErrorMessage: msg,
                     videoErrors: [
                         ...s.videoErrors.filter((e) => e.nodeId !== "render"),
                         makeError("render", msg, code, details),
@@ -1510,6 +1515,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                         renderProgress: data.progress ?? 0,
                         renderFrame: data.frame ?? 0,
                         renderTotalFrames: data.totalFrames ?? 0,
+                        ...(data.phase === "error"
+                            ? { renderErrorMessage: data.message ?? null }
+                            : {}),
                     });
                 },
                 onCompleted: (result) => ({
@@ -1519,10 +1527,11 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     renderPhaseMessage: null,
                     renderProgress: 0,
                 }),
-                onFailed: () => ({
+                onFailed: (_elapsed, error) => ({
                     renderStatus: "error",
                     renderPhase: null,
                     renderPhaseMessage: null,
+                    renderErrorMessage: error || null,
                 }),
                 onCancelled: () => ({
                     renderStatus: "idle",
@@ -1531,14 +1540,17 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     renderProgress: 0,
                 }),
             });
-        } catch {
+        } catch (error: any) {
+            const detail = error?.response?.data?.detail;
+            const msg = detail ? String(detail) : "Network error";
             set((s) => ({
                 renderStatus: "error",
+                renderErrorMessage: detail ? String(detail) : null,
                 videoErrors: [
                     ...s.videoErrors.filter((e) => e.nodeId !== "render"),
                     makeError(
                         "render",
-                        "Network error",
+                        msg,
                         "NETWORK_ERROR",
                         NETWORK_ERROR_DETAILS,
                     ),
@@ -1557,6 +1569,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             renderPhaseMessage: null,
             renderProgress: 0,
             renderResult: null,
+            renderErrorMessage: null,
         });
     },
 
@@ -1678,6 +1691,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             renderProgress: 0,
             renderFrame: 0,
             renderTotalFrames: 0,
+            renderErrorMessage: null,
             videoErrors: [],
         });
     },

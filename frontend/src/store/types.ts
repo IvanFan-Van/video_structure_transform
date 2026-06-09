@@ -330,7 +330,7 @@ export interface RenderResult {
 }
 
 export interface RenderProgress {
-    phase: "loading" | "bgm" | "building" | "rendering" | "saving";
+    phase: "loading" | "bgm" | "building" | "rendering" | "saving" | "error";
     message?: string;
     progress?: number;
     frame?: number;

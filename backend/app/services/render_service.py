@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import shutil
 import uuid
 from pathlib import Path
@@ -26,6 +27,8 @@ RENDER_DIR = STORAGE_DIR / "render"
 FPS = 30
 WIDTH = 1080
 HEIGHT = 1920
+
+logger = logging.getLogger(__name__)
 
 
 def start_render_task(session: Session, user_id: str, plan_id: str) -> str:
@@ -56,7 +59,7 @@ async def _run_render(
     props_path = None
     bgm_dest = None
     output_asset_id = str(uuid.uuid4())
-    output_path = str(VIDEO_DIR / f"{output_asset_id}.mp4")
+    output_path = str((VIDEO_DIR / f"{output_asset_id}.mp4").resolve())
 
     try:
         # 1. 读 PlanResult
@@ -88,7 +91,7 @@ async def _run_render(
         _push(queue, {"phase": "building", "message": "Building render config..."})
         props = _build_remotion_props(plan, bgm_filename)
         RENDER_DIR.mkdir(parents=True, exist_ok=True)
-        props_path = str(RENDER_DIR / f"{task_id}.json")
+        props_path = str((RENDER_DIR / f"{task_id}.json").resolve())
         with open(props_path, "w", encoding="utf-8") as f:
             json.dump(props, f, ensure_ascii=False)
 
@@ -141,6 +144,7 @@ async def _run_render(
         _push_eof(queue)
         _cleanup(props_path, bgm_dest, output_path)
     except Exception as e:
+        logger.exception("Render task failed")
         _push_eof(queue)
         _cleanup(props_path, bgm_dest, output_path)
         task_registry.set_error(task_id, str(e))
@@ -150,29 +154,35 @@ def _build_remotion_props(plan: VideoTemplate, bgm_filename: str | None) -> dict
     scenes = []
     frame_offset = 0
 
-    for seg in plan.segments:
-        duration = seg.end_time - seg.start_time
-        if duration <= 0:
-            continue
+    raw_segments = [
+        (seg, max(0, seg.end_time - seg.start_time))
+        for seg in plan.segments
+    ]
+    raw_total = sum(dur for _, dur in raw_segments)
+
+    total_seconds = plan.estimated_duration
+    if raw_total > 0:
+        ratio = total_seconds / raw_total
+    else:
+        ratio = 1.0
+
+    for seg, raw_dur in raw_segments:
+        duration = raw_dur * ratio if raw_dur > 0 else 0.01
         duration_frames = max(1, int(duration * FPS))
 
         visual_text = ""
         narration = ""
-        fill_method = ""
         for slot in seg.slots:
             if slot.slot_type.value == "visual_text" and slot.value:
                 visual_text = slot.value
-                fill_method = slot.fill_method.value if slot.fill_method else ""
             elif slot.slot_type.value == "narration" and slot.value:
                 narration = slot.value
-                fill_method = slot.fill_method.value if slot.fill_method else ""
 
         text = visual_text or narration or seg.narrative_intent
 
-        scene_type = "text_overlay"
-        if fill_method in ("ai_generate", "user_upload", "manual_input"):
-            scene_type = "remocn_composed"
-        elif not visual_text and not narration:
+        if seg.stage in ("hook", "story", "insight", "cta") and (visual_text or narration):
+            scene_type = "emphasis_text"
+        else:
             scene_type = "text_overlay"
 
         text_style = _build_text_style(seg)
@@ -302,10 +312,13 @@ async def _render_with_progress(
         cwd=str(REMOTION_DIR),
     )
 
+    lines: list[str] = []
+
     async for line_bytes in process.stdout:  # type: ignore
         line = line_bytes.decode("utf-8", errors="replace").strip()
         if not line:
             continue
+        lines.append(line)
         # Parse "Rendering frame 45/498" or percentage output
         if "Rendering frame" in line or "%" in line:
             try:
@@ -332,7 +345,10 @@ async def _render_with_progress(
     await process.wait()
 
     if process.returncode != 0:
-        raise RuntimeError(f"Remotion render failed with code {process.returncode}")
+        tail = "\n".join(lines[-30:]) if lines else "(no output)"
+        raise RuntimeError(
+            f"Remotion render failed with code {process.returncode}\n{tail}"
+        )
 
 
 def _push(queue: asyncio.Queue, data: dict) -> None:
