@@ -50,6 +50,7 @@ interface CanvasState {
     panX: number;
     panY: number;
     positions: Record<string, Pos>;
+    selectedIds: string[];
 
     setZoom: (updater: (prev: number) => number) => void;
     setPan: (
@@ -62,6 +63,9 @@ interface CanvasState {
         w: number,
         h: number,
     ) => void;
+    moveNodes: (ids: string[], dx: number, dy: number) => void;
+    setSelection: (ids: string[]) => void;
+    clearSelection: () => void;
     savePreset: () => void;
 }
 
@@ -72,6 +76,7 @@ export const useCanvasStore = create<CanvasState>()(
             panX: preset?.panX ?? DEFAULT_PAN_X,
             panY: preset?.panY ?? DEFAULT_PAN_Y,
             positions: preset?.positions ?? DEFAULT_POSITIONS,
+            selectedIds: [],
 
             setZoom: (updater) =>
                 set((s) => ({
@@ -89,6 +94,19 @@ export const useCanvasStore = create<CanvasState>()(
                     positions: { ...s.positions, [id]: { x, y, w, h } },
                 })),
 
+            moveNodes: (ids, dx, dy) =>
+                set((s) => {
+                    const next = { ...s.positions };
+                    for (const id of ids) {
+                        const pos = next[id];
+                        if (pos) next[id] = { ...pos, x: pos.x + dx, y: pos.y + dy };
+                    }
+                    return { positions: next };
+                }),
+
+            setSelection: (ids) => set({ selectedIds: ids }),
+            clearSelection: () => set({ selectedIds: [] }),
+
             savePreset: () => {
                 const { zoom, panX, panY, positions } = get();
                 try {
@@ -100,9 +118,8 @@ export const useCanvasStore = create<CanvasState>()(
             },
         }),
         {
-            name: "canvas-state", // sessionStorage key
+            name: "canvas-state",
             storage: createJSONStorage(() => sessionStorage),
-            // 只持久化纯数据，actions 不需要序列化
             partialize: (s) => ({
                 zoom: s.zoom,
                 panX: s.panX,

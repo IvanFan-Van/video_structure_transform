@@ -1,5 +1,6 @@
 import React from "react";
 import { useDraggable } from "../../hooks/useDraggable";
+import { useCanvasStore } from "../../store/useCanvasStore";
 
 interface BaseNodeProps {
     x: number;
@@ -34,19 +35,46 @@ export function BaseNode({
     tourId,
     onPosChange,
 }: BaseNodeProps) {
-    const { p, onMouseDown, ref } = useDraggable(x, y, id, onPosChange);
-    const effectiveColor = error
-        ? "#ef4444"
-        : active
-          ? accent || "#333"
-          : "#e0e0e0";
-    const hasGlow = active || error;
-    const glowColor = error ? "#ef4444" : accent || "#333";
+    const selectedIds = useCanvasStore((s) => s.selectedIds);
+    const moveNodes = useCanvasStore((s) => s.moveNodes);
+    const clearSelection = useCanvasStore((s) => s.clearSelection);
+
+    const selected = selectedIds.includes(id);
+
+    const onDragDelta = React.useCallback(
+        (dx: number, dy: number) => {
+            const others = selectedIds.filter((sid) => sid !== id);
+            if (others.length > 0) moveNodes(others, dx, dy);
+        },
+        [selectedIds, moveNodes, id],
+    );
+
+    const { p, onMouseDown: rawMouseDown, ref } = useDraggable(x, y, id, onPosChange, onDragDelta);
+
+    const onMouseDown = (e: React.MouseEvent) => {
+        if (!selected && selectedIds.length > 0) {
+            clearSelection();
+        }
+        rawMouseDown(e);
+    };
+
+    const effectiveColor = selected
+        ? "#3b82f6"
+        : error
+          ? "#ef4444"
+          : active
+            ? accent || "#333"
+            : "#e0e0e0";
+    const hasGlow = selected || active || error;
+    const glowColor = selected ? "#3b82f6" : error ? "#ef4444" : accent || "#333";
     const dividerColor = error
         ? "#fecaca"
-        : active
-          ? (accent || "#333") + "20"
-          : "#f0f0f0";
+        : selected
+          ? "#bfdbfe"
+          : active
+            ? (accent || "#333") + "20"
+            : "#f0f0f0";
+
     return (
         <div
             ref={ref}

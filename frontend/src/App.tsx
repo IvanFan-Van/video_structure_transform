@@ -19,8 +19,10 @@ import { EffectAnalysisNode } from "./components/nodes/EffectAnalysisNode";
 import { PlanNode } from "./components/nodes/PlanNode";
 import { SlotNode } from "./components/nodes/SlotNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
+import { SelectionRect } from "./components/ui/SelectionRect";
 import { TourGuide } from "./components/ui/TourGuide";
 import { useTour } from "./hooks/useTour";
+import { useBoxSelect } from "./hooks/useBoxSelect";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
 import { ZoomContext } from "./context/ZoomContext";
@@ -74,6 +76,19 @@ function App() {
 
     const zoom = useZoom();
     const { panX, panY, onMouseDown: onPanMouseDown } = usePan(zoom);
+    const setSelection = useCanvasStore((s) => s.setSelection);
+    const clearSelection = useCanvasStore((s) => s.clearSelection);
+
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") clearSelection();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [clearSelection]);
+
+    const { isSelecting, rect: selRect, onMouseDown: onBoxMouseDown } =
+        useBoxSelect(zoom, panX, panY, positions, setSelection);
 
     const [offset, setOffset] = useState(60);
     useEffect(() => {
@@ -108,7 +123,14 @@ function App() {
 
     return (
         <div
-            onMouseDown={onPanMouseDown}
+            onMouseDown={(e) => {
+                if (e.ctrlKey) {
+                    onBoxMouseDown(e);
+                } else {
+                    clearSelection();
+                    onPanMouseDown(e);
+                }
+            }}
             style={{
                 width: "100vw",
                 height: "100vh",
@@ -290,6 +312,7 @@ function App() {
                 <div>Ctrl + Scroll &mdash; Zoom</div>
                 <div>Drag background &mdash; Pan</div>
                 <div>Drag nodes &mdash; Move</div>
+                <div>Ctrl + Drag &mdash; Box select</div>
             </div>
 
             <ZoomContext.Provider value={zoom}>
@@ -300,6 +323,7 @@ function App() {
                     panX={panX}
                     panY={panY}
                 />
+                {isSelecting && selRect && <SelectionRect rect={selRect} />}
                 <div
                     style={{
                         transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
