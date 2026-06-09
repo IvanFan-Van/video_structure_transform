@@ -88,23 +88,29 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应 (202)](#成功响应-202-5)
     - [响应字段说明](#响应字段说明-3)
     - [错误响应](#错误响应-12)
-  - [15. POST /plan — 生成视频模板](#15-post-plan--生成视频模板)
-    - [请求参数](#请求参数-10)
+  - [15. GET /effects — 查询特效库](#15-get-effects--查询特效库)
+    - [查询参数](#查询参数-1)
     - [请求示例](#请求示例-11)
+    - [成功响应 (200)](#成功响应-200-3)
+    - [响应字段说明](#响应字段说明-4)
+    - [错误响应](#错误响应-13)
+  - [16. POST /plan — 生成视频模板](#16-post-plan--生成视频模板)
+    - [请求参数](#请求参数-10)
+    - [请求示例](#请求示例-12)
     - [成功响应 (202)](#成功响应-202-6)
     - [通过 SSE / 轮询获取模板](#通过-sse--轮询获取模板)
-    - [错误响应](#错误响应-13)
-  - [16. PATCH /plan/{plan\_id}/slot/{slot\_id} — 填充模板槽位](#16-patch-planplan_idslotslot_id--填充模板槽位)
+    - [错误响应](#错误响应-14)
+  - [17. PATCH /plan/{plan\_id}/slot/{slot\_id} — 填充模板槽位](#17-patch-planplan_idslotslot_id--填充模板槽位)
     - [路径参数](#路径参数-4)
     - [请求参数](#请求参数-11)
     - [响应示例](#响应示例-1)
-    - [错误响应](#错误响应-14)
-  - [17. POST /plan/{plan\_id}/generate — 批量 AI 生成槽位内容](#17-post-planplan_idgenerate--批量-ai-生成槽位内容)
+    - [错误响应](#错误响应-15)
+  - [18. POST /plan/{plan\_id}/generate — 批量 AI 生成槽位内容](#18-post-planplan_idgenerate--批量-ai-生成槽位内容)
     - [路径参数](#路径参数-5)
     - [成功响应 (202)](#成功响应-202-7)
     - [通过 SSE / 轮询获取结果](#通过-sse--轮询获取结果)
     - [生成逻辑](#生成逻辑)
-    - [错误响应](#错误响应-15)
+    - [错误响应](#错误响应-16)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
     - [服务端错误 (5xx) — 附带 `data.code` 和 `data.details`](#服务端错误-5xx--附带-datacode-和-datadetails)
@@ -1521,7 +1527,73 @@ curl -X POST http://127.0.0.1:8000/analyze-effect \
 
 ---
 
-## 15. POST /plan — 生成视频模板
+## 15. GET /effects — 查询特效库
+
+获取所有可用的视觉特效组件列表，支持模糊搜索。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `GET` |
+| **认证** | 需要（Bearer Token） |
+
+> **数据来源**：`Effect` 表在服务启动时从 `components_description.json` 自动初始化（59 个 remocn 组件），后续通过此接口查询。
+
+### 查询参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `q` | string | 否 | 模糊搜索关键词，匹配 name、category、description 三个字段。省略时返回全部 59 条 |
+
+### 请求示例
+
+```bash
+curl "http://127.0.0.1:8000/effects?q=blur" \
+  -H "Authorization: Bearer <token>"
+```
+
+```bash
+curl "http://127.0.0.1:8000/effects" \
+  -H "Authorization: Bearer <token>"
+```
+
+### 成功响应 (200)
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "name": "BlurReveal",
+      "category": "Typography",
+      "description": "文字从严重模糊聚焦至锐利，由虚到实单次进场。..."
+    },
+    {
+      "name": "FrostedGlassWipe",
+      "category": "Transitions",
+      "description": "磨砂玻璃面板从画面一侧滑过遮旧场景露新场景。..."
+    }
+  ]
+}
+```
+
+### 响应字段说明
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `name` | string | 组件唯一名称（59 个白名单内） |
+| `category` | string | 分类：Typography / Core Primitives / Environment & Lighting / UI Blocks / Transitions / Compositions |
+| `description` | string | 中文功能描述 |
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 401 | `令牌已过期或无效` | JWT 解码失败 |
+
+---
+
+## 16. POST /plan — 生成视频模板
 
 基于已完成的分析任务（/analyze-script、/analyze-visual 等），使用 LLM 将参考视频的叙事结构迁移到新的用户主题上，生成一个包含 segments 和 slots 的视频模板。
 
@@ -1625,7 +1697,7 @@ curl -X POST http://127.0.0.1:8000/plan \
 
 ---
 
-## 16. PATCH /plan/{plan_id}/slot/{slot_id} — 填充模板槽位
+## 17. PATCH /plan/{plan_id}/slot/{slot_id} — 填充模板槽位
 
 为模板中的指定 slot 填充内容。支持三种方式：
 - **user_upload**：上传已有的文件素材（需提供 asset_id），slot 状态变为 `filled`
@@ -1741,7 +1813,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 
 ---
 
-## 17. POST /plan/{plan_id}/generate — 批量 AI 生成槽位内容
+## 18. POST /plan/{plan_id}/generate — 批量 AI 生成槽位内容
 
 将模板中所有 `status="pending"` 的文本类槽位（visual_text / narration）一次性批量生成。LLM 会拥有全部 segment 的上下文，确保生成的文案在整条视频中叙事连贯、语气统一。
 

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { BaseNode } from "../ui/BaseNode";
 import { CoverImage } from "../ui/CoverImage";
 import { ActionButton } from "../ui/ActionButton";
 import { StatusHeader } from "../ui/StatusHeader";
 import { AccordionItem } from "../ui/AccordionItem";
 import { Tooltip } from "../ui/Tooltip";
+import { EffectSearch } from "../effects/EffectSearch";
 import { useVideoStore } from "../../store/useVideoStore";
 import { useNodeError } from "../../hooks/useNodeError";
 import { SplitSegment, SplitClipAsset } from "../../store/types";
@@ -35,12 +36,16 @@ export function EffectAnalysisNode({
     const effectStatuses = useVideoStore((s) => s.effectStatuses);
     const effectResults = useVideoStore((s) => s.effectResults);
     const analyzeEffect = useVideoStore((s) => s.analyzeEffect);
+    const removeEffect = useVideoStore((s) => s.removeEffect);
+    const addEffect = useVideoStore((s) => s.addEffect);
 
     const status = effectStatuses[index] ?? "idle";
     const result = effectResults[index] ?? null;
 
     const [expandedObs, setExpandedObs] = useState(false);
     const [expandedEffects, setExpandedEffects] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const addBtnRef = useRef<HTMLButtonElement>(null);
 
     return (
         <BaseNode
@@ -229,8 +234,7 @@ export function EffectAnalysisNode({
                                     {result.observations}
                                 </div>
                             </AccordionItem>
-                            {result.effects.length > 0 && (
-                                <AccordionItem
+                            <AccordionItem
                                     open={expandedEffects}
                                     onToggle={() =>
                                         setExpandedEffects((o) => !o)
@@ -258,13 +262,44 @@ export function EffectAnalysisNode({
                                                     background: "#f9fafb",
                                                     borderRadius: "3px",
                                                     border: "1px solid #f0f0f0",
+                                                    position: "relative",
                                                 }}
                                             >
+                                                <button
+                                                    onClick={() =>
+                                                        removeEffect(index, i)
+                                                    }
+                                                    title="Remove effect"
+                                                    style={{
+                                                        position: "absolute",
+                                                        top: 2,
+                                                        right: 4,
+                                                        fontSize: "10px",
+                                                        color: "#ccc",
+                                                        background: "none",
+                                                        border: "none",
+                                                        cursor: "pointer",
+                                                        padding: "0 2px",
+                                                        lineHeight: 1,
+                                                        fontFamily: "inherit",
+                                                    }}
+                                                    onMouseEnter={(e) =>
+                                                        (e.currentTarget.style.color =
+                                                            "#ef4444")
+                                                    }
+                                                    onMouseLeave={(e) =>
+                                                        (e.currentTarget.style.color =
+                                                            "#ccc")
+                                                    }
+                                                >
+                                                    ×
+                                                </button>
                                                 <span
                                                     style={{
                                                         fontWeight: 600,
                                                         color: "#333",
                                                         fontSize: "9px",
+                                                        paddingRight: "12px",
                                                     }}
                                                 >
                                                     {ef.name}
@@ -280,9 +315,24 @@ export function EffectAnalysisNode({
                                                 </span>
                                             </div>
                                         ))}
+                                        <button
+                                            ref={addBtnRef}
+                                            onClick={() => setSearchOpen(true)}
+                                            style={{
+                                                padding: "6px",
+                                                background: "#f9fafb",
+                                                border: "1px dashed #ddd",
+                                                borderRadius: "3px",
+                                                cursor: "pointer",
+                                                fontSize: "10px",
+                                                color: "#bbb",
+                                                fontFamily: "inherit",
+                                            }}
+                                        >
+                                            + Add effect
+                                        </button>
                                     </div>
                                 </AccordionItem>
-                            )}
                             <ActionButton
                                 variant="muted"
                                 label="↻ Re-analyze"
@@ -295,6 +345,15 @@ export function EffectAnalysisNode({
                     )}
                 </div>
             </div>
+            <EffectSearch
+                open={searchOpen}
+                onClose={() => setSearchOpen(false)}
+                onSelect={(name) => {
+                    addEffect(index, { name, evidence: "" });
+                    setSearchOpen(false);
+                }}
+                triggerRef={addBtnRef}
+            />
         </BaseNode>
     );
 }

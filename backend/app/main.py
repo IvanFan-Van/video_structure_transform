@@ -4,11 +4,13 @@ from dotenv import find_dotenv, load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlmodel import SQLModel
+from sqlmodel import Session, SQLModel
 
 from app.database import engine
+from app.repositories import seed_effects
 from app.routers import (
     auth_router,
+    effect_router,
     files_router,
     pipeline_router,
     plan_router,
@@ -21,6 +23,8 @@ load_dotenv(find_dotenv())
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        seed_effects(session)
     yield
     engine.dispose()
 
@@ -55,6 +59,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 app.include_router(auth_router)
+app.include_router(effect_router)
 app.include_router(task_router)
 app.include_router(pipeline_router)
 app.include_router(plan_router)

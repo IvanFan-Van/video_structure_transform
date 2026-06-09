@@ -16,6 +16,7 @@ import {
     SplitConfig,
     SplitResult,
     EffectResult,
+    EffectItem,
     PlanResult,
     SlotFillResult,
     GenerateResult,
@@ -291,6 +292,8 @@ interface VideoActions {
     startSlotGenerate: () => Promise<void>;
     stopSlotGenerate: () => Promise<void>;
     dismissError: (id: number) => void;
+    removeEffect: (segmentIndex: number, effectIndex: number) => void;
+    addEffect: (segmentIndex: number, effect: EffectItem) => void;
     resetAll: () => void;
 }
 
@@ -1443,6 +1446,38 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             videoErrors: s.videoErrors.filter((e) => e.id !== id),
         }));
     },
+
+    removeEffect: (segmentIndex, effectIndex) =>
+        set((s) => {
+            const result = s.effectResults[segmentIndex];
+            if (!result) return {};
+            return {
+                effectResults: {
+                    ...s.effectResults,
+                    [segmentIndex]: {
+                        ...result,
+                        effects: result.effects.filter(
+                            (_, i) => i !== effectIndex,
+                        ),
+                    },
+                },
+            };
+        }),
+
+    addEffect: (segmentIndex, effect) =>
+        set((s) => {
+            const result = s.effectResults[segmentIndex];
+            if (!result) return {};
+            return {
+                effectResults: {
+                    ...s.effectResults,
+                    [segmentIndex]: {
+                        ...result,
+                        effects: [...result.effects, effect],
+                    },
+                },
+            };
+        }),
 
     resetAll: () => {
         abortAllStreams();
