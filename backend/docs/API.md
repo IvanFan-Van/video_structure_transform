@@ -89,6 +89,17 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应 (202)](#成功响应-202-5)
     - [响应字段说明](#响应字段说明-3)
     - [错误响应](#错误响应-12)
+  - [15. POST /plan — 生成视频模板](#15-post-plan--生成视频模板)
+    - [请求参数](#请求参数-10)
+    - [请求示例](#请求示例-11)
+    - [成功响应 (202)](#成功响应-202-6)
+    - [通过 SSE / 轮询获取模板](#通过-sse--轮询获取模板)
+    - [错误响应](#错误响应-13)
+  - [16. PATCH /plan/{plan\_id}/slot/{slot\_id} — 填充模板槽位](#16-patch-planplan_idslotslot_id--填充模板槽位)
+    - [路径参数](#路径参数-4)
+    - [请求参数](#请求参数-11)
+    - [响应示例](#响应示例-1)
+    - [错误响应](#错误响应-14)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
     - [服务端错误 (5xx) — 附带 `data.code` 和 `data.details`](#服务端错误-5xx--附带-datacode-和-datadetails)
@@ -874,7 +885,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `task_id` | string | 任务唯一标识 |
-| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` / `analyze-effect` / `split` |
+| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` / `analyze-effect` / `split` / `plan` |
 | `resource_id` | string | 关联的资源 ID（如 asset_id） |
 | `status` | string | 任务状态：`running` / `completed` / `failed` / `cancelled` |
 | `created_at` | string | 任务创建时间（ISO 8601） |
@@ -1550,6 +1561,201 @@ curl -X POST http://127.0.0.1:8000/analyze-effect \
 
 ---
 
+## 15. POST /plan — 生成视频模板
+
+基于已完成的分析任务（/analyze-script、/analyze-visual 等），使用 LLM 将参考视频的叙事结构迁移到新的用户主题上，生成一个包含 segments 和 slots 的视频模板。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `POST` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | `application/json` |
+
+### 请求参数
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `script_task_id` | string | 否 | `null` | 已完成 script 分析的任务 ID |
+| `visual_task_id` | string | 否 | `null` | 已完成 visual 分析的任务 ID |
+| `audio_task_id` | string | 否 | `null` | 已完成 audio 分析的任务 ID |
+| `effect_task_id` | string | 否 | `null` | 已完成 effect 分析的任务 ID |
+| `user_brief` | string | **是** | — | 用户的新视频主题与需求描述 |
+| `target_duration` | float | 否 | `null` | 目标视频时长（秒），不填则自动推算 |
+
+> **约束**：`script_task_id` 和 `visual_task_id` 至少提供一个。
+
+### 请求示例
+
+```bash
+curl -X POST http://127.0.0.1:8000/plan \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "script_task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    "visual_task_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+    "audio_task_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+    "user_brief": "做一个关于职场高效沟通的短视频，目标受众是刚入职的年轻人",
+    "target_duration": 45.0
+  }'
+```
+
+### 成功响应 (202)
+
+模板生成任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取结果。
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii"
+  }
+}
+```
+
+### 通过 SSE / 轮询获取模板
+
+任务类型为 `"plan"`。`plan_id` 与 `task_id` 一致。任务完成后，`result` 字段直接包含完整的 `VideoTemplate` 结构：
+
+```json
+{
+  "task_id": "iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii",
+  "type": "plan",
+  "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "status": "completed",
+  "created_at": "2026-06-08T12:00:00+00:00",
+  "result": {
+    "plan_id": "iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii",
+    "created_at": "2026-06-08T12:00:05+00:00",
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_brief": "做一个关于职场高效沟通的短视频",
+    "reference_asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "estimated_duration": 45.0,
+    "narrator_perspective": "second_person",
+    "bgm_spec": {
+      "genre": "pop", "bpm": 120.0, "mood": "energetic",
+      "reference_audio_asset_id": "b2c3d4e5-...",
+      "slot": { "slot_id": "bgm_main", "slot_type": "bgm", ... }
+    },
+    "segments": [
+      {
+        "index": 0, "stage": "hook", "start_time": 0.0, "end_time": 5.0,
+        "narrative_intent": "...", "hook_type": "pain_point",
+        "slots": [
+          { "slot_id": "seg0_visual_text", "slot_type": "visual_text", ... },
+          { "slot_id": "seg0_narration", "slot_type": "narration", ... },
+          { "slot_id": "seg0_background_video", "slot_type": "background_video", ... }
+        ]
+      }
+    ]
+  }
+}
+```
+
+> **与任务架构一致**：`plan_id == task_id`。前端通过 `GET /task/{task_id}` 或 SSE 即可获取完整模板，无需额外请求。字段说明同下方 PATCH 接口的模板结构。
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 400 | `任务 xxx 不存在` | 提供的 task_id 不在注册表中 |
+| 400 | `任务 xxx 尚未完成，当前状态：running` | 参考的分析任务尚未完成 |
+| 403 | `无权访问任务 xxx` | 参考任务不属于当前用户 |
+| 422 | `script_task_id 和 visual_task_id 至少提供一个` | 请求体校验失败 |
+
+---
+
+## 16. PATCH /plan/{plan_id}/slot/{slot_id} — 填充模板槽位
+
+为模板中的指定 slot 填充内容。支持两种方式：
+- **user_upload**：用户上传已有的素材（需提供 asset_id），slot 状态变为 `filled`
+- **ai_generate**：标记该 slot 待 AI 后续生成，slot 状态变为 `pending`
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `PATCH` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | `application/json` |
+
+### 路径参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `plan_id` | string | **是** | 模板 ID（即任务 task_id，`plan_id == task_id`） |
+| `slot_id` | string | **是** | 槽位 ID（如 `seg0_visual_text`、`bgm_main`） |
+
+### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `fill_method` | string | **是** | 填充方式：`user_upload` / `ai_generate` |
+| `value` | string | 条件必填 | `fill_method` 为 `user_upload` 时必填，值为素材的 asset_id |
+
+### 响应示例
+
+**user_upload 填充成功：**
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/slot/seg0_background_video \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"fill_method": "user_upload", "value": "c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1"}'
+```
+
+```json
+{
+  "status": "success",
+  "data": {
+    "slot_id": "seg0_background_video",
+    "slot_type": "background_video",
+    "description": "办公室场景的快速推进镜头",
+    "constraints": { "duration_sec": 5.0, "camera_movement": "zoom_in" },
+    "status": "filled",
+    "fill_method": "user_upload",
+    "value": "c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1"
+  }
+}
+```
+
+**ai_generate 标记待生成：**
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/slot/seg0_narration \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"fill_method": "ai_generate"}'
+```
+
+```json
+{
+  "status": "success",
+  "data": {
+    "slot_id": "seg0_narration",
+    "slot_type": "narration",
+    "description": "用第二人称提问，语气带有疑惑感",
+    "constraints": { "max_duration_sec": 5.0 },
+    "status": "pending",
+    "fill_method": "ai_generate",
+    "value": null
+  }
+}
+```
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 400 | `计划尚未生成完成` | plan 任务仍在运行中 |
+| 403 | `无权访问该计划` | 模板不属于当前用户 |
+| 403 | `无权使用该素材` | 提供的 asset_id 不属于当前用户 |
+| 404 | `计划不存在` | plan_id 不存在（或对应任务类型非 plan） |
+| 404 | `Slot xxx 不存在` | slot_id 在模板中不存在 |
+| 404 | `素材 xxx 不存在` | 提供的 asset_id 无对应记录 |
+| 422 | `fill_method 为 user_upload 时必须提供 value（asset_id）` | 校验失败 |
+
+---
+
 上传和压缩接口返回的 `metadata` 对象包含以下字段：
 
 | 字段 | 类型 | 说明 | 示例 |
@@ -1615,7 +1821,7 @@ curl -X POST http://127.0.0.1:8000/analyze-effect \
 
 ### 概述
 
-视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`) 和视频切割 (`/split`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
+视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`)、视频切割 (`/split`) 和模板生成 (`/plan`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
 
 尤其对于 `/analyze-audio`，SSE 流会在任务运行期间**逐帧推送音频特征数据**，最终在任务完成时推送汇总结果。
 
@@ -1628,6 +1834,7 @@ POST /analyze-visual → 202 { task_id }                    ← 立即返回
 POST /analyze-audio  → 202 { task_id }                    ← 立即返回
 POST /analyze-effect → 202 { task_id }                    ← 立即返回
 POST /split          → 202 { task_id }                    ← 立即返回
+POST /plan           → 202 { task_id }                    ← 立即返回
                      → 连接 GET /task/{id}/stream (SSE)   ← 推荐：实时推送
 GET  /task/{id}      → 200 { status: "running" }           ← 轮询回退
 GET  /task/{id}      → 200 { status: "completed", ... }    ← 结果就绪
@@ -1650,6 +1857,7 @@ GET  /task/{id}      → 200 { status: "cancelled" }
 - **`/analyze-script` / `/analyze-visual` / `/analyze-effect`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
 - **`/analyze-audio`**: 底层 `ffmpeg` 和模型推理被 `asyncio.CancelledError` 中断，中间产物（storage/tmp 下的文件）由任务内部清理
 - **`/split`**: 底层 `ffmpeg` 子进程被终止，已生成的临时切割文件被清理
+- **`/plan`**: 底层异步 LLM 请求被 `asyncio.CancelledError` 中断，API 调用立即中止
 
 ### 注意事项
 

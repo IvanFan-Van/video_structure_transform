@@ -7,7 +7,13 @@ from fastapi.responses import JSONResponse
 from sqlmodel import SQLModel
 
 from app.database import engine
-from app.routers import auth_router, files_router, pipeline_router, task_router
+from app.routers import (
+    auth_router,
+    files_router,
+    pipeline_router,
+    plan_router,
+    task_router,
+)
 
 load_dotenv(find_dotenv())
 
@@ -51,6 +57,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(auth_router)
 app.include_router(task_router)
 app.include_router(pipeline_router)
+app.include_router(plan_router)
 app.include_router(files_router)
 
 

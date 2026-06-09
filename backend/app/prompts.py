@@ -663,3 +663,58 @@ EFFECT_ANALYSIS_SYSTEM_PROMPT_TEMPLATE = (
 EFFECT_ANALYSIS_USER_PROMPT = (
     "Please analyze this video following the two-step process described."
 )
+
+
+PLAN_SYSTEM_PROMPT = (
+    "你是一个专业的短视频结构策划师，擅长将爆款视频的叙事结构迁移到新的主题上。"
+)
+
+PLAN_USER_PROMPT_HEADER = """## 参考视频分析结果"""
+
+PLAN_USER_PROMPT_SCRIPT_SECTION = """
+### 叙事结构
+{script_json}"""
+
+PLAN_USER_PROMPT_VISUAL_SECTION = """
+### 视觉结构
+总时长: {total_duration}s
+平均镜头时长: {avg_shot_duration}s
+节奏: {pacing_category}
+镜头列表:
+{shots_json}"""
+
+PLAN_USER_PROMPT_TASK = """## 用户新视频需求
+主题与需求：{user_brief}
+目标时长：{estimated_duration}s
+叙述视角：{narrator_perspective}
+
+## 你的任务
+
+基于参考视频的结构模式，为新主题生成视频模板。
+
+严格遵守以下规则：
+1. segments 数量与原视频 stage/镜头数量对应，不要自行增减
+2. story 阶段若原视频有多个镜头，拆分为多个连续 segment（stage 均填 "story"）
+3. start_time 与 end_time 均以 {estimated_duration}s 为总时长，按比例映射
+4. 每个 segment 包含 2 或 3 个 slots，规则如下：
+   - 始终包含：visual_text、narration
+   - is_text_frame 为 false 时，额外加 background_video（视频素材段）
+   - is_text_frame 为 true 时，额外加 background_image（纯文字帧）
+5. narrative_intent 和 slot.description 必须结合用户主题说明具体内容，
+   禁止使用"文案"、"台词"等泛泛词语
+6. stage 枚举值：hook / setup / story / insight / cta / outro
+7. hook_type（仅 hook 段）：
+   pain_point / suspense / result_first / counter_intuitive /
+   number_shock / identity_lock / scene_immersion / contrast_flip
+8. cta_type（仅 cta 段）：
+   follow / like_collect / comment / purchase / discount_hook /
+   dm_funnel / share_spread / challenge
+9. emotional_tone：positive / negative / neutral / suspenseful
+10. constraints 中以下字段建议使用指定值（超出范围时服务端会自动降级为默认值）：
+   - position: top_center / center / bottom_center / overlay_left / overlay_right / full_screen
+   - appear_style: fade_in / pop / slide / typewriter（或其它动效名称）
+   - emphasis: zoom / shake / color_change / stroke
+   - camera_movement: static / zoom_in / zoom_out / pan / tilt / handheld
+11. bgm_mood 描述 BGM 情绪关键词，如 "energetic" / "calm" / "uplifting"
+"""
+
