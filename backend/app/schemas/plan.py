@@ -23,6 +23,7 @@ class SlotType(str, Enum):
 class FillMethod(str, Enum):
     user_upload = "user_upload"
     ai_generate = "ai_generate"
+    manual_input = "manual_input"
 
 
 class SlotStatus(str, Enum):
@@ -113,12 +114,16 @@ class FillSlotRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_value(self):
-        if self.fill_method == FillMethod.user_upload and not self.value:
-            raise ValueError("fill_method 为 user_upload 时必须提供 value（asset_id）")
+        if self.fill_method in (FillMethod.user_upload, FillMethod.manual_input):
+            if not self.value:
+                raise ValueError(
+                    f"fill_method 为 {self.fill_method.value} 时必须提供 value"
+                )
         return self
 
 
 # ── LLM 结构化输出模型（instructor response_model）─────────
+
 
 class RawSlotConstraints(BaseModel):
     max_chars: int | None = None

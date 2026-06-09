@@ -17,7 +17,7 @@ from app.services import (
     start_script_analysis,
     start_split_task,
     start_visual_analysis,
-    upload_video,
+    upload,
 )
 
 router = APIRouter(tags=["pipeline"])
@@ -31,12 +31,12 @@ def index():
 
 
 @router.post("/upload")
-async def upload_video_endpoint(
+async def upload_endpoint(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    result = await upload_video(session, current_user, file)
+    result = await upload(session, current_user, file)
     return JSONResponse(status_code=201, content={"status": "success", "data": result})
 
 

@@ -17,6 +17,7 @@ import { VisualAnalysisNode } from "./components/nodes/VisualAnalysisNode";
 import { SplitNode } from "./components/nodes/SplitNode";
 import { EffectAnalysisNode } from "./components/nodes/EffectAnalysisNode";
 import { PlanNode } from "./components/nodes/PlanNode";
+import { SlotNode } from "./components/nodes/SlotNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
@@ -32,6 +33,7 @@ function App() {
     const logout = useAuthStore((s) => s.logout);
     const savePreset = useCanvasStore((s) => s.savePreset);
     const splitResult = useVideoStore((s) => s.splitResult);
+    const planResult = useVideoStore((s) => s.planResult);
     const navigate = useNavigate();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -72,7 +74,7 @@ function App() {
     const [offset, setOffset] = useState(60);
     useEffect(() => {
         const calcOffset = () => {
-            const totalWidth = 2550;
+            const totalWidth = 3000;
             const ox = Math.max(
                 60,
                 Math.floor((window.innerWidth - totalWidth) / 2),
@@ -92,8 +94,13 @@ function App() {
                 base.push([`effect_segment_${i}`, "plan"]);
             }
         }
+        if (planResult?.segments) {
+            for (let i = 0; i < planResult.segments.length; i++) {
+                base.push(["plan", `slot_segment_${i}`]);
+            }
+        }
         return base;
-    }, [splitResult]);
+    }, [splitResult, planResult]);
 
     return (
         <div
@@ -328,6 +335,15 @@ function App() {
                         y={30}
                         onPosChange={updatePos}
                     />
+                    {planResult?.segments?.map((seg, i) => (
+                        <SlotNode
+                            key={`slot_seg_${i}`}
+                            x={offset + 2600}
+                            y={30 + i * 360}
+                            segmentIndex={i}
+                            onPosChange={updatePos}
+                        />
+                    ))}
 
                     <style
                         dangerouslySetInnerHTML={{

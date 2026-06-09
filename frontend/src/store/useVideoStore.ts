@@ -18,6 +18,7 @@ import {
     SplitResult,
     EffectResult,
     PlanResult,
+    SlotFillResult,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -250,6 +251,8 @@ interface VideoState {
     planResult: PlanResult | null;
     planTaskId: string | null;
 
+    slotFillStatuses: Record<string, "filling" | "filled" | "error">;
+
     videoErrors: NodeError[];
 }
 
@@ -274,6 +277,13 @@ interface VideoActions {
     analyzeEffect: (assetId: string, segmentIndex: number) => Promise<void>;
     startPlan: (userBrief: string, targetDuration?: number) => Promise<void>;
     stopPlan: () => Promise<void>;
+    quickUpload: (file: File) => Promise<string | null>;
+    fillSlot: (
+        planId: string,
+        slotId: string,
+        fillMethod: "user_upload" | "ai_generate" | "manual_input",
+        value?: string,
+    ) => Promise<void>;
     dismissError: (id: number) => void;
 }
 
@@ -342,6 +352,8 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     planResult: null,
     planTaskId: null,
 
+    slotFillStatuses: {},
+
     videoErrors: [],
 
     // ── Actions ────────────────────────────────────────────────────────────────
@@ -374,6 +386,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             planTime: null,
             planResult: null,
             planTaskId: null,
+            slotFillStatuses: {},
         });
 
         const formData = new FormData();
@@ -1215,6 +1228,106 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             planResult: null,
             planTime: null,
         });
+    },
+
+    quickUpload: async (file) => {
+        const token = useAuthStore.getState().token;
+        if (!token) return null;
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+            const res = await axios.post<ApiResponse<UploadResult>>(
+                "/api/upload",
+                formData,
+                { headers: { Authorization: `Bearer ${token}` } },
+            );
+            if (res.data.status === "success") {
+                return res.data.data.asset_id;
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    },
+
+    fillSlot: async (planId, slotId, fillMethod, value?) => {
+        const token = useAuthStore.getState().token;
+        if (!token) return;
+
+        set((s) => ({
+            slotFillStatuses: {
+                ...s.slotFillStatuses,
+                [slotId]: "filling" as const,
+            },
+        }));
+
+        try {
+            const body: Record<string, string> = { fill_method: fillMethod };
+            if (value !== undefined) body.value = value;
+
+            const res = await axios.patch<ApiResponse<SlotFillResult>>(
+                `/api/plan/${planId}/slot/${slotId}`,
+                body,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (res.data.status === "success") {
+                const filled = res.data.data;
+                set((s) => {
+                    const plan = s.planResult;
+                    if (!plan) return { slotFillStatuses: { ...s.slotFillStatuses, [slotId]: "filled" } };
+
+                    const segments = plan.segments.map((seg) => {
+                        const si = seg.slots.findIndex((sl) => sl.slot_id === slotId);
+                        if (si === -1) return seg;
+                        const slots = [...seg.slots];
+                        slots[si] = { ...slots[si], ...filled };
+                        return { ...seg, slots };
+                    });
+
+                    return {
+                        planResult: { ...plan, segments },
+                        slotFillStatuses: {
+                            ...s.slotFillStatuses,
+                            [slotId]: "filled",
+                        },
+                    };
+                });
+            } else {
+                const msg = (res.data as ApiErrorResponse).message ?? "Fill failed";
+                set((s) => ({
+                    slotFillStatuses: {
+                        ...s.slotFillStatuses,
+                        [slotId]: "error",
+                    },
+                    videoErrors: [
+                        ...s.videoErrors.filter((e) => e.nodeId !== `slot_${slotId}`),
+                        makeError(`slot_${slotId}`, msg, "FILL_FAILED", ""),
+                    ],
+                }));
+            }
+        } catch {
+            set((s) => ({
+                slotFillStatuses: {
+                    ...s.slotFillStatuses,
+                    [slotId]: "error",
+                },
+                videoErrors: [
+                    ...s.videoErrors.filter((e) => e.nodeId !== `slot_${slotId}`),
+                    makeError(
+                        `slot_${slotId}`,
+                        "Network error",
+                        "NETWORK_ERROR",
+                        NETWORK_ERROR_DETAILS,
+                    ),
+                ],
+            }));
+        }
     },
 
     dismissError: (id) => {

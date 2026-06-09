@@ -291,3 +291,13 @@ export interface PlanResult {
 }
 
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+
+export interface SlotFillResult {
+    slot_id: string;
+    slot_type: string;
+    description: string;
+    constraints: Record<string, unknown>;
+    status: "filled" | "pending";
+    fill_method: "user_upload" | "ai_generate" | "manual_input";
+    value: string | null;
+}

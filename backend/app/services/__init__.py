@@ -9,7 +9,7 @@ from .pipeline import (
     start_script_analysis,
     start_split_task,
     start_visual_analysis,
-    upload_video,
+    upload,
 )
 from .plan_service import start_plan_generation
 from .task import cancel_task, get_task_for_user
@@ -29,5 +29,5 @@ __all__ = [
     "start_script_analysis",
     "start_split_task",
     "start_visual_analysis",
-    "upload_video",
+    "upload",
 ]

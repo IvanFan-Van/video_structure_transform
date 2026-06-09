@@ -10,6 +10,7 @@ from sqlmodel import Session, select
 
 from app.database import engine
 from app.lib.audio import STREAM_EOF, extract_bgm, stream_audio_features
+from app.lib.image import probe_image
 from app.lib.video import (
     compress_video_async,
     detect_scenes_scenedetect,
@@ -53,6 +54,13 @@ ALLOWED_VIDEO_MIME_TYPES = {
     "video/webm",
     "video/x-flv",
     "video/x-ms-wmv",
+}
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+ALLOWED_IMAGE_MIME_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/bmp",
 }
 STORAGE_DIR = Path("storage")
 VIDEO_STORAGE_DIR = STORAGE_DIR / "videos"
@@ -667,54 +675,72 @@ def check_analysis_size_limit(meta) -> None:
         )
 
 
-async def upload_video(session: Session, user: User, file: UploadFile) -> dict:
-    ext = Path(file.filename or "upload.mp4").suffix.lower()
-    if (
-        ext not in ALLOWED_VIDEO_EXTENSIONS
-        and file.content_type not in ALLOWED_VIDEO_MIME_TYPES
-    ):
+async def upload(session: Session, user: User, file: UploadFile) -> dict:
+    ext = Path(file.filename or "upload.bin").suffix.lower()
+    is_video = (
+        ext in ALLOWED_VIDEO_EXTENSIONS
+        or file.content_type in ALLOWED_VIDEO_MIME_TYPES
+    )
+    is_image = (
+        ext in ALLOWED_IMAGE_EXTENSIONS
+        or file.content_type in ALLOWED_IMAGE_MIME_TYPES
+    )
+    if not is_video and not is_image:
         raise HTTPException(status_code=400, detail="不支持的文件类型")
 
-    VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    if is_video:
+        asset_type = "video"
+        storage_dir = VIDEO_STORAGE_DIR
+    else:
+        asset_type = "image"
+        storage_dir = IMAGES_STORAGE_DIR
+
+    storage_dir.mkdir(parents=True, exist_ok=True)
 
     asset_id = str(uuid.uuid4())
     filename = f"{asset_id}{ext}"
-    filepath = VIDEO_STORAGE_DIR / filename
+    filepath = storage_dir / filename
 
     content = await file.read()
     filepath.write_bytes(content)
 
     try:
-        meta = probe_video(filepath)
+        if asset_type == "video":
+            meta = probe_video(filepath)
+        else:
+            meta = probe_image(filepath)
     except Exception as e:
         filepath.unlink(missing_ok=True)
         raise HTTPException(
             status_code=500,
-            detail=f"视频元数据探测失败: {e}",
+            detail=f"文件元数据探测失败: {e}",
         )
 
     asset = Asset(
         asset_id=asset_id,
         user_id=user.user_id,
         path=str(filepath),
-        type="video",
+        type=asset_type,
     )
     create_asset(session, asset)
 
-    loop = asyncio.get_running_loop()
-    cover_id = await loop.run_in_executor(
-        None,
-        extract_cover_for_video,
-        session,
-        str(filepath),
-        user.user_id,
-        asset_id,
-    )
-
-    return {
+    result = {
         "asset_id": asset_id,
-        "type": "video",
+        "type": asset_type,
         "path": str(filepath),
         "metadata": meta.to_dict(),
-        "cover_image_asset_id": cover_id,
     }
+
+    if asset_type == "video":
+        loop = asyncio.get_running_loop()
+        cover_id = await loop.run_in_executor(
+            None,
+            extract_cover_for_video,
+            session,
+            str(filepath),
+            user.user_id,
+            asset_id,
+        )
+        result["cover_image_asset_id"] = cover_id
+
+    return result

@@ -306,9 +306,9 @@ Token 通过 `/login` 接口获取，默认有效期为 15 分钟（可通过环
 
 ---
 
-## 4. POST /upload — 上传视频
+## 4. POST /upload — 上传文件
 
-将视频文件上传到服务器，保存到本地并记录到数据库。
+将视频或图片文件上传到服务器，保存到本地并记录到数据库。按文件扩展名自动识别类型。
 
 | 属性 | 值 |
 |---|---|
@@ -320,17 +320,34 @@ Token 通过 `/login` 接口获取，默认有效期为 15 分钟（可通过环
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `file` | file | 是 | 视频文件（支持格式见附录 C） |
+| `file` | file | 是 | 视频或图片文件（视频格式见附录 C，图片格式见下方） |
+
+**支持的图片格式：**
+
+| 扩展名 | MIME 类型 |
+|---|---|
+| `.jpg` / `.jpeg` | `image/jpeg` |
+| `.png` | `image/png` |
+| `.webp` | `image/webp` |
+| `.bmp` | `image/bmp` |
 
 ### 请求示例 (curl)
 
 ```bash
+# 上传视频
 curl -X POST http://127.0.0.1:8000/upload \
   -H "Authorization: Bearer <token>" \
   -F "file=@/path/to/video.mp4"
+
+# 上传图片
+curl -X POST http://127.0.0.1:8000/upload \
+  -H "Authorization: Bearer <token>" \
+  -F "file=@/path/to/image.png"
 ```
 
 ### 成功响应 (201)
+
+**视频上传：**
 
 ```json
 {
@@ -358,7 +375,27 @@ curl -X POST http://127.0.0.1:8000/upload \
 }
 ```
 
-> **封面自动提取**：上传完成后自动从视频中提取第一张有效关键帧作为封面图（跳过黑屏等静默帧），以 `type="image"` 存入数据库。`cover_image_asset_id` 指向该封面，可通过 `GET /files/{uuid}` 下载。提取失败时为 `null`。
+**图片上传：**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "asset_id": "e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1",
+    "type": "image",
+    "path": "storage\\images\\e1e1e1e1-e1e1-e1e1-e1e1-e1e1e1e1e1e1.png",
+    "metadata": {
+      "filepath": "D:\\HKU\\...\\storage\\images\\e1e1....png",
+      "width": 1920,
+      "height": 1080,
+      "size": 524288,
+      "format": "PNG"
+    }
+  }
+}
+```
+
+> **视频封面自动提取**：上传视频完成后自动提取封面图。上传图片时不附带封面。`cover_image_asset_id` 仅视频上传时有。`metadata` 结构按文件类型不同而不同。
 
 ### 错误响应
 
@@ -374,7 +411,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 | HTTP 状态码 | data.code | 说明 |
 |---|---|---|
-| 500 | `PROBE_FAILED` | 视频元数据探测失败 |
+| 500 | `PROBE_FAILED` | 文件元数据探测失败 |
 
 ---
 
@@ -1667,9 +1704,10 @@ curl -X POST http://127.0.0.1:8000/plan \
 
 ## 16. PATCH /plan/{plan_id}/slot/{slot_id} — 填充模板槽位
 
-为模板中的指定 slot 填充内容。支持两种方式：
-- **user_upload**：用户上传已有的素材（需提供 asset_id），slot 状态变为 `filled`
+为模板中的指定 slot 填充内容。支持三种方式：
+- **user_upload**：上传已有的文件素材（需提供 asset_id），slot 状态变为 `filled`
 - **ai_generate**：标记该 slot 待 AI 后续生成，slot 状态变为 `pending`
+- **manual_input**：直接输入文本内容（适用于 visual_text / narration），slot 状态变为 `filled`
 
 | 属性 | 值 |
 |---|---|
@@ -1688,8 +1726,8 @@ curl -X POST http://127.0.0.1:8000/plan \
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `fill_method` | string | **是** | 填充方式：`user_upload` / `ai_generate` |
-| `value` | string | 条件必填 | `fill_method` 为 `user_upload` 时必填，值为素材的 asset_id |
+| `fill_method` | string | **是** | 填充方式：`user_upload` / `ai_generate` / `manual_input` |
+| `value` | string | 条件必填 | `user_upload` 或 `manual_input` 时必填。`user_upload` 时为素材 asset_id；`manual_input` 时为文本内容 |
 
 ### 响应示例
 
@@ -1741,6 +1779,30 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 }
 ```
 
+**manual_input 直接输入文本：**
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/slot/seg0_visual_text \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"fill_method": "manual_input", "value": "为什么你的沟通总被无视？"}'
+```
+
+```json
+{
+  "status": "success",
+  "data": {
+    "slot_id": "seg0_visual_text",
+    "slot_type": "visual_text",
+    "description": "反问标题文字，点出沟通低效的痛点",
+    "constraints": { "max_chars": 20, "position": "center", "appear_style": "typewriter" },
+    "status": "filled",
+    "fill_method": "manual_input",
+    "value": "为什么你的沟通总被无视？"
+  }
+}
+```
+
 ### 错误响应
 
 | HTTP 状态码 | message | 说明 |
@@ -1752,7 +1814,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 | 404 | `计划不存在` | plan_id 不存在（或对应任务类型非 plan） |
 | 404 | `Slot xxx 不存在` | slot_id 在模板中不存在 |
 | 404 | `素材 xxx 不存在` | 提供的 asset_id 无对应记录 |
-| 422 | `fill_method 为 user_upload 时必须提供 value（asset_id）` | 校验失败 |
+| 422 | `fill_method 为 xxx 时必须提供 value` | 校验失败 |
 
 ---
 
