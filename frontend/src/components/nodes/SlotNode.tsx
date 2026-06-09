@@ -321,9 +321,12 @@ export function SlotNode({ x, y, segmentIndex, onPosChange }: Props) {
                                     </div>
 
                                     {/* Constraints */}
-                                    {slot.constraints &&
-                                        Object.keys(slot.constraints).length >
-                                            0 && (
+                                    {(() => {
+                                        const filtered = Object.entries(
+                                            slot.constraints ?? {},
+                                        ).filter(([, v]) => v != null);
+                                        if (filtered.length === 0) return null;
+                                        return (
                                             <div
                                                 style={{
                                                     fontSize: "6.5px",
@@ -333,15 +336,14 @@ export function SlotNode({ x, y, segmentIndex, onPosChange }: Props) {
                                                     gap: "2px 6px",
                                                 }}
                                             >
-                                                {Object.entries(
-                                                    slot.constraints,
-                                                ).map(([k, v]) => (
+                                                {filtered.map(([k, v]) => (
                                                     <span key={k}>
                                                         {k}: {String(v)}
                                                     </span>
                                                 ))}
                                             </div>
-                                        )}
+                                        );
+                                    })()}
 
                                     {/* Current value preview */}
                                     {slot.status === "filled" && slot.value && (
