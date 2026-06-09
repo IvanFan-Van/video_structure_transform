@@ -170,6 +170,27 @@ function App() {
                 }}
             >
                 <button
+                    onClick={() => {
+                        useCanvasStore.getState().resetToDefaults();
+                        useVideoStore.getState().resetAll();
+                        setToast("All reset to defaults");
+                    }}
+                    title="Reset all canvas state to defaults"
+                    style={{
+                        fontSize: "10px",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: "#c2410c",
+                        background: "#fff7ed",
+                        border: "1px solid #fed7aa",
+                        borderRadius: "20px",
+                        padding: "5px 14px",
+                        cursor: "pointer",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                    }}
+                >
+                    ↺ Reset
+                </button>
+                <button
                     onClick={() => setShowTour(true)}
                     title="Start guided tour"
                     style={{

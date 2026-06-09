@@ -68,6 +68,7 @@ interface CanvasState {
     setSelection: (ids: string[]) => void;
     clearSelection: () => void;
     savePreset: () => void;
+    resetToDefaults: () => void;
 }
 
 export const useCanvasStore = create<CanvasState>()(
@@ -100,7 +101,8 @@ export const useCanvasStore = create<CanvasState>()(
                     const next = { ...s.positions };
                     for (const id of ids) {
                         const pos = next[id];
-                        if (pos) next[id] = { ...pos, x: pos.x + dx, y: pos.y + dy };
+                        if (pos)
+                            next[id] = { ...pos, x: pos.x + dx, y: pos.y + dy };
                     }
                     return { positions: next };
                 }),
@@ -108,15 +110,28 @@ export const useCanvasStore = create<CanvasState>()(
             setSelection: (ids) => set({ selectedIds: ids }),
             clearSelection: () => set({ selectedIds: [] }),
 
-            savePreset: () => {
-                const { zoom, panX, panY, positions } = get();
-                try {
-                    localStorage.setItem(
-                        PRESET_KEY,
-                        JSON.stringify({ zoom, panX, panY, positions }),
-                    );
-                } catch {}
-            },
+    savePreset: () => {
+            const { zoom, panX, panY, positions } = get();
+            try {
+                localStorage.setItem(
+                    PRESET_KEY,
+                    JSON.stringify({ zoom, panX, panY, positions }),
+                );
+            } catch {}
+        },
+
+        resetToDefaults: () => {
+            try {
+                localStorage.removeItem(PRESET_KEY);
+            } catch {}
+            set({
+                zoom: DEFAULT_ZOOM,
+                panX: DEFAULT_PAN_X,
+                panY: DEFAULT_PAN_Y,
+                positions: { ...DEFAULT_POSITIONS },
+                selectedIds: [],
+            });
+        },
         }),
         {
             name: "canvas-state",

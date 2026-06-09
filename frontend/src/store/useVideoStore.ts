@@ -294,6 +294,7 @@ interface VideoActions {
     startSlotGenerate: () => Promise<void>;
     stopSlotGenerate: () => Promise<void>;
     dismissError: (id: number) => void;
+    resetAll: () => void;
 }
 
 const initialCompressConfig: CompressConfig = {
@@ -1507,5 +1508,59 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         set((s) => ({
             videoErrors: s.videoErrors.filter((e) => e.id !== id),
         }));
+    },
+
+    resetAll: () => {
+        abortAllStreams();
+        set({
+            isUploading: false,
+            uploadProgress: 0,
+            uploadResult: null,
+            compressConfig: { ...initialCompressConfig },
+            isCompressing: false,
+            compressTaskId: null,
+            compressResult: null,
+            scriptStatus: "idle",
+            scriptTime: null,
+            isExtractingFlow: false,
+            extractTaskId: null,
+            transcriptResult: null,
+            audioStatus: "idle",
+            audioTime: null,
+            audioTaskId: null,
+            streamArr: [],
+            audioGlobal: null,
+            audioBgmAssetId: null,
+            visualStatus: "idle",
+            visualTime: null,
+            isAnalyzingVisual: false,
+            visualTaskId: null,
+            visualResult: null,
+            splitConfig: { ...initialSplitConfig },
+            splitStatus: "idle",
+            splitTime: null,
+            isSplitting: false,
+            splitTaskId: null,
+            splitResult: null,
+            effectStatuses: {},
+            effectResults: {},
+            planableTaskIds: {
+                script: null,
+                visual: null,
+                audio: null,
+                split: null,
+            },
+            effectTaskIds: {},
+            planStatus: "idle",
+            planTime: null,
+            planResult: null,
+            planTaskId: null,
+            slotFillStatuses: {},
+            generateStatus: "idle",
+            generateTime: null,
+            generateResult: null,
+            generateTaskId: null,
+            videoErrors: [],
+        });
     },
 }));
