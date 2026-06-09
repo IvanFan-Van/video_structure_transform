@@ -10,8 +10,7 @@ import {
     ApiErrorResponse,
     TranscriptResult,
     TaskInfo,
-    AudioStreamChunk,
-    AudioGlobalFeatures,
+    AudioAnalysisResult,
     VisualResult,
     NodeStatus,
     SplitConfig,
@@ -220,9 +219,7 @@ interface VideoState {
     audioStatus: NodeStatus;
     audioTime: number | null;
     audioTaskId: string | null;
-    streamArr: AudioStreamChunk[];
-    audioGlobal: AudioGlobalFeatures | null;
-    audioBgmAssetId: string | null;
+    audioResult: AudioAnalysisResult | null;
 
     visualStatus: NodeStatus;
     visualTime: number | null;
@@ -334,9 +331,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     audioStatus: "idle",
     audioTime: null,
     audioTaskId: null,
-    streamArr: [],
-    audioGlobal: null,
-    audioBgmAssetId: null,
+    audioResult: null,
 
     visualStatus: "idle",
     visualTime: null,
@@ -392,9 +387,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             audioStatus: "idle",
             audioTime: null,
             audioTaskId: null,
-            streamArr: [],
-            audioGlobal: null,
-            audioBgmAssetId: null,
+            audioResult: null,
             planableTaskIds: {
                 script: null,
                 visual: null,
@@ -684,18 +677,11 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         if (!token) return;
         const t0 = Date.now();
 
-        // Audio uses a dedicated streaming endpoint with frame-by-frame data —
-        // not the generic task-poll pattern, so it keeps its own handler.
-        abortStream("audio");
-        streamControllers["audio"] = new AbortController();
-
         set({
             audioStatus: "loading",
             audioTime: null,
             audioTaskId: null,
-            streamArr: [],
-            audioGlobal: null,
-            audioBgmAssetId: null,
+            audioResult: null,
         });
 
         try {
@@ -717,7 +703,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     "Audio analysis failed",
                 );
                 set((s) => ({
-                    audioGlobal: null,
+                    audioResult: null,
                     audioStatus: "error",
                     audioTime: elapsed,
                     videoErrors: [
@@ -731,114 +717,62 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             const taskId: string = res.data.data.task_id;
             set({ audioTaskId: taskId });
 
-            await fetchEventSource(`/api/task/${taskId}/stream`, {
-                headers: { Authorization: `Bearer ${token}` },
-                signal: streamControllers["audio"]!.signal,
-                openWhenHidden: false,
-                onmessage(event) {
-                    try {
-                        const data = JSON.parse(event.data);
-
-                        if (data.asset_id) {
-                            set({ audioBgmAssetId: data.asset_id });
-                        }
-
-                        if (data.local) {
-                            const chunk: AudioStreamChunk = {
-                                time: data.time,
-                                frame_index: data.frame_index,
-                                rms: data.local.rms,
-                                spectral_centroid: data.local.spectral_centroid,
-                                spectral_flux: data.local.spectral_flux,
-                                onset_envelope: data.local.onset_envelope,
-                            };
-                            set((s) => ({
-                                streamArr: [...s.streamArr, chunk],
-                            }));
-                        }
-
-                        if (data.running_global) {
-                            set({ audioGlobal: data.running_global });
-                        }
-
-                        if (data.status === "completed") {
-                            const elapsed = (Date.now() - t0) / 1000;
-                            set((s) => ({
-                                audioStatus: "success",
-                                audioTime: elapsed,
-                                audioTaskId: null,
-                                audioGlobal: data.result || data.running_global,
-                                planableTaskIds: {
-                                    ...s.planableTaskIds,
-                                    audio: taskId,
-                                },
-                                videoErrors: s.videoErrors.filter(
-                                    (e) => e.nodeId !== "audio",
-                                ),
-                            }));
-                        } else if (data.status === "failed") {
-                            const elapsed = (Date.now() - t0) / 1000;
-                            set((s) => ({
-                                audioStatus: "error",
-                                audioTime: elapsed,
-                                audioTaskId: null,
-                                videoErrors: [
-                                    ...s.videoErrors.filter(
-                                        (e) => e.nodeId !== "audio",
-                                    ),
-                                    makeError(
-                                        "audio",
-                                        "Audio analysis failed",
-                                        "AUDIO_FAILED",
-                                        data.error || "",
-                                    ),
-                                ],
-                            }));
-                        } else if (data.status === "cancelled") {
-                            set({
-                                audioStatus: "idle",
-                                audioTaskId: null,
-                            });
-                        }
-                    } catch {
-                        // Malformed frame — skip
-                    }
-                },
-                onerror() {
-                    const elapsed = (Date.now() - t0) / 1000;
-                    set((s) => ({
-                        audioStatus: "error",
-                        audioTime: elapsed,
-                        audioTaskId: null,
-                        videoErrors: [
-                            ...s.videoErrors.filter(
-                                (e) => e.nodeId !== "audio",
-                            ),
-                            makeError(
-                                "audio",
-                                "Audio analysis failed",
-                                "AUDIO_FAILED",
-                                "Stream connection error or server error.",
-                            ),
-                        ],
-                    }));
-                    throw new Error("stop");
-                },
+            await subscribeTaskStream<AudioAnalysisResult>(taskId, token, {
+                controllerKey: "audio",
+                t0,
+                set,
+                nodeId: "audio",
+                failureLabel: "Audio analysis failed",
+                onCompleted: (result, elapsed) => ({
+                    audioResult: result,
+                    audioStatus: "success",
+                    audioTime: elapsed,
+                    audioTaskId: null,
+                    planableTaskIds: {
+                        ...get().planableTaskIds,
+                        audio: taskId,
+                    },
+                }),
+                onFailed: (elapsed) => ({
+                    audioResult: null,
+                    audioStatus: "error",
+                    audioTime: elapsed,
+                    audioTaskId: null,
+                }),
+                onCancelled: () => ({
+                    audioStatus: "idle",
+                    audioTaskId: null,
+                }),
             });
         } catch {
-            // Aborted or connection error — onerror already handled the error state.
+            const elapsed = (Date.now() - t0) / 1000;
+            set((s) => ({
+                audioResult: null,
+                audioStatus: "error",
+                audioTime: elapsed,
+                audioTaskId: null,
+                videoErrors: [
+                    ...s.videoErrors.filter((e) => e.nodeId !== "audio"),
+                    makeError(
+                        "audio",
+                        "Network error",
+                        "NETWORK_ERROR",
+                        NETWORK_ERROR_DETAILS,
+                    ),
+                ],
+            }));
         }
     },
 
-    stopAnalyzeAudio: () => {
+    stopAnalyzeAudio: async () => {
         abortStream("audio");
+        const { audioTaskId } = get();
+        if (audioTaskId) await cancelTaskRequest(audioTaskId);
         set({
             audioStatus: "cancelled",
             audioTaskId: null,
+            audioResult: null,
             audioTime: null,
-            streamArr: [],
-            audioGlobal: null,
-            audioBgmAssetId: null,
         });
     },
 
@@ -1528,9 +1462,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             audioStatus: "idle",
             audioTime: null,
             audioTaskId: null,
-            streamArr: [],
-            audioGlobal: null,
-            audioBgmAssetId: null,
+            audioResult: null,
             visualStatus: "idle",
             visualTime: null,
             isAnalyzingVisual: false,

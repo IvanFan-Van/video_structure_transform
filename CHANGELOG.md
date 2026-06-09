@@ -33,3 +33,4 @@
 31. [ ] `feat`: 允许 effects 中让用户自己添加 effect
 32. [x] `feat`: 允许 slot 重新填写
 33. [ ] `bug`: 当第一次上传失败后, 无法再次上传视频
+34. [ ] `feat`: GenerateNode 节点没有 tour guide

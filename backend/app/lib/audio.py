@@ -1,36 +1,26 @@
 """Audio feature extraction for music-driven video generation.
 
 Features extracted:
-    - BPM (tempo)
-    - Beat times (rhythmic pulse points)
-    - Onset times and strengths (transient detection)
-    - RMS energy (loudness envelope)
+    - BPM (tempo, via librosa)
+    - Beat timings (rhythmic pulse points)
+    - RMS energy curve (loudness envelope)
     - Spectral centroid (brightness)
-    - Spectral flux (spectral change rate)
     - Dynamic range (loudness variation)
-    - MFCCs (timbral features, 13 coefficients)
-    - Chroma (harmonic/tonal features, 12 semitones)
-    - Downbeats (first beat of each bar)
-    - Pulse clarity (rhythm detectability)
 
 Utilities:
-    - Golden cut points (merged beat + onset for video cutting)
-    - Onset strength visualization (ASCII heatmap + matplotlib chart)
-    - Streaming feature extraction (aubio-based, generator for SSE endpoints)
+    - BGM extraction (ffmpeg + UVR-MDX-NET vocal separation)
+    - Music genre classification (HuggingFace transformer)
 """
 
 import logging
 import threading
-from collections.abc import Iterator
 from pathlib import Path
-from typing import no_type_check
 
-import aubio
 import ffmpeg
+import librosa
 from audio_separator.separator import Separator
 
 STORAGE_TMP = Path("storage/tmp")
-STREAM_EOF = object()
 
 _separator: Separator | None = None
 _separator_lock = threading.Lock()
@@ -123,152 +113,71 @@ def extract_bgm(
     return bgm_dst
 
 
-@no_type_check
-def stream_audio_features(
-    audio_path: str | Path,
-    *,
-    audio_asset_id: str | None = None,
-    win_size: int = 1024,
-    hop_size: int = 512,
-    sample_rate: int = 0,
-) -> Iterator[dict]:
-    """Stream frames of audio features in real time using aubio.
+def analyze_audio_features(audio_path: str | Path) -> dict:
+    """Extract global audio features from a BGM WAV file using librosa.
 
-    Processes an audio file frame-by-frame via ``aubio.source`` and
-    yields one dict per frame.  Each dict contains both **local**
-    (frame-level) and **running global** (cumulative from the
-    beginning) features.  Designed as a backend for SSE streaming
-    endpoints — the consumer can read incrementally without waiting
-    for the full file to be analysed.
-
-    Before streaming begins, two fixed global attributes are
-    extracted from the full file: ``duration`` (seconds) and
-    ``genre`` (via HuggingFace audio classification).  These are
-    attached to every frame's ``running_global`` dict.
+    Replaces the old aubio-based ``stream_audio_features``.
+    All features are computed in one pass — no streaming, no
+    frame-by-frame yielding.
 
     Parameters
     ----------
     audio_path : str or Path
-        Path to an audio file (wav, mp3, etc.).
-    audio_asset_id : str or None
-        Optional UUID of the audio asset in the database.  When
-        provided it is attached to every yielded frame as the
-        top-level key ``asset_id`` so clients can reference
-        the source without an extra round-trip.
-    win_size : int
-        FFT window size in samples. Default 1024.
-    hop_size : int
-        Hop size in samples. Default 512 tells how many samples
-        advance between successive frames.
-    sample_rate : int
-        Target sample rate. 0 means use the file's native rate.
+        Path to the extracted BGM WAV file.
 
-    Yields
-    ------
+    Returns
+    -------
     dict with keys:
-        time : float
-            Position in seconds since the start of the audio.
-        asset_id : str or None
-            The ``audio_asset_id`` passed in (same across all frames).
-        frame_index : int
-            Zero-based sequential frame number.
-        is_last_frame : bool
-            True only on the very last frame (read < hop_size).
-        local : dict
-            Frame-level features — ``rms``, ``spectral_centroid``,
-            ``spectral_flux``, ``onset_envelope``.
-        running_global : dict
-            Cumulative features computed sequentially from frame 0
-            up to and including the current frame —
-            ``duration``, ``genre``,
-            ``average_spectral_centroid``, ``overall_brightness_hz``,
-            ``dynamic_range``, ``estimated_bpm``.
+        duration               — total audio duration (seconds)
+        genre                  — music genre (HuggingFace classification)
+        bpm                    — BPM via librosa beat tracking
+        beat_timings           — all heavy-beat time positions (seconds)
+        energy_curve           — per-frame RMS energy values
+        spectral_centroid      — per-frame spectral centroid (Hz)
+        spectral_centroid_mean — global mean spectral centroid (Hz)
+        spectral_flux          — per-frame spectral flux
+        onset_envelope         — per-frame onset strength envelope
+        dynamic_range          — max – min RMS
     """
+    import numpy as np
+
     audio_path = Path(audio_path)
-    source = aubio.source(str(audio_path), sample_rate, hop_size)
-    sr = source.samplerate
-    pv = aubio.pvoc(win_size, hop_size)
 
-    # ── Pre-processing: duration ───────────────────────────────────
-    duration_sec = source.duration / float(sr)
+    y, sr = librosa.load(str(audio_path), sr=None)
+    duration = float(librosa.get_duration(y=y, sr=sr))
 
-    # ── Pre-processing: genre (HuggingFace audio classification) ───
+    tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
+    bpm = float(tempo[0]) if hasattr(tempo, "__iter__") else float(tempo)
+    beat_times = librosa.frames_to_time(beat_frames, sr=sr)
+
+    rms = librosa.feature.rms(y=y)[0]
+    rms_arr = np.asarray(rms)
+    dynamic_range = float(rms_arr.max() - rms_arr.min())
+
+    centroid = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+    centroid_arr = np.asarray(centroid)
+
+    S = np.abs(librosa.stft(y, hop_length=512))
+    flux_diff = np.diff(S, axis=1)
+    flux = np.sqrt(np.sum(flux_diff**2, axis=0))
+    flux = np.concatenate(([0.0], flux))
+
+    onset_env = librosa.onset.onset_strength(y=y, sr=sr)
+
     classifier = _get_classifier()
     with _classifier_lock:
         genres = classifier(str(audio_path))
     genre = max(genres, key=lambda x: x["score"])["label"]
 
-    # ── Streaming setup ────────────────────────────────────────────
-    centroid_detector = aubio.specdesc("centroid", win_size)
-    flux_detector = aubio.specdesc("specflux", win_size)
-    onset_detector = aubio.specdesc("default", win_size)
-    tempo_detector = aubio.tempo("default", win_size, hop_size, sr)
-
-    frame_index = 0
-    total_frames = 0
-
-    running_avg_centroid = 0.0
-    running_max_rms = -float("inf")
-    running_min_rms = float("inf")
-
-    try:
-        while True:
-            samples, read = source()
-            current_time = total_frames / float(sr)
-
-            rms_val = aubio.level_lin(samples)
-            ffted = pv(samples)
-            centroid_val = centroid_detector(ffted)[0]
-            flux_val = flux_detector(ffted)[0]
-            onset_env_val = onset_detector(ffted)[0]
-            tempo_detector(samples)
-
-            if frame_index == 0:
-                running_avg_centroid = centroid_val
-            else:
-                running_avg_centroid += (centroid_val - running_avg_centroid) / (
-                    frame_index + 1
-                )
-
-            if rms_val > 0.0001:
-                if rms_val > running_max_rms:
-                    running_max_rms = rms_val
-                if rms_val < running_min_rms:
-                    running_min_rms = rms_val
-
-            running_dynamic_range = (
-                running_max_rms - running_min_rms
-                if running_max_rms != -float("inf") and running_min_rms != float("inf")
-                else 0.0
-            )
-            running_bpm = tempo_detector.get_bpm()
-            is_last = read < hop_size
-
-            yield {
-                "time": current_time,
-                "asset_id": audio_asset_id,
-                "frame_index": frame_index,
-                "is_last_frame": is_last,
-                "local": {
-                    "rms": float(rms_val),
-                    "spectral_centroid": float(centroid_val),
-                    "spectral_flux": float(flux_val),
-                    "onset_envelope": float(onset_env_val),
-                },
-                "running_global": {
-                    "duration": float(duration_sec),
-                    "genre": genre,
-                    "average_spectral_centroid": float(running_avg_centroid),
-                    "overall_brightness_hz": float(running_avg_centroid),
-                    "dynamic_range": float(running_dynamic_range),
-                    "estimated_bpm": float(running_bpm),
-                },
-            }
-
-            frame_index += 1
-            total_frames += read
-            if is_last:
-                break
-
-    finally:
-        del source, pv, centroid_detector, flux_detector, onset_detector, tempo_detector
+    return {
+        "duration": round(duration, 1),
+        "genre": genre,
+        "bpm": round(bpm, 1),
+        "beat_timings": [round(float(t), 2) for t in beat_times],
+        "energy_curve": [round(float(e), 4) for e in rms],
+        "spectral_centroid": [round(float(c), 1) for c in centroid_arr],
+        "spectral_centroid_mean": round(float(centroid_arr.mean()), 1),
+        "spectral_flux": [round(float(f), 4) for f in flux],
+        "onset_envelope": [round(float(o), 4) for o in onset_env],
+        "dynamic_range": round(dynamic_range, 4),
+    }

@@ -22,8 +22,7 @@ interface Props {
 
 export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
     const audioStatus = useVideoStore((s) => s.audioStatus);
-    const audioGlobal = useVideoStore((s) => s.audioGlobal);
-    const streamArr = useVideoStore((s) => s.streamArr);
+    const audioResult = useVideoStore((s) => s.audioResult);
     const { hasError } = useNodeError("audio");
 
     const hasData = audioStatus !== "idle" && audioStatus !== "cancelled";
@@ -67,7 +66,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                             />
                         )}
 
-                        {audioGlobal && (
+                        {audioResult && (
                             <div
                                 style={{
                                     display: "grid",
@@ -80,31 +79,32 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                 {[
                                     {
                                         label: "BPM",
-                                        value: audioGlobal.estimated_bpm.toFixed(
-                                            0,
-                                        ),
+                                        value: audioResult.bpm.toFixed(0),
                                         tip: "每分钟节拍数，反映音乐速度",
                                     },
                                     {
                                         label: "GENRE",
-                                        value: audioGlobal.genre,
+                                        value: audioResult.genre,
                                         tip: "AI 识别的音乐流派",
                                     },
                                     {
                                         label: "BRIGHT",
-                                        value: `${(audioGlobal.overall_brightness_hz / 1000).toFixed(1)}kHz`,
-                                        tip: "频谱亮度质心频率，值越高音色越亮",
+                                        value: `${(audioResult.spectral_centroid_mean / 1000).toFixed(1)}kHz`,
+                                        tip: "全局频谱亮度质心频率，值越高音色越亮",
                                     },
                                     {
                                         label: "DURATION",
-                                        value: `${audioGlobal.duration?.toFixed(1)}s`,
+                                        value: `${audioResult.duration?.toFixed(1)}s`,
                                         tip: "音频总时长",
                                     },
                                     {
+                                        label: "BEATS",
+                                        value: `${audioResult.bpm.toFixed(0)} @ ${audioResult.beat_timings.length}`,
+                                        tip: `节拍数 ${audioResult.beat_timings.length}，BPM ${audioResult.bpm.toFixed(0)}`,
+                                    },
+                                    {
                                         label: "RANGE",
-                                        value: (
-                                            audioGlobal.dynamic_range * 100
-                                        ).toFixed(1),
+                                        value: (audioResult.dynamic_range * 100).toFixed(1),
                                         tip: "动态范围，音量变化的幅度",
                                     },
                                 ].map(({ label, value, tip }) => (
@@ -142,6 +142,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                             </div>
                         )}
 
+                        {audioResult && (
                         <div
                             style={{
                                 display: "flex",
@@ -171,7 +172,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                     }}
                                 >
                                     <EnergyChart
-                                        data={streamArr.map((c) => c.rms)}
+                                        data={audioResult.energy_curve}
                                         height={40}
                                     />
                                 </div>
@@ -199,9 +200,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                     }}
                                 >
                                     <CentroidChart
-                                        data={streamArr.map(
-                                            (c) => c.spectral_centroid,
-                                        )}
+                                        data={audioResult.spectral_centroid}
                                         height={40}
                                     />
                                 </div>
@@ -229,9 +228,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                     }}
                                 >
                                     <FluxChart
-                                        data={streamArr.map(
-                                            (c) => c.spectral_flux,
-                                        )}
+                                        data={audioResult.spectral_flux}
                                         height={30}
                                     />
                                 </div>
@@ -259,14 +256,13 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                     }}
                                 >
                                     <OnsetChart
-                                        data={streamArr.map(
-                                            (c) => c.onset_envelope,
-                                        )}
+                                        data={audioResult.onset_envelope}
                                         height={30}
                                     />
                                 </div>
                             </div>
                         </div>
+                        )}
                     </>
                 )}
             </div>

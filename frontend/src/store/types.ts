@@ -138,6 +138,21 @@ export interface AudioGlobalFeatures {
     bgm_path?: string;
 }
 
+export interface AudioAnalysisResult {
+    audio_asset_id: string;
+    bgm_path: string;
+    duration: number;
+    genre: string;
+    bpm: number;
+    beat_timings: number[];
+    energy_curve: number[];
+    spectral_centroid: number[];
+    spectral_centroid_mean: number;
+    spectral_flux: number[];
+    onset_envelope: number[];
+    dynamic_range: number;
+}
+
 export interface VisualPacing {
     avg_shot_duration: number;
     pacing_category: string;

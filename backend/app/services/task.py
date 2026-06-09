@@ -4,8 +4,8 @@ from collections.abc import AsyncGenerator
 
 from fastapi import HTTPException
 
-from app.lib.audio import STREAM_EOF
 from app.models import User
+from app.tasks.model import STREAM_EOF
 from app.tasks.registry import HEARTBEAT_INTERVAL, task_registry
 
 

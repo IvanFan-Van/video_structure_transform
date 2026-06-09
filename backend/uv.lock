@@ -252,15 +252,6 @@ wheels = [
 ]
 
 [[package]]
-name = "aubio"
-version = "0.4.9"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/80/302d89240603e5347c7f8026c8b02c59f8dfaec66c91a743d82de7c86006/aubio-0.4.9.tar.gz", hash = "sha256:df1244f6c4cf5bea382c8c2d35aa43bc31f4cf631fe325ae3992c219546a4202", size = 479008, upload-time = "2019-02-08T11:21:02.438Z" }
-
-[[package]]
 name = "audio-separator"
 version = "0.44.2"
 source = { registry = "https://pypi.org/simple" }
@@ -406,7 +397,6 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "accelerate" },
-    { name = "aubio" },
     { name = "audio-separator", extra = ["cpu"] },
     { name = "bcrypt" },
     { name = "fastapi" },
@@ -442,7 +432,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "accelerate", specifier = ">=1.13.0" },
-    { name = "aubio", specifier = ">=0.4.9" },
     { name = "audio-separator", extras = ["cpu"], specifier = ">=0.44.2" },
     { name = "bcrypt", specifier = ">=5.0.0" },
     { name = "fastapi", specifier = ">=0.136.3" },

@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 TaskStatus = Literal["running", "completed", "failed", "cancelled"]
+STREAM_EOF = object()
 
 
 @dataclass

@@ -9,7 +9,7 @@ from fastapi import HTTPException, UploadFile
 from sqlmodel import Session, select
 
 from app.database import engine
-from app.lib.audio import STREAM_EOF, extract_bgm, stream_audio_features
+from app.lib.audio import analyze_audio_features, extract_bgm
 from app.lib.image import probe_image
 from app.lib.video import (
     compress_video_async,
@@ -262,33 +262,9 @@ async def run_audio_analysis(
             None, extract_bgm, video_path_str, Path(dst_dir), audio_asset_id
         )
 
-        gen = stream_audio_features(str(bgm_path), audio_asset_id=audio_asset_id)
-        task_info = task_registry.get(task_id)
-        queue: asyncio.Queue | None = task_info._stream_queue if task_info else None
-
-        last_frame = None
-        try:
-            while True:
-                frame = await loop.run_in_executor(None, next, gen, None)
-                if frame is None:
-                    break
-                last_frame = frame
-                if queue is not None:
-                    try:
-                        queue.put_nowait(frame)
-                    except asyncio.QueueFull:
-                        pass
-        finally:
-            gen.close()  # type: ignore[attr-defined]
-
-        if queue is not None:
-            try:
-                queue.put_nowait(STREAM_EOF)
-            except asyncio.QueueFull:
-                pass
-
-        if last_frame is None:
-            raise RuntimeError("No audio frames produced")
+        features = await loop.run_in_executor(
+            None, analyze_audio_features, str(bgm_path)
+        )
 
         asset = Asset(
             asset_id=audio_asset_id,
@@ -303,7 +279,7 @@ async def run_audio_analysis(
             {
                 "audio_asset_id": audio_asset_id,
                 "bgm_path": str(bgm_path),
-                **last_frame["running_global"],
+                **features,
             },
         )
     except asyncio.CancelledError:
@@ -333,7 +309,6 @@ def start_audio_analysis(
             audio_asset_id=audio_asset_id,
             dst_dir=str(AUDIO_STORAGE_DIR),
         ),
-        stream_queue=asyncio.Queue(maxsize=256),
     )
     return task_id
 
