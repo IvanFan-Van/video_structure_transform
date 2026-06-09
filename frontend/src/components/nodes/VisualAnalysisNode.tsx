@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
 import { StatusHeader } from "../ui/StatusHeader";
@@ -50,20 +50,6 @@ const POSITION_LABELS: Record<string, string> = {
     full_screen: "Full Screen",
 };
 
-const APPEAR_LABELS: Record<string, string> = {
-    fade_in: "Fade In",
-    pop: "Pop",
-    slide: "Slide",
-    typewriter: "Typewriter",
-};
-
-const EMPHASIS_LABELS: Record<string, string> = {
-    zoom: "Zoom",
-    shake: "Shake",
-    color_change: "Color Change",
-    stroke: "Stroke",
-};
-
 export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
     const visualResult = useVideoStore((s) => s.visualResult);
     const visualStatus = useVideoStore((s) => s.visualStatus);
@@ -78,15 +64,19 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
         }));
     };
 
-    const [expandedTextElements, setExpandedTextElements] = useState<
-        Record<number, boolean>
-    >({});
-    const toggleTextElement = (idx: number) => {
-        setExpandedTextElements((prev) => ({
-            ...prev,
-            [idx]: !prev[idx],
-        }));
-    };
+    const shotTextMap = useMemo(() => {
+        const map: Record<number, VisualTextElement[]> = {};
+        if (!visualResult?.text_elements) return map;
+        for (const shot of visualResult.shots) {
+            const matches = visualResult.text_elements.filter(
+                (el) =>
+                    el.appear_time < shot.end_time &&
+                    el.disappear_time > shot.start_time,
+            );
+            if (matches.length > 0) map[shot.shot_index] = matches;
+        }
+        return map;
+    }, [visualResult]);
 
     const hasData = visualStatus !== "idle" && visualStatus !== "cancelled";
     const accent = "#06b6d4";
@@ -377,188 +367,68 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                 ` (${transition.duration.toFixed(1)}s)`}
                                         </div>
                                     )}
+
+                                    {/* Text elements in this shot */}
+                                    {shotTextMap[shot.shot_index]?.map(
+                                        (el, ei) => (
+                                            <div
+                                                key={ei}
+                                                style={{
+                                                    marginTop: "6px",
+                                                    padding: "4px 6px",
+                                                    background: "#f5f3ff",
+                                                    borderRadius: "3px",
+                                                    border: "1px solid #ede9fe",
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        fontSize: "8px",
+                                                        color: "#333",
+                                                        lineHeight: "1.4",
+                                                        marginBottom: "3px",
+                                                    }}
+                                                >
+                                                    {el.text.length > 40
+                                                        ? el.text.slice(
+                                                              0,
+                                                              40,
+                                                          ) + "…"
+                                                        : el.text}
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        flexWrap: "wrap",
+                                                        gap: "2px 8px",
+                                                        fontSize: "7px",
+                                                        color: "#888",
+                                                    }}
+                                                >
+                                                    {el.position && (
+                                                        <span>
+                                                            {POSITION_LABELS[
+                                                                el.position
+                                                            ] || el.position}
+                                                        </span>
+                                                    )}
+                                                    <span>
+                                                        {el.appear_time.toFixed(
+                                                            1,
+                                                        )}
+                                                        s —{" "}
+                                                        {el.disappear_time.toFixed(
+                                                            1,
+                                                        )}
+                                                        s
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ),
+                                    )}
                                 </AccordionItem>
                             );
                         })}
-
-                        {/* Text Elements */}
-                        <div
-                            style={{
-                                fontSize: "7px",
-                                fontWeight: 600,
-                                letterSpacing: "1px",
-                                color: "#bbb",
-                                marginTop: "4px",
-                                marginBottom: "-2px",
-                            }}
-                        >
-                            TEXT ELEMENTS
-                        </div>
-                        {visualResult.text_elements.map(
-                            (el: VisualTextElement, idx: number) => {
-                                const open = expandedTextElements[idx] ?? false;
-                                const preview =
-                                    el.text.length > 35
-                                        ? el.text.slice(0, 35) + "..."
-                                        : el.text;
-                                return (
-                                    <AccordionItem
-                                        key={idx}
-                                        open={open}
-                                        onToggle={() => toggleTextElement(idx)}
-                                        title={preview}
-                                        accent={accent}
-                                        accentBg="#ecfeff"
-                                        accentBorder="#cffafe"
-                                    >
-                                        <div style={{ marginBottom: "6px" }}>
-                                            <div
-                                                style={{
-                                                    fontSize: "7px",
-                                                    fontWeight: 600,
-                                                    letterSpacing: "1px",
-                                                    color: "#bbb",
-                                                    marginBottom: "3px",
-                                                }}
-                                            >
-                                                FULL TEXT
-                                            </div>
-                                            <div
-                                                style={{
-                                                    color: "#333",
-                                                    whiteSpace: "pre-wrap",
-                                                }}
-                                            >
-                                                {el.text}
-                                            </div>
-                                        </div>
-                                        {el.appear_time !== undefined && (
-                                            <div
-                                                style={{ marginBottom: "4px" }}
-                                            >
-                                                <span
-                                                    style={{
-                                                        fontSize: "7px",
-                                                        color: "#bbb",
-                                                    }}
-                                                >
-                                                    {el.appear_time.toFixed(1)}s
-                                                    —{" "}
-                                                    {el.disappear_time.toFixed(
-                                                        1,
-                                                    )}
-                                                    s
-                                                </span>
-                                            </div>
-                                        )}
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                gap: "3px",
-                                            }}
-                                        >
-                                            {el.position && (
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        justifyContent:
-                                                            "space-between",
-                                                        alignItems: "center",
-                                                    }}
-                                                >
-                                                    <span
-                                                        style={{
-                                                            fontSize: "7px",
-                                                            fontWeight: 600,
-                                                            letterSpacing:
-                                                                "1px",
-                                                            color: "#bbb",
-                                                        }}
-                                                    >
-                                                        POSITION
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            fontSize: "7px",
-                                                            color: "#555",
-                                                        }}
-                                                    >
-                                                        {POSITION_LABELS[
-                                                            el.position
-                                                        ] || el.position}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {el.appear_style && (
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        justifyContent:
-                                                            "space-between",
-                                                        alignItems: "center",
-                                                    }}
-                                                >
-                                                    <span
-                                                        style={{
-                                                            fontSize: "7px",
-                                                            fontWeight: 600,
-                                                            letterSpacing:
-                                                                "1px",
-                                                            color: "#bbb",
-                                                        }}
-                                                    >
-                                                        APPEAR
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            fontSize: "7px",
-                                                            color: "#555",
-                                                        }}
-                                                    >
-                                                        {APPEAR_LABELS[
-                                                            el.appear_style
-                                                        ] || el.appear_style}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {el.emphasis && (
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        justifyContent:
-                                                            "space-between",
-                                                        alignItems: "center",
-                                                    }}
-                                                >
-                                                    <span
-                                                        style={{
-                                                            fontSize: "7px",
-                                                            fontWeight: 600,
-                                                            letterSpacing:
-                                                                "1px",
-                                                            color: "#bbb",
-                                                        }}
-                                                    >
-                                                        EMPHASIS
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            fontSize: "7px",
-                                                            color: "#555",
-                                                        }}
-                                                    >
-                                                        {EMPHASIS_LABELS[
-                                                            el.emphasis
-                                                        ] || el.emphasis}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </AccordionItem>
-                                );
-                            },
-                        )}
                     </>
                 )}
             </div>

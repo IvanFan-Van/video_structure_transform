@@ -5,7 +5,6 @@ import uuid
 from datetime import UTC, datetime
 
 import instructor
-from backend.app.schemas.visual import CameraMovement
 from pydantic import ValidationError
 
 from app.llm import async_client
@@ -28,6 +27,7 @@ from app.schemas.plan import (
     TransitionSpec,
     VideoTemplate,
 )
+from app.schemas.visual import CameraMovement
 from app.services.task import register_and_launch
 from app.tasks import task_registry
 

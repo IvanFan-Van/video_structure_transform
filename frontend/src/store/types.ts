@@ -151,6 +151,7 @@ export interface VisualShot {
     camera_movement: string | null;
     is_text_frame: boolean;
     description: string;
+    text_elements?: VisualTextElement[];
 }
 
 export interface VisualTransition {
@@ -162,10 +163,8 @@ export interface VisualTransition {
 export interface VisualTextElement {
     text: string;
     position: string | null;
-    appear_style: string | null;
     appear_time: number;
     disappear_time: number;
-    emphasis: string | null;
 }
 
 export interface VisualTextDensityPoint {

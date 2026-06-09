@@ -29,3 +29,8 @@
 26. [x] `refac`: 重构 backend 代码, 使其符合 MVC 架构 (2026.06.07)
 27. [ ] `feat`: 可以框选多个节点一起移动
 28. [x] `bug`: 没有保存 image asset (2026.06.08)
+29. [ ] `feat`: 允许 analysis 单独重试
+30. [ ] `feat`: 优化 visual analysis 表达
+31. [ ] `feat`: 允许 effects 中让用户自己添加 effect
+32. [ ] `feat`: 允许 slot 重新填写
+33. [ ] `bug`: 当第一次上传失败后, 无法再次上传视频

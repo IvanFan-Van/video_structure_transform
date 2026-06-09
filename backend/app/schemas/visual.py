@@ -4,9 +4,18 @@ from pydantic import BaseModel, Field
 
 from app.schemas.utils import null_str_validator
 
-TransitionType = Literal["cut", "dissolve", "wipe", "fade_in", "fade_out"]
+TransitionType = Literal[
+    "cut",
+    "dissolve",
+    "wipe",
+    "fade_in",
+    "fade_out",
+    "slide",
+    "zoom",
+    "glitch",
+    "rgb_split",
+]
 CameraMovement = Literal["static", "zoom_in", "zoom_out", "pan", "tilt", "handheld"]
-AppearStyle = Literal["fade_in", "pop", "slide", "typewriter"]
 TextEmphasis = Literal["zoom", "shake", "color_change", "stroke"]
 TextPosition = Literal[
     "top_center",
@@ -52,18 +61,10 @@ class TextElement(BaseModel):
         default=None,
         description="屏幕位置：top_center/center/bottom_center/overlay_left/overlay_right/full_screen",
     )
-    appear_style: AppearStyle | None = Field(
-        default=None,
-        description="出现动效：fade_in/pop/slide/typewriter",
-    )
     appear_time: float = Field(description="文字出现时间（秒）")
     disappear_time: float = Field(description="文字消失时间（秒）")
-    emphasis: TextEmphasis | None = Field(
-        default=None,
-        description="强调动效：zoom/shake/color_change/stroke",
-    )
 
-    _coerce_nulls = null_str_validator("position", "appear_style", "emphasis")
+    _coerce_nulls = null_str_validator("position")
 
 
 class TextDensityPoint(BaseModel):

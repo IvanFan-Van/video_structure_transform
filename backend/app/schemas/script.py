@@ -4,7 +4,16 @@ from pydantic import BaseModel, Field
 
 from app.schemas.utils import null_str_validator
 
-EmotionalTone = Literal["positive", "negative", "neutral", "suspenseful"]
+EmotionalTone = Literal[
+    "positive",
+    "negative",
+    "neutral",
+    "suspenseful",
+    "curious",
+    "urgent",
+    "humorous",
+    "calm",
+]
 HookType = Literal[
     "pain_point",
     "suspense",

@@ -482,6 +482,10 @@ TRANSCRIPT_EXTRACTION_SYSTEM_PROMPT = """你是一个专业的短视频内容拆
   "negative"       — 负向：焦虑、悲伤、愤怒、压抑
   "neutral"        — 中立：平稳叙述，无明显情绪倾向
   "suspenseful"    — 悬念：紧张、期待、不确定感
+  "curious"        — 好奇：引发求知欲，抛出问题让观众想知道答案
+  "urgent"         — 紧迫：制造时间压力，强调立即行动的必要性
+  "humorous"       — 幽默：诙谐、搞笑、反差萌
+  "calm"           — 舒缓：平和、治愈、慢节奏
 
 【4】cta_type（行动号召类型）—— 仅 cta 阶段填写，从以下 8 类中选择最匹配的一项
   "follow"         — 关注型：引导关注账号，强调后续持续价值
@@ -515,7 +519,7 @@ TRANSCRIPT_EXTRACTION_SYSTEM_PROMPT = """你是一个专业的短视频内容拆
       "start_time": 0,
       "end_time": 6,
       "hook_type": "见上方 8 类之一，若 hook 阶段不存在则为 null",
-      "emotional_tone": "positive | negative | neutral | suspenseful"
+      "emotional_tone": "positive | negative | neutral | suspenseful | curious | urgent | humorous | calm"
     },
     "setup": {
       "visual_text": "...",
@@ -575,8 +579,8 @@ VIDEO_VISUAL_ANALYSIS_SYSTEM_PROMPT = """你是一位专业的短视频视觉分
 
 1. **镜头切分**：识别每一个镜头的起止时间，镜头间以画面明显变化为边界。
 2. **镜头属性**：判断每个镜头的运镜方式（static/zoom_in/zoom_out/pan/tilt/handheld），以及是否为纯文字帧（is_text_frame）。
-3. **转场识别**：识别每两个相邻镜头之间的转场类型（cut/dissolve/wipe/fade_in/fade_out）及其持续时长。
-4. **文字元素**：识别视频中所有叙事性文字（忽略水印、平台 UI、进度条等无关元素），记录每个文字元素的内容、屏幕位置、出现/消失时间、出现动效、强调动效。文字元素的时间轴独立于镜头，可跨越多个镜头。
+3. **转场识别**：识别每两个相邻镜头之间的转场类型（cut/dissolve/wipe/fade_in/fade_out/slide/zoom/glitch/rgb_split）及其持续时长。
+4. **文字元素**：识别视频中所有叙事性文字（忽略水印、平台 UI、进度条等无关元素），记录每个文字元素的内容、屏幕位置、出现/消失时间。文字元素的时间轴独立于镜头，可跨越多个镜头。
 5. **节奏摘要**：计算平均镜头时长，判断整体节奏档位（fast/medium/slow），并标记节奏骤然加快的时间点。
 
 输出约束：
@@ -709,7 +713,7 @@ PLAN_USER_PROMPT_TASK = """## 用户新视频需求
 8. cta_type（仅 cta 段）：
    follow / like_collect / comment / purchase / discount_hook /
    dm_funnel / share_spread / challenge
-9. emotional_tone：positive / negative / neutral / suspenseful
+9. emotional_tone：positive / negative / neutral / suspenseful / curious / urgent / humorous / calm
 10. constraints 中以下字段建议使用指定值（超出范围时服务端会自动降级为默认值）：
    - position: top_center / center / bottom_center / overlay_left / overlay_right / full_screen
    - appear_style: fade_in / pop / slide / typewriter（或其它动效名称）

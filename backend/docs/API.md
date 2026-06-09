@@ -24,7 +24,7 @@ Base URL: `http://127.0.0.1:8000`
     - [请求示例](#请求示例-1)
     - [成功响应 (200)](#成功响应-200)
     - [错误响应](#错误响应-1)
-  - [4. POST /upload — 上传视频](#4-post-upload--上传视频)
+  - [4. POST /upload — 上传文件](#4-post-upload--上传文件)
     - [请求参数](#请求参数-3)
     - [请求示例 (curl)](#请求示例-curl)
     - [成功响应 (201)](#成功响应-201-1)
@@ -643,7 +643,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | `audio_text` | string | 该阶段的音频文本：旁白/台词/对话（纯 BGM 则为空字符串） |
 | `start_time` | float | 该阶段开始时间（秒） |
 | `end_time` | float | 该阶段结束时间（秒） |
-| `emotional_tone` | string \| null | 情绪基调：`positive` / `negative` / `neutral` / `suspenseful` |
+| `emotional_tone` | string \| null | 情绪基调：`positive` / `negative` / `neutral` / `suspenseful` / `curious` / `urgent` / `humorous` / `calm` |
 | `hook_type` | string \| null | 钩子类型（仅 hook 阶段）：`pain_point` / `suspense` / `result_first` / `counter_intuitive` / `number_shock` / `identity_lock` / `scene_immersion` / `contrast_flip` |
 | `cta_type` | string \| null | 行动号召类型（仅 cta 阶段）：`follow` / `like_collect` / `comment` / `purchase` / `discount_hook` / `dm_funnel` / `share_spread` / `challenge` |
 
@@ -670,7 +670,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ## 7. POST /analyze-visual — 视频视觉层分析
 
-使用 AI 多模态模型对已上传的短视频进行视觉层面结构化拆解，提取镜头切分、转场类型、运镜方式、文字元素与动效，并生成节奏摘要。
+使用 AI 多模态模型对已上传的短视频进行视觉层面结构化拆解，提取镜头切分、转场类型、运镜方式、文字元素，并生成节奏摘要。
 
 | 属性 | 值 |
 |---|---|
@@ -744,10 +744,8 @@ curl -X POST http://127.0.0.1:8000/upload \
     {
       "text": "你知道吗？90%的人都做错了这件事",
       "position": "center",
-      "appear_style": "pop",
       "appear_time": 0.3,
-      "disappear_time": 2.5,
-      "emphasis": "zoom"
+      "disappear_time": 2.5
     }
   ],
   "text_density_curve": [
@@ -794,7 +792,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `after_shot_index` | int | 转场发生在第 N 个镜头之后（对应 shot_index） |
-| `type` | string | 转场类型：`cut` / `dissolve` / `wipe` / `fade_in` / `fade_out` |
+| `type` | string | 转场类型：`cut` / `dissolve` / `wipe` / `fade_in` / `fade_out` / `slide` / `zoom` / `glitch` / `rgb_split` |
 | `duration` | float | 转场持续时长（秒），硬切为 0.0 |
 
 **`text_elements` 数组元素字段：**
@@ -803,10 +801,8 @@ curl -X POST http://127.0.0.1:8000/upload \
 |---|---|---|
 | `text` | string | 文字内容 |
 | `position` | string \| null | 屏幕位置：`top_center` / `center` / `bottom_center` / `overlay_left` / `overlay_right` / `full_screen` |
-| `appear_style` | string \| null | 出现动效：`fade_in` / `pop` / `slide` / `typewriter` |
 | `appear_time` | float | 文字出现时间（秒） |
 | `disappear_time` | float | 文字消失时间（秒） |
-| `emphasis` | string \| null | 强调动效：`zoom` / `shake` / `color_change` / `stroke` |
 
 **`text_density_curve` 数组元素字段：**
 

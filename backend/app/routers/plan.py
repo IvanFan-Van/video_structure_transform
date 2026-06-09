@@ -96,7 +96,5 @@ def fill_slot(
         target_slot.status = SlotStatus.pending
 
     target_slot.fill_method = body.fill_method
-
     task_info.result = template.model_dump()
-
     return {"status": "success", "data": target_slot.model_dump()}
