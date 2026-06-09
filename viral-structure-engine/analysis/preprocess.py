@@ -24,7 +24,12 @@ import cv2
 import librosa
 import numpy as np
 
-from analysis.video_utils import extract_audio, extract_frame_at_time, frame_to_base64, get_video_metadata
+from analysis.video_utils import (
+    extract_audio,
+    extract_frame_at_time,
+    frame_to_base64,
+    get_video_metadata,
+)
 from analysis.audio_separator import separate_vocals_and_bgm
 
 
@@ -35,49 +40,52 @@ class PreprocessResult:
     该对象在分析管线中全局传递，被Phase 1/2/3/4所有阶段引用。
     包含4大类数据: 视频元数据、ASR语音转写、镜头分析、BGM分析。
     """
+
     # ── 视频基础信息 ──
-    filename: str = ""       # 视频文件名（如 "1.mp4"）
-    duration: float = 0      # 总时长(秒)
-    resolution: str = "unknown" # 分辨率如 "1080x1920"
-    fps: float = 0           # 帧率
-    codec: str = "unknown"   # 视频编码如 "h264"
+    filename: str = ""  # 视频文件名（如 "1.mp4"）
+    duration: float = 0  # 总时长(秒)
+    resolution: str = "unknown"  # 分辨率如 "1080x1920"
+    fps: float = 0  # 帧率
+    codec: str = "unknown"  # 视频编码如 "h264"
     has_audio: bool = False  # 是否有音轨
 
     # ── ASR 语音转写 ──
-    asr_segments: list[dict] = field(default_factory=list)  # faster-whisper输出的片段列表
-    asr_full_text: str = ""   # 全部转写文本（空格分隔）
-    language: str = "zh"      # 语种
+    asr_segments: list[dict] = field(
+        default_factory=list
+    )  # faster-whisper输出的片段列表
+    asr_full_text: str = ""  # 全部转写文本（空格分隔）
+    language: str = "zh"  # 语种
 
     # ── 镜头检测 ──
-    shot_count: int = 0               # 镜头总数
-    shot_boundaries: list[float] = field(default_factory=list) # 镜头边界时间点(秒)
-    avg_shot_duration: float = 0      # 平均镜头时长(秒)
+    shot_count: int = 0  # 镜头总数
+    shot_boundaries: list[float] = field(default_factory=list)  # 镜头边界时间点(秒)
+    avg_shot_duration: float = 0  # 平均镜头时长(秒)
 
     # ── 关键帧 ──
-    keyframe_times: list[float] = field(default_factory=list)      # 关键帧时间点(秒)
-    keyframe_paths: list[str] = field(default_factory=list)        # 关键帧文件路径
+    keyframe_times: list[float] = field(default_factory=list)  # 关键帧时间点(秒)
+    keyframe_paths: list[str] = field(default_factory=list)  # 关键帧文件路径
     keyframe_base64_list: list[str] = field(default_factory=list)  # 关键帧base64编码
 
     # ── BGM 分析 ──
-    bpm: float = 0                      # 每分钟节拍数
-    beat_timings: list[float] = field(default_factory=list)       # 重拍时间点列表(秒)
-    energy_curve: list[float] = field(default_factory=list)       # 能量曲线(RMS值)
-    bgm_mood_hint: str = ""             # BGM情绪推断: energetic/uplifting/moderate/calm/none
+    bpm: float = 0  # 每分钟节拍数
+    beat_timings: list[float] = field(default_factory=list)  # 重拍时间点列表(秒)
+    energy_curve: list[float] = field(default_factory=list)  # 能量曲线(RMS值)
+    bgm_mood_hint: str = ""  # BGM情绪推断: energetic/uplifting/moderate/calm/none
 
     # ── 人声分离 ──
-    vocals_path: str = ""               # 分离出的人声WAV路径
-    bgm_path: str = ""                  # 分离出的伴奏WAV路径
-    original_audio_path: str = ""       # 原始音频WAV路径
-    has_vocals: bool = False            # 是否真的分离出了人声（vs 纯BGM视频）
+    vocals_path: str = ""  # 分离出的人声WAV路径
+    bgm_path: str = ""  # 分离出的伴奏WAV路径
+    original_audio_path: str = ""  # 原始音频WAV路径
+    has_vocals: bool = False  # 是否真的分离出了人声（vs 纯BGM视频）
 
     # ── 卡点同步 ──
-    beat_sync_ratio: float = 0          # 卡点匹配率(0-1)
-    beat_sync_matched_count: int = 0    # 匹配的切点数
-    beat_sync_total_cuts: int = 0       # 总切点数
-    beat_sync_typical_offset: float = 0 # 典型偏移量(秒)
+    beat_sync_ratio: float = 0  # 卡点匹配率(0-1)
+    beat_sync_matched_count: int = 0  # 匹配的切点数
+    beat_sync_total_cuts: int = 0  # 总切点数
+    beat_sync_typical_offset: float = 0  # 典型偏移量(秒)
 
     # ── 派生统计 ──
-    subtitle_density: float = 0         # 字幕密度(条/分钟)
+    subtitle_density: float = 0  # 字幕密度(条/分钟)
 
 
 def run_asr(audio_path: str, has_audio: bool = True) -> tuple[list[dict], str, str]:
@@ -121,29 +129,35 @@ def run_asr(audio_path: str, has_audio: bool = True) -> tuple[list[dict], str, s
     # 调用转录
     # beam_size=5: beam search宽度，越大准确率越高但越慢
     # word_timestamps=True: 开启词级时间戳
-    segments_result, info = model.transcribe(audio_path, beam_size=5, word_timestamps=True)
+    segments_result, info = model.transcribe(
+        audio_path, beam_size=5, word_timestamps=True
+    )
 
-    language = info.language          # 检测到的语种
-    segments = []                     # 片段列表
-    full_text_parts = []              # 用于拼接完整文本
+    language = info.language  # 检测到的语种
+    segments = []  # 片段列表
+    full_text_parts = []  # 用于拼接完整文本
 
     for seg in segments_result:
         # 提取词级时间戳
         words_data = []
         if seg.words:
             for w in seg.words:
-                words_data.append({
-                    "start": round(w.start, 2),  # 词开始时间(秒)
-                    "end": round(w.end, 2),      # 词结束时间(秒)
-                    "word": w.word,              # 词文本
-                })
+                words_data.append(
+                    {
+                        "start": round(w.start, 2),  # 词开始时间(秒)
+                        "end": round(w.end, 2),  # 词结束时间(秒)
+                        "word": w.word,  # 词文本
+                    }
+                )
 
-        segments.append({
-            "start": round(seg.start, 2),   # 片段开始时间
-            "end": round(seg.end, 2),       # 片段结束时间
-            "text": seg.text.strip(),       # 片段文本
-            "words": words_data if words_data else None,  # 词级时间戳
-        })
+        segments.append(
+            {
+                "start": round(seg.start, 2),  # 片段开始时间
+                "end": round(seg.end, 2),  # 片段结束时间
+                "text": seg.text.strip(),  # 片段文本
+                "words": words_data if words_data else None,  # 词级时间戳
+            }
+        )
         full_text_parts.append(seg.text.strip())
 
     full_text = " ".join(full_text_parts)
@@ -169,17 +183,21 @@ def _run_whisper_openai_file(audio_path: str) -> tuple[list[dict], str, str]:
 
     segments = []
     for seg in result.get("segments", []):
-        segments.append({
-            "start": round(seg["start"], 2),
-            "end": round(seg["end"], 2),
-            "text": seg["text"].strip(),
-            "words": None,  # openai-whisper的词级时间戳格式不同，暂不处理
-        })
+        segments.append(
+            {
+                "start": round(seg["start"], 2),
+                "end": round(seg["end"], 2),
+                "text": seg["text"].strip(),
+                "words": None,  # openai-whisper的词级时间戳格式不同，暂不处理
+            }
+        )
 
     return segments, result.get("text", ""), result.get("language", "zh")
 
 
-def detect_shots(video_path: str, duration: float, fps: float, threshold: float = 15.0) -> list[float]:
+def detect_shots(
+    video_path: str, duration: float, fps: float, threshold: float = 15.0
+) -> list[float]:
     """使用直方图差异法检测镜头切换点
 
     算法原理:
@@ -209,8 +227,8 @@ def detect_shots(video_path: str, duration: float, fps: float, threshold: float 
         return _fallback_shots(duration)
 
     sample_interval = max(1, int(fps * 0.5))  # 采样间隔 = 0.5秒
-    boundaries = [0.0]                         # 镜头边界列表（始终从0开始）
-    prev_hist = None                           # 上一帧的直方图
+    boundaries = [0.0]  # 镜头边界列表（始终从0开始）
+    prev_hist = None  # 上一帧的直方图
 
     frame_idx = 0  # 当前帧号
     while True:
@@ -307,14 +325,18 @@ def extract_keyframes(
             first, last = keyframe_times[0], keyframe_times[-1]
             middle = keyframe_times[1:-1]  # 去掉首尾的中间部分
             step = max(1, len(middle) / (max_keyframes - 2))
-            keyframe_times = [first] + [middle[int(i * step)] for i in range(max_keyframes - 2)] + [last]
+            keyframe_times = (
+                [first]
+                + [middle[int(i * step)] for i in range(max_keyframes - 2)]
+                + [last]
+            )
         else:
             keyframe_times = keyframe_times[:max_keyframes]
 
     print(f"  [Keyframe] 抽取 {len(keyframe_times)} 个关键帧...")
 
-    paths = []       # 关键帧文件路径列表
-    base64_list = [] # 关键帧base64编码列表
+    paths = []  # 关键帧文件路径列表
+    base64_list = []  # 关键帧base64编码列表
 
     for i, t in enumerate(keyframe_times):
         filename = f"keyframe_{i + 1:03d}_{t:.1f}s.jpg"
@@ -346,9 +368,9 @@ def analyze_bgm(audio_path: str, has_audio: bool = True) -> dict:
     """
     result = {
         "bpm": 0,
-        "beat_timings": [],    # 重拍/强拍时间点(秒)
-        "energy_curve": [],    # RMS能量曲线
-        "bgm_mood_hint": "",   # 情绪推断: energetic/uplifting/moderate/calm/none
+        "beat_timings": [],  # 重拍/强拍时间点(秒)
+        "energy_curve": [],  # RMS能量曲线
+        "bgm_mood_hint": "",  # 情绪推断: energetic/uplifting/moderate/calm/none
     }
 
     if not has_audio:
@@ -369,7 +391,7 @@ def analyze_bgm(audio_path: str, has_audio: bool = True) -> dict:
         # librosa.beat.beat_track 返回 (tempo, beat_frames)
         # tempo 是动态BPM估计值
         tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-        bpm = float(tempo[0]) if hasattr(tempo, '__iter__') else float(tempo)
+        bpm = float(tempo[0]) if hasattr(tempo, "__iter__") else float(tempo)
         result["bpm"] = round(bpm, 1)
 
         # ── 节拍时间点 ──
@@ -387,17 +409,19 @@ def analyze_bgm(audio_path: str, has_audio: bool = True) -> dict:
         # 简单规则：BPM + 平均能量 → 情绪标签
         avg_energy = float(np.mean(rms))  # 平均能量
         if bpm > 120 and avg_energy > 0.1:
-            result["bgm_mood_hint"] = "energetic"   # 高BPM + 高能量 → 充满活力
+            result["bgm_mood_hint"] = "energetic"  # 高BPM + 高能量 → 充满活力
         elif bpm > 100:
-            result["bgm_mood_hint"] = "uplifting"   # 中高BPM → 振奋
+            result["bgm_mood_hint"] = "uplifting"  # 中高BPM → 振奋
         elif bpm > 70:
-            result["bgm_mood_hint"] = "moderate"    # 中等BPM → 平和
+            result["bgm_mood_hint"] = "moderate"  # 中等BPM → 平和
         elif bpm > 0:
-            result["bgm_mood_hint"] = "calm"        # 低BPM → 舒缓
+            result["bgm_mood_hint"] = "calm"  # 低BPM → 舒缓
         else:
-            result["bgm_mood_hint"] = "none"        # 无节拍 → 纯音效/静音
+            result["bgm_mood_hint"] = "none"  # 无节拍 → 纯音效/静音
 
-        print(f"  [BGM] BPM={bpm:.0f}, 重拍数={len(beat_times)}, 情绪={result['bgm_mood_hint']}")
+        print(
+            f"  [BGM] BPM={bpm:.0f}, 重拍数={len(beat_times)}, 情绪={result['bgm_mood_hint']}"
+        )
 
     except Exception as e:
         print(f"  [BGM] 分析失败: {e}")
@@ -430,13 +454,18 @@ def compute_beat_sync_ratio(
          "total_cuts": 总切点数, "typical_offset": 平均偏移(秒)}
     """
     if not cut_timestamps or not beat_timings:
-        return {"ratio": 0, "matched_count": 0, "total_cuts": len(cut_timestamps), "typical_offset": 0}
+        return {
+            "ratio": 0,
+            "matched_count": 0,
+            "total_cuts": len(cut_timestamps),
+            "typical_offset": 0,
+        }
 
-    cuts = sorted(set(cut_timestamps))    # 去重排序的切点列表
-    beats = sorted(set(beat_timings))     # 去重排序的重拍列表
+    cuts = sorted(set(cut_timestamps))  # 去重排序的切点列表
+    beats = sorted(set(beat_timings))  # 去重排序的重拍列表
 
-    matched = 0     # 匹配的切点数
-    offsets = []    # 所有切点的偏移量（用于计算典型偏移）
+    matched = 0  # 匹配的切点数
+    offsets = []  # 所有切点的偏移量（用于计算典型偏移）
 
     for cut in cuts:
         # 找到距离这个切点最近的重拍
@@ -449,8 +478,10 @@ def compute_beat_sync_ratio(
     ratio = matched / len(cuts) if cuts else 0
     typical_offset = float(np.mean(offsets)) if offsets else 0
 
-    print(f"  [Sync] 卡点匹配率: {ratio:.1%} ({matched}/{len(cuts)}切点, "
-          f"阈值{sync_threshold*1000:.0f}ms, 平均偏移{typical_offset*1000:.0f}ms)")
+    print(
+        f"  [Sync] 卡点匹配率: {ratio:.1%} ({matched}/{len(cuts)}切点, "
+        f"阈值{sync_threshold * 1000:.0f}ms, 平均偏移{typical_offset * 1000:.0f}ms)"
+    )
 
     return {
         "ratio": round(ratio, 3),
@@ -499,7 +530,9 @@ def extract_beat_keyframes(
     if num_keyframes == 1:
         times = [start_s + duration / 2]
     else:
-        times = [start_s + i * duration / (num_keyframes - 1) for i in range(num_keyframes)]
+        times = [
+            start_s + i * duration / (num_keyframes - 1) for i in range(num_keyframes)
+        ]
     times = [round(t, 2) for t in times]
 
     paths = []
@@ -529,13 +562,21 @@ def compute_derived_stats(result: PreprocessResult) -> None:
     if result.duration > 0:
         # 镜头统计
         result.shot_count = max(1, len(result.shot_boundaries) - 1)
-        result.avg_shot_duration = result.duration / result.shot_count if result.shot_count > 0 else result.duration
+        result.avg_shot_duration = (
+            result.duration / result.shot_count
+            if result.shot_count > 0
+            else result.duration
+        )
 
         # 字幕密度 — 每分钟多少条ASR片段
         if result.duration >= 60:
-            result.subtitle_density = round(len(result.asr_segments) / (result.duration / 60), 1)
+            result.subtitle_density = round(
+                len(result.asr_segments) / (result.duration / 60), 1
+            )
         elif result.duration > 0:
-            result.subtitle_density = round(len(result.asr_segments) * (60 / result.duration), 1)
+            result.subtitle_density = round(
+                len(result.asr_segments) * (60 / result.duration), 1
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -543,7 +584,9 @@ def compute_derived_stats(result: PreprocessResult) -> None:
 # ═══════════════════════════════════════════════════════════════════
 
 
-def preprocess(video_path: str, output_dir: str | Path, max_keyframes: int = 20) -> PreprocessResult:
+def preprocess(
+    video_path: str, output_dir: str | Path, max_keyframes: int = 20
+) -> PreprocessResult:
     """运行完整预处理管线（Phase 0）
 
     这是整个分析管线的入口，完成6个本地预处理步骤后，
@@ -574,7 +617,9 @@ def preprocess(video_path: str, output_dir: str | Path, max_keyframes: int = 20)
     result.codec = meta["codec"]
     result.has_audio = meta["has_audio"]
     print(f"  文件名: {result.filename}")
-    print(f"  时长: {result.duration:.1f}s | 分辨率: {result.resolution} | 帧率: {result.fps}fps")
+    print(
+        f"  时长: {result.duration:.1f}s | 分辨率: {result.resolution} | 帧率: {result.fps}fps"
+    )
     print(f"  编码: {result.codec} | 音轨: {'有' if result.has_audio else '无'}")
 
     # ── 步骤2: 音频提取 + 人声分离 ──
@@ -627,7 +672,9 @@ def preprocess(video_path: str, output_dir: str | Path, max_keyframes: int = 20)
     # ── 步骤5: 关键帧抽取 ──
     print("\n[5/6] 关键帧抽取...")
     keyframe_dir = run_dir / "keyframes"
-    times, paths, b64_list = extract_keyframes(video_path, result.shot_boundaries, keyframe_dir, max_keyframes)
+    times, paths, b64_list = extract_keyframes(
+        video_path, result.shot_boundaries, keyframe_dir, max_keyframes
+    )
     result.keyframe_times = times
     result.keyframe_paths = paths
     result.keyframe_base64_list = b64_list
@@ -654,8 +701,10 @@ def preprocess(video_path: str, output_dir: str | Path, max_keyframes: int = 20)
     # ── 保存中间数据 ──
     _save_preprocess_result(result, run_dir)
 
-    print(f"\n预处理完成: {result.shot_count}个镜头, {len(result.keyframe_base64_list)}个关键帧, "
-          f"BPM={result.bpm:.0f}, ASR片段={len(result.asr_segments)}")
+    print(
+        f"\n预处理完成: {result.shot_count}个镜头, {len(result.keyframe_base64_list)}个关键帧, "
+        f"BPM={result.bpm:.0f}, ASR片段={len(result.asr_segments)}"
+    )
     return result
 
 
@@ -676,7 +725,9 @@ def _save_preprocess_result(result: PreprocessResult, output_dir: str | Path) ->
         "keyframe_count": len(result.keyframe_paths),
         "keyframe_times": result.keyframe_times,
         "bpm": result.bpm,
-        "beat_timings": result.beat_timings[:50] if len(result.beat_timings) > 50 else result.beat_timings,
+        "beat_timings": result.beat_timings[:50]
+        if len(result.beat_timings) > 50
+        else result.beat_timings,
         "bgm_mood_hint": result.bgm_mood_hint,
         "language": result.language,
         "beat_sync": {
@@ -689,7 +740,9 @@ def _save_preprocess_result(result: PreprocessResult, output_dir: str | Path) ->
             "original": result.original_audio_path,
             "vocals": result.vocals_path,
             "bgm": result.bgm_path,
-        } if result.has_audio else None,
+        }
+        if result.has_audio
+        else None,
     }
 
     intermediates_dir = output_dir / "intermediates"
@@ -698,11 +751,16 @@ def _save_preprocess_result(result: PreprocessResult, output_dir: str | Path) ->
     # 单独保存转录文本（避免JSON文件过大）
     transcript_path = intermediates_dir / "transcript.json"
     with open(transcript_path, "w", encoding="utf-8") as f:
-        json.dump({
-            "language": result.language,
-            "full_text": result.asr_full_text,
-            "segments": result.asr_segments,
-        }, f, ensure_ascii=False, indent=2)
+        json.dump(
+            {
+                "language": result.language,
+                "full_text": result.asr_full_text,
+                "segments": result.asr_segments,
+            },
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
 
     preprocess_path = intermediates_dir / "preprocess_result.json"
     with open(preprocess_path, "w", encoding="utf-8") as f:
