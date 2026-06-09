@@ -189,7 +189,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         display: "inline-block",
                                     }}
                                 >
-                                    <Tooltip tip="频谱质心随时间变化，反映音色明亮度分布" inline>BRIGHTNESS</Tooltip>
+                                    <Tooltip tip={"频谱质心 (Spectral Centroid) — 声音\u201C亮度\u201D的数学度量。数值越高代表高频能量越多、音色越亮（如镲片、尖锐嗓音）；越低则越低沉（如贝斯、底鼓）。曲线下降表示音色由亮转暗"} inline>BRIGHTNESS</Tooltip>
                                 </div>
                                 <div
                                     style={{
@@ -217,7 +217,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         display: "inline-block",
                                     }}
                                 >
-                                    <Tooltip tip="频谱通量，相邻帧频谱差异，反映音频变化剧烈程度" inline>FLUX</Tooltip>
+                                    <Tooltip tip="频谱通量 (Spectral Flux) — 相邻两帧频谱的差异程度。数值越大说明这一时刻音频变化越剧烈（如新音符进入、打击乐敲击、语音转场），是检测音乐结构段落边界的常用指标" inline>FLUX</Tooltip>
                                 </div>
                                 <div
                                     style={{
@@ -245,7 +245,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         display: "inline-block",
                                     }}
                                 >
-                                    <Tooltip tip="音符起始检测，标记每个音符/节拍的开始时刻" inline>ONSET</Tooltip>
+                                    <Tooltip tip={"起始检测 (Onset Detection) — 标记音频中每个音符、节拍或声音事件的开始时刻。曲线中的峰值对应\u201C声音爆发点\u201D（如鼓点、人声起始），数值越高表示该时刻有新声音事件触发"} inline>ONSET</Tooltip>
                                 </div>
                                 <div
                                     style={{

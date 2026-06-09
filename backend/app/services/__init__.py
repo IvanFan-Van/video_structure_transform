@@ -12,6 +12,7 @@ from .pipeline import (
     upload,
 )
 from .plan_service import start_plan_generation, start_slot_generation
+from .render_service import start_render_task
 from .task import cancel_task, get_task_for_user
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     "start_compress_task",
     "start_effect_analysis",
     "start_plan_generation",
+    "start_render_task",
     "start_script_analysis",
     "start_slot_generation",
     "start_split_task",

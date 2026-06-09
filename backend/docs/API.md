@@ -109,7 +109,14 @@ Base URL: `http://127.0.0.1:8000`
     - [通过 SSE / 轮询获取结果](#通过-sse--轮询获取结果)
     - [生成逻辑](#生成逻辑)
     - [错误响应](#错误响应-15)
-    - [错误响应](#错误响应-17)
+  - [18. POST /render — 渲染视频](#18-post-render--渲染视频)
+    - [请求参数](#请求参数-12)
+    - [请求示例](#请求示例-12)
+    - [成功响应 (202)](#成功响应-202-8)
+    - [通过 SSE / 轮询获取渲染进度](#通过-sse--轮询获取渲染进度)
+    - [任务结果结构](#任务结果结构-1)
+    - [渲染流程](#渲染流程)
+    - [错误响应](#错误响应-16)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
     - [服务端错误 (5xx) — 附带 `data.code` 和 `data.details`](#服务端错误-5xx--附带-datacode-和-datadetails)
@@ -843,7 +850,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ## 8. GET /task/{task_id} — 查询异步任务状态（轮询）
 
-查询由 `/compress`、`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect` 或 `/split` 提交的异步任务的当前状态和结果。
+查询由 `/compress`、`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`、`/split`、`/render` 或 `/plan/{plan_id}/generate` 提交的异步任务的当前状态和结果。
 
 > **推荐使用 SSE**：`GET /task/{task_id}/stream` 提供实时推送，无需轮询。此端点在客户端不支持 SSE 时作为降级回退使用。
 
@@ -928,7 +935,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `task_id` | string | 任务唯一标识 |
-| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` / `analyze-effect` / `split` / `plan` |
+| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` / `analyze-effect` / `split` / `plan` / `slot-generation` / `render` |
 | `resource_id` | string | 关联的资源 ID（如 asset_id） |
 | `status` | string | 任务状态：`running` / `completed` / `failed` / `cancelled` |
 | `created_at` | string | 任务创建时间（ISO 8601） |
@@ -1941,6 +1948,153 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 
 ---
 
+## 18. POST /render — 渲染视频
+
+基于已完成填充的 Plan 模板，调用 Remotion 引擎渲染生成最终的 MP4 视频。以异步任务模式运行，通过 SSE 实时推送渲染进度。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `POST` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | `application/json` |
+
+### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `plan_id` | string | **是** | 计划模板 ID（即 plan task_id，plan 任务必须已完成且 slot 已填充） |
+
+> **前置条件**：
+> 1. Plan 任务已完成（`POST /plan` 返回的 task_id，status 为 `completed`）
+> 2. 所需 slot 已通过 `PATCH /plan/{plan_id}/slot/{slot_id}` 填充
+> 3. BGM 已通过 `POST /analyze-audio` 生成（slot 中的 `reference_audio_asset_id` 指向有效的 BGM 音频文件）
+>
+> 渲染引擎使用 `viral-structure-engine/remotion-video` 项目，输出规格为 1080×1920（9:16 竖屏）30fps H.264 MP4。
+
+### 请求示例
+
+```bash
+curl -X POST http://127.0.0.1:8000/render \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"plan_id": "iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii"}'
+```
+
+### 成功响应 (202)
+
+渲染任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取实时进度。
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "llllllll-llll-llll-llll-llllllllllll"
+  }
+}
+```
+
+### 通过 SSE / 轮询获取渲染进度
+
+任务类型为 `"render"`。SSE 流式推送渲染各阶段进度：
+
+**SSE 帧序列示例：**
+
+```
+data: {"phase":"loading","message":"Loading plan data..."}
+
+data: {"phase":"bgm","message":"Loading BGM audio..."}
+
+data: {"phase":"building","message":"Building render config..."}
+
+data: {"phase":"rendering","progress":0,"frame":0,"totalFrames":498}
+
+data: {"phase":"rendering","progress":12,"frame":60,"totalFrames":498}
+
+data: {"phase":"rendering","progress":25,"frame":125,"totalFrames":498}
+
+...
+
+data: {"phase":"rendering","progress":100,"frame":498,"totalFrames":498}
+
+data: {"phase":"saving","message":"Saving output video..."}
+
+: keepalive
+
+data: {"task_id":"llllllll-...","status":"completed","result":{...}}
+```
+
+**SSE 帧字段说明：**
+
+| 帧类型 | phase 值 | 额外字段 | 说明 |
+|---|---|---|---|
+| 准备阶段 | `loading` | `message` | 读取 Plan 模板数据 |
+| BGM 准备 | `bgm` | `message` | 拷贝 BGM 音频到渲染目录 |
+| 构建配置 | `building` | `message` | 将 Plan 模板转换为 Remotion props JSON |
+| 渲染中 | `rendering` | `progress`, `frame`, `totalFrames` | 逐帧渲染进度（百分比 + 当前帧/总帧数） |
+| 保存中 | `saving` | `message` | 将输出 MP4 写入 storage，创建 Asset 记录 |
+
+### 任务结果结构
+
+任务完成后，`GET /task/{task_id}` 返回的 `result` 字段：
+
+```json
+{
+  "task_id": "llllllll-llll-llll-llll-llllllllllll",
+  "type": "render",
+  "resource_id": "iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii",
+  "status": "completed",
+  "created_at": "2026-06-09T12:00:00+00:00",
+  "result": {
+    "asset_id": "m1m1m1m1-m1m1-m1m1-m1m1-m1m1m1m1m1m1",
+    "path": "storage\\videos\\m1m1m1m1-....mp4",
+    "duration": 45.0,
+    "fps": 30,
+    "width": 1080,
+    "height": 1920
+  }
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `asset_id` | string | 渲染输出视频的 asset_id，可通过 `GET /files/{asset_id}` 下载/播放 |
+| `path` | string | 视频文件的存储路径 |
+| `duration` | float | 视频时长（秒） |
+| `fps` | int | 帧率（固定 30fps） |
+| `width` | int | 视频宽度（像素，固定 1080） |
+| `height` | int | 视频高度（像素，固定 1920） |
+
+### 渲染流程
+
+```
+① 读 PlanResult                   ← task_registry.get(plan_id).result
+② 拷贝 BGM                        ← bgm_spec.reference_audio_asset_id → remotion-video/public/bgm.wav
+③ 构建 remotion_props.json        ← PlanResult → scenes + beatFrames + textStyle
+④ Remotion CLI 渲染               ← npx remotion.cmd render src/index.ts VideoComposition output.mp4 --props=...
+⑤ 创建 Asset 记录                 ← Asset(asset_id, user_id, path, type="video")
+⑥ 清理临时文件                    ← props JSON + 拷贝的 BGM
+```
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 400 | `计划尚未生成完成，当前状态：running` | Plan 任务仍在运行中 |
+| 403 | `无权访问该计划` | 模板不属于当前用户 |
+| 404 | `计划 xxx 不存在` | plan_id 不在注册表中 |
+
+**运行时错误**（通过 `GET /task/{task_id}` 的 `status: "failed"` 和 `error` 字段返回）：
+
+| 场景 | error 内容 |
+|---|---|
+| Plan 不存在或未完成 | `Plan not found or not completed` |
+| Remotion 渲染失败 | `Remotion render failed with code {n}` |
+| 输出文件丢失 | `Remotion 渲染后未找到输出文件` |
+| 任务取消 | 清理临时文件后 `status: "cancelled"` |
+
+---
+
 上传和压缩接口返回的 `metadata` 对象包含以下字段：
 
 | 字段 | 类型 | 说明 | 示例 |
@@ -2006,7 +2160,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 
 ### 概述
 
-视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`)、视频切割 (`/split`) 和模板生成 (`/plan`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
+视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`)、视频切割 (`/split`)、模板生成 (`/plan`) 和视频渲染 (`/render`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
 
 ### 工作流程
 
@@ -2018,6 +2172,7 @@ POST /analyze-audio  → 202 { task_id }                    ← 立即返回
 POST /analyze-effect → 202 { task_id }                    ← 立即返回
 POST /split          → 202 { task_id }                    ← 立即返回
 POST /plan           → 202 { task_id }                    ← 立即返回
+POST /render          → 202 { task_id }                    ← 立即返回
                      → 连接 GET /task/{id}/stream (SSE)   ← 推荐：实时推送
 GET  /task/{id}      → 200 { status: "running" }           ← 轮询回退
 GET  /task/{id}      → 200 { status: "completed", ... }    ← 结果就绪
@@ -2041,6 +2196,7 @@ GET  /task/{id}      → 200 { status: "cancelled" }
 - **`/analyze-audio`**: 底层 `ffmpeg` 和模型推理被 `asyncio.CancelledError` 中断，中间产物（storage/tmp 下的文件）由任务内部清理
 - **`/split`**: 底层 `ffmpeg` 子进程被终止，已生成的临时切割文件被清理
 - **`/plan`**: 底层异步 LLM 请求被 `asyncio.CancelledError` 中断，API 调用立即中止
+- **`/render`**: 底层 Remotion CLI 子进程被终止，临时文件（props JSON + 拷贝的 BGM + 输出 MP4）被清理
 
 ### 注意事项
 

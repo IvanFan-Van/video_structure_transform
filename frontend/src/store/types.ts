@@ -319,3 +319,20 @@ export interface SlotFillResult {
 export interface GenerateResult {
     generated: number;
 }
+
+export interface RenderResult {
+    asset_id: string;
+    path: string;
+    duration: number;
+    fps: number;
+    width: number;
+    height: number;
+}
+
+export interface RenderProgress {
+    phase: "loading" | "bgm" | "building" | "rendering" | "saving";
+    message?: string;
+    progress?: number;
+    frame?: number;
+    totalFrames?: number;
+}

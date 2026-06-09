@@ -14,6 +14,7 @@ from app.routers import (
     files_router,
     pipeline_router,
     plan_router,
+    render_router,
     task_router,
 )
 
@@ -63,6 +64,7 @@ app.include_router(effect_router)
 app.include_router(task_router)
 app.include_router(pipeline_router)
 app.include_router(plan_router)
+app.include_router(render_router)
 app.include_router(files_router)
 
 

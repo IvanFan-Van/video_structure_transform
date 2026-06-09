@@ -21,6 +21,8 @@ import {
     PlanResult,
     SlotFillResult,
     GenerateResult,
+    RenderResult,
+    RenderProgress,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -34,6 +36,7 @@ const streamControllers: Record<string, AbortController | null> = {
     visual: null,
     plan: null,
     slot_generate: null,
+    render: null,
 };
 
 function abortStream(key: string) {
@@ -100,6 +103,7 @@ interface TaskStreamOptions<TResult> {
     onCompleted: (result: TResult, elapsed: number) => object;
     onFailed: (elapsed: number) => object;
     onCancelled: () => object;
+    onProgress?: (data: any) => void;
 }
 
 async function subscribeTaskStream<TResult>(
@@ -149,7 +153,11 @@ async function subscribeTaskStream<TResult>(
             onmessage: (event) => {
                 if (!event.data) return;
                 try {
-                    const info: TaskInfo = JSON.parse(event.data);
+                    const info: any = JSON.parse(event.data);
+                    if (info.phase && !info.status) {
+                        opts.onProgress?.(info);
+                        return;
+                    }
                     switch (info.status) {
                         case "completed":
                             set((s: any) => ({
@@ -255,6 +263,15 @@ interface VideoState {
     generateResult: GenerateResult | null;
     generateTaskId: string | null;
 
+    renderStatus: NodeStatus;
+    renderTaskId: string | null;
+    renderResult: RenderResult | null;
+    renderPhase: string | null;
+    renderPhaseMessage: string | null;
+    renderProgress: number;
+    renderFrame: number;
+    renderTotalFrames: number;
+
     videoErrors: NodeError[];
 }
 
@@ -288,6 +305,8 @@ interface VideoActions {
     ) => Promise<void>;
     startSlotGenerate: () => Promise<void>;
     stopSlotGenerate: () => Promise<void>;
+    startRender: () => Promise<void>;
+    stopRender: () => Promise<void>;
     dismissError: (id: number) => void;
     removeEffect: (segmentIndex: number, effectIndex: number) => void;
     addEffect: (segmentIndex: number, effect: EffectItem) => void;
@@ -364,6 +383,15 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     generateResult: null,
     generateTaskId: null,
 
+    renderStatus: "idle",
+    renderTaskId: null,
+    renderResult: null,
+    renderPhase: null,
+    renderPhaseMessage: null,
+    renderProgress: 0,
+    renderFrame: 0,
+    renderTotalFrames: 0,
+
     videoErrors: [],
 
     // ── Actions ────────────────────────────────────────────────────────────────
@@ -403,6 +431,14 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             generateTime: null,
             generateResult: null,
             generateTaskId: null,
+            renderStatus: "idle",
+            renderTaskId: null,
+            renderResult: null,
+            renderPhase: null,
+            renderPhaseMessage: null,
+            renderProgress: 0,
+            renderFrame: 0,
+            renderTotalFrames: 0,
         });
 
         const formData = new FormData();
@@ -1421,6 +1457,115 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
     },
 
+    startRender: async () => {
+        const { planResult } = get();
+        if (!planResult) return;
+        const token = useAuthStore.getState().token;
+        const t0 = Date.now();
+
+        set({
+            renderStatus: "loading",
+            renderResult: null,
+            renderPhase: null,
+            renderPhaseMessage: null,
+            renderProgress: 0,
+            renderFrame: 0,
+            renderTotalFrames: 0,
+        });
+
+        try {
+            const res = await axios.post(
+                "/api/render",
+                { plan_id: planResult.plan_id },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (res.data.status !== "success") {
+                const { msg, code, details } = parseApiError(
+                    res.data,
+                    "Render failed",
+                );
+                set((s) => ({
+                    renderStatus: "error",
+                    videoErrors: [
+                        ...s.videoErrors.filter((e) => e.nodeId !== "render"),
+                        makeError("render", msg, code, details),
+                    ],
+                }));
+                return;
+            }
+
+            const taskId: string = res.data.data.task_id;
+            set({ renderTaskId: taskId });
+
+            await subscribeTaskStream<RenderResult>(taskId, token, {
+                controllerKey: "render",
+                t0,
+                set,
+                nodeId: "render",
+                failureLabel: "Render failed",
+                onProgress: (data: RenderProgress) => {
+                    set({
+                        renderPhase: data.phase,
+                        renderPhaseMessage: data.message ?? null,
+                        renderProgress: data.progress ?? 0,
+                        renderFrame: data.frame ?? 0,
+                        renderTotalFrames: data.totalFrames ?? 0,
+                    });
+                },
+                onCompleted: (result) => ({
+                    renderResult: result,
+                    renderStatus: "success",
+                    renderPhase: null,
+                    renderPhaseMessage: null,
+                    renderProgress: 0,
+                }),
+                onFailed: () => ({
+                    renderStatus: "error",
+                    renderPhase: null,
+                    renderPhaseMessage: null,
+                }),
+                onCancelled: () => ({
+                    renderStatus: "idle",
+                    renderPhase: null,
+                    renderPhaseMessage: null,
+                    renderProgress: 0,
+                }),
+            });
+        } catch {
+            set((s) => ({
+                renderStatus: "error",
+                videoErrors: [
+                    ...s.videoErrors.filter((e) => e.nodeId !== "render"),
+                    makeError(
+                        "render",
+                        "Network error",
+                        "NETWORK_ERROR",
+                        NETWORK_ERROR_DETAILS,
+                    ),
+                ],
+            }));
+        }
+    },
+
+    stopRender: async () => {
+        abortStream("render");
+        const taskId = get().renderTaskId;
+        if (taskId) await cancelTaskRequest(taskId);
+        set({
+            renderStatus: "idle",
+            renderPhase: null,
+            renderPhaseMessage: null,
+            renderProgress: 0,
+            renderResult: null,
+        });
+    },
+
     dismissError: (id) => {
         set((s) => ({
             videoErrors: s.videoErrors.filter((e) => e.id !== id),
@@ -1531,6 +1676,14 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             generateTime: null,
             generateResult: null,
             generateTaskId: null,
+            renderStatus: "idle",
+            renderTaskId: null,
+            renderResult: null,
+            renderPhase: null,
+            renderPhaseMessage: null,
+            renderProgress: 0,
+            renderFrame: 0,
+            renderTotalFrames: 0,
             videoErrors: [],
         });
     },
