@@ -19,6 +19,7 @@ import {
     EffectResult,
     PlanResult,
     SlotFillResult,
+    GenerateResult,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -31,6 +32,7 @@ const streamControllers: Record<string, AbortController | null> = {
     split: null,
     visual: null,
     plan: null,
+    slot_generate: null,
 };
 
 function abortStream(key: string) {
@@ -253,6 +255,11 @@ interface VideoState {
 
     slotFillStatuses: Record<string, "filling" | "filled" | "error">;
 
+    generateStatus: NodeStatus;
+    generateTime: number | null;
+    generateResult: GenerateResult | null;
+    generateTaskId: string | null;
+
     videoErrors: NodeError[];
 }
 
@@ -284,6 +291,8 @@ interface VideoActions {
         fillMethod: "user_upload" | "ai_generate" | "manual_input",
         value?: string,
     ) => Promise<void>;
+    startSlotGenerate: () => Promise<void>;
+    stopSlotGenerate: () => Promise<void>;
     dismissError: (id: number) => void;
 }
 
@@ -354,6 +363,11 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
     slotFillStatuses: {},
 
+    generateStatus: "idle",
+    generateTime: null,
+    generateResult: null,
+    generateTaskId: null,
+
     videoErrors: [],
 
     // ── Actions ────────────────────────────────────────────────────────────────
@@ -380,13 +394,22 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             streamArr: [],
             audioGlobal: null,
             audioBgmAssetId: null,
-            planableTaskIds: { script: null, visual: null, audio: null, split: null },
+            planableTaskIds: {
+                script: null,
+                visual: null,
+                audio: null,
+                split: null,
+            },
             effectTaskIds: {},
             planStatus: "idle",
             planTime: null,
             planResult: null,
             planTaskId: null,
             slotFillStatuses: {},
+            generateStatus: "idle",
+            generateTime: null,
+            generateResult: null,
+            generateTaskId: null,
         });
 
         const formData = new FormData();
@@ -1149,9 +1172,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
         try {
             const body: Record<string, unknown> = { user_brief: userBrief };
-            if (planableTaskIds.script) body.script_task_id = planableTaskIds.script;
-            if (planableTaskIds.visual) body.visual_task_id = planableTaskIds.visual;
-            if (planableTaskIds.audio) body.audio_task_id = planableTaskIds.audio;
+            if (planableTaskIds.script)
+                body.script_task_id = planableTaskIds.script;
+            if (planableTaskIds.visual)
+                body.visual_task_id = planableTaskIds.visual;
+            if (planableTaskIds.audio)
+                body.audio_task_id = planableTaskIds.audio;
             if (targetDuration != null) body.target_duration = targetDuration;
             const effectIds = Object.values(effectTaskIds).filter(Boolean);
             if (effectIds.length > 0) body.effect_task_id = effectIds[0];
@@ -1165,7 +1191,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
             if (res.data.status !== "success") {
                 const elapsed = (Date.now() - t0) / 1000;
-                const { msg, code, details } = parseApiError(res.data, "Plan failed");
+                const { msg, code, details } = parseApiError(
+                    res.data,
+                    "Plan failed",
+                );
                 set((s) => ({
                     planResult: null,
                     planStatus: "error",
@@ -1212,7 +1241,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 planTime: elapsed,
                 videoErrors: [
                     ...s.videoErrors.filter((e) => e.nodeId !== "plan"),
-                    makeError("plan", "Network error", "NETWORK_ERROR", NETWORK_ERROR_DETAILS),
+                    makeError(
+                        "plan",
+                        "Network error",
+                        "NETWORK_ERROR",
+                        NETWORK_ERROR_DETAILS,
+                    ),
                 ],
             }));
         }
@@ -1280,10 +1314,18 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 const filled = res.data.data;
                 set((s) => {
                     const plan = s.planResult;
-                    if (!plan) return { slotFillStatuses: { ...s.slotFillStatuses, [slotId]: "filled" } };
+                    if (!plan)
+                        return {
+                            slotFillStatuses: {
+                                ...s.slotFillStatuses,
+                                [slotId]: "filled",
+                            },
+                        };
 
                     const segments = plan.segments.map((seg) => {
-                        const si = seg.slots.findIndex((sl) => sl.slot_id === slotId);
+                        const si = seg.slots.findIndex(
+                            (sl) => sl.slot_id === slotId,
+                        );
                         if (si === -1) return seg;
                         const slots = [...seg.slots];
                         slots[si] = { ...slots[si], ...filled };
@@ -1299,14 +1341,17 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     };
                 });
             } else {
-                const msg = (res.data as ApiErrorResponse).message ?? "Fill failed";
+                const msg =
+                    (res.data as ApiErrorResponse).message ?? "Fill failed";
                 set((s) => ({
                     slotFillStatuses: {
                         ...s.slotFillStatuses,
                         [slotId]: "error",
                     },
                     videoErrors: [
-                        ...s.videoErrors.filter((e) => e.nodeId !== `slot_${slotId}`),
+                        ...s.videoErrors.filter(
+                            (e) => e.nodeId !== `slot_${slotId}`,
+                        ),
                         makeError(`slot_${slotId}`, msg, "FILL_FAILED", ""),
                     ],
                 }));
@@ -1318,7 +1363,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     [slotId]: "error",
                 },
                 videoErrors: [
-                    ...s.videoErrors.filter((e) => e.nodeId !== `slot_${slotId}`),
+                    ...s.videoErrors.filter(
+                        (e) => e.nodeId !== `slot_${slotId}`,
+                    ),
                     makeError(
                         `slot_${slotId}`,
                         "Network error",
@@ -1328,6 +1375,132 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 ],
             }));
         }
+    },
+
+    startSlotGenerate: async () => {
+        const { planResult } = get();
+        if (!planResult) return;
+        const token = useAuthStore.getState().token;
+        if (!token) return;
+        const t0 = Date.now();
+
+        set({
+            generateStatus: "loading",
+            generateTime: null,
+            generateTaskId: null,
+            generateResult: null,
+        });
+
+        try {
+            const res = await axios.post(
+                `/api/plan/${planResult.plan_id}/generate`,
+                {},
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                },
+            );
+
+            if (res.data.status !== "success") {
+                const elapsed = (Date.now() - t0) / 1000;
+                const { msg, code, details } = parseApiError(
+                    res.data,
+                    "Slot generation failed",
+                );
+                set((s) => ({
+                    generateResult: null,
+                    generateStatus: "error",
+                    generateTime: elapsed,
+                    videoErrors: [
+                        ...s.videoErrors.filter(
+                            (e) => e.nodeId !== "plan_generate",
+                        ),
+                        makeError("plan_generate", msg, code, details),
+                    ],
+                }));
+                return;
+            }
+
+            const taskId: string = res.data.data.task_id;
+            set({ generateTaskId: taskId });
+
+            await subscribeTaskStream<GenerateResult>(taskId, token, {
+                controllerKey: "slot_generate",
+                t0,
+                set,
+                nodeId: "plan_generate",
+                failureLabel: "Slot generation failed",
+                onCompleted: (result, _elapsed) => ({
+                    generateResult: result,
+                    generateStatus: "success",
+                    generateTime: _elapsed,
+                    generateTaskId: null,
+                }),
+                onFailed: (_elapsed) => ({
+                    generateResult: null,
+                    generateStatus: "error",
+                    generateTime: _elapsed,
+                    generateTaskId: null,
+                }),
+                onCancelled: () => ({
+                    generateStatus: "idle",
+                    generateTaskId: null,
+                }),
+            });
+
+            if (get().generateStatus === "success") {
+                try {
+                    const planRes = await axios.get(
+                        `/api/task/${planResult.plan_id}/stream`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                            },
+                        },
+                    );
+                    if (
+                        planRes.data.status === "success" &&
+                        planRes.data.data?.result
+                    ) {
+                        set({ planResult: planRes.data.data.result });
+                    }
+                } catch {
+                    // best-effort re-fetch
+                }
+            }
+        } catch {
+            const elapsed = (Date.now() - t0) / 1000;
+            set((s) => ({
+                generateResult: null,
+                generateStatus: "error",
+                generateTime: elapsed,
+                videoErrors: [
+                    ...s.videoErrors.filter(
+                        (e) => e.nodeId !== "plan_generate",
+                    ),
+                    makeError(
+                        "plan_generate",
+                        "Network error",
+                        "NETWORK_ERROR",
+                        NETWORK_ERROR_DETAILS,
+                    ),
+                ],
+            }));
+        }
+    },
+
+    stopSlotGenerate: async () => {
+        abortStream("slot_generate");
+        const { generateTaskId } = get();
+        if (generateTaskId) await cancelTaskRequest(generateTaskId);
+        set({
+            generateStatus: "cancelled",
+            generateTaskId: null,
+            generateResult: null,
+            generateTime: null,
+        });
     },
 
     dismissError: (id) => {

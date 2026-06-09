@@ -300,3 +300,7 @@ export interface SlotFillResult {
     fill_method: "user_upload" | "ai_generate" | "manual_input";
     value: string | null;
 }
+
+export interface GenerateResult {
+    generated: number;
+}

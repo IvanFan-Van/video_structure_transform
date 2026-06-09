@@ -14,14 +14,18 @@ from app.prompts import (
     PLAN_USER_PROMPT_SCRIPT_SECTION,
     PLAN_USER_PROMPT_TASK,
     PLAN_USER_PROMPT_VISUAL_SECTION,
+    SLOT_GENERATION_SYSTEM_PROMPT,
+    SLOT_GENERATION_USER_TEMPLATE,
 )
 from app.schemas.plan import (
     BgmSpec,
+    FillMethod,
     PlanOutput,
     PlanRequest,
     Segment,
     Slot,
     SlotConstraints,
+    SlotGenerationOutput,
     SlotStatus,
     SlotType,
     TransitionSpec,
@@ -350,5 +354,104 @@ def start_plan_generation(request: PlanRequest, user_id: str) -> str:
         task_type="plan",
         resource_id=resource_id,
         coro=run_plan_generation(task_id, request, user_id),
+    )
+    return task_id
+
+
+def _build_slot_gen_prompt(template: VideoTemplate) -> str:
+    segments_lines: list[str] = []
+    type_hints = {
+        "visual_text": lambda c: f"最大{c.max_chars}字" if c and c.max_chars else "画面文字",
+        "narration": lambda c: f"最大{c.max_duration_sec}秒" if c and c.max_duration_sec else "旁白",
+        "background_video": lambda c: "背景视频",
+        "background_image": lambda c: "背景图片",
+    }
+
+    for seg in template.segments:
+        seg_lines = [
+            f"\nseg{seg.index} ({seg.stage}, {seg.start_time}-{seg.end_time}s): "
+            f'intent="{seg.narrative_intent}"'
+        ]
+        for slot in seg.slots:
+            hint_fn = type_hints.get(slot.slot_type.value, lambda c: slot.slot_type.value)
+            hint = hint_fn(slot.constraints)
+            if slot.status == SlotStatus.filled:
+                tag = f"[已填] \"{slot.value}\""
+            elif slot.status == SlotStatus.pending:
+                tag = "[待生成]"
+            else:
+                tag = "[未填]"
+            seg_lines.append(f"  {slot.slot_type.value}: {hint} {tag}")
+        segments_lines.append("\n".join(seg_lines))
+
+    return SLOT_GENERATION_USER_TEMPLATE.format(
+        user_brief=template.user_brief,
+        template_segments="\n".join(segments_lines),
+    )
+
+
+async def run_slot_generation(task_id: str, plan_id: str, user_id: str) -> None:
+    try:
+        plan_task = task_registry.get(plan_id)
+        if plan_task is None or plan_task.type != "plan":
+            task_registry.set_error(task_id, "计划不存在")
+            return
+
+        template = VideoTemplate.model_validate(plan_task.result)
+
+        pending: list[tuple[Segment, Slot]] = []
+        for seg in template.segments:
+            for slot in seg.slots:
+                if slot.status == SlotStatus.pending and slot.slot_type in (
+                    SlotType.visual_text,
+                    SlotType.narration,
+                ):
+                    pending.append((seg, slot))
+
+        if not pending:
+            task_registry.set_result(
+                task_id, {"generated": 0, "message": "没有待生成的文本槽位"}
+            )
+            return
+
+        user_prompt = _build_slot_gen_prompt(template)
+
+        instructor_client = instructor.from_openai(async_client)
+        output: SlotGenerationOutput = await instructor_client.chat.completions.create(
+            model=os.getenv("MODEL"),  # type: ignore
+            response_model=SlotGenerationOutput,
+            messages=[
+                {"role": "system", "content": SLOT_GENERATION_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+
+        gen_map = {s.slot_id: s.value for s in output.generated_slots}
+        generated_count = 0
+        for seg, slot in pending:
+            val = gen_map.get(slot.slot_id)
+            if val:
+                slot.value = val
+                slot.status = SlotStatus.filled
+                slot.fill_method = FillMethod.ai_generate
+                generated_count += 1
+
+        plan_task.result = template.model_dump()
+        task_registry.set_result(task_id, {"generated": generated_count})
+
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        task_registry.set_error(task_id, str(e))
+
+
+def start_slot_generation(plan_id: str, user_id: str) -> str:
+    task_id = str(uuid.uuid4())
+    register_and_launch(
+        task_id=task_id,
+        user_id=user_id,
+        task_type="slot-generation",
+        resource_id=plan_id,
+        coro=run_slot_generation(task_id, plan_id, user_id),
     )
     return task_id

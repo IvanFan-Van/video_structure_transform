@@ -8,7 +8,7 @@ from app.models import User
 from app.repositories import get_asset_by_id
 from app.schemas import FillSlotRequest, PlanRequest
 from app.schemas.plan import FillMethod, SlotStatus, VideoTemplate
-from app.services import start_plan_generation
+from app.services import start_plan_generation, start_slot_generation
 from app.tasks import task_registry
 
 router = APIRouter(tags=["plan"])
@@ -22,6 +22,14 @@ def _find_slot_in_template(template: VideoTemplate, slot_id: str):
             if slot.slot_id == slot_id:
                 return slot
     return None
+
+
+def _verify_asset_ownership(asset_id: str, db: Session, user: User) -> None:
+    asset = get_asset_by_id(db, asset_id)
+    if asset is None:
+        raise HTTPException(404, f"素材 {asset_id} 不存在")
+    if asset.user_id != user.user_id:
+        raise HTTPException(403, "无权使用该素材")
 
 
 @router.post("/plan")
@@ -83,12 +91,8 @@ def fill_slot(
 
     elif body.fill_method == FillMethod.user_upload:
         if body.value is None:
-            raise HTTPException(400, "value 不能为空")
-        asset = get_asset_by_id(db, body.value)
-        if asset is None:
-            raise HTTPException(404, f"素材 {body.value} 不存在")
-        if asset.user_id != current_user.user_id:
-            raise HTTPException(403, "无权使用该素材")
+            raise HTTPException(400, "fill_method 为 user_upload 时必须提供 value")
+        _verify_asset_ownership(body.value, db, current_user)
         target_slot.value = body.value
         target_slot.status = SlotStatus.filled
 
@@ -98,3 +102,23 @@ def fill_slot(
     target_slot.fill_method = body.fill_method
     task_info.result = template.model_dump()
     return {"status": "success", "data": target_slot.model_dump()}
+
+
+@router.post("/plan/{plan_id}/generate")
+async def generate_slot_content(
+    plan_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    plan_task = task_registry.get(plan_id)
+    if plan_task is None or plan_task.type != "plan":
+        raise HTTPException(404, "计划不存在")
+    if plan_task.user_id != current_user.user_id:
+        raise HTTPException(403, "无权访问该计划")
+    if plan_task.status != "completed":
+        raise HTTPException(400, "计划尚未生成完成")
+
+    task_id = start_slot_generation(plan_id, current_user.user_id)
+    return JSONResponse(
+        status_code=202,
+        content={"status": "success", "data": {"task_id": task_id}},
+    )

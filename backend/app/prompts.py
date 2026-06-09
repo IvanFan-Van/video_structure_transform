@@ -722,3 +722,46 @@ PLAN_USER_PROMPT_TASK = """## 用户新视频需求
 11. bgm_mood 描述 BGM 情绪关键词，如 "energetic" / "calm" / "uplifting"
 """
 
+
+SLOT_GENERATION_SYSTEM_PROMPT = (
+    "你是一个专业的短视频内容创作助手。"
+    "根据给定的视频模板和用户主题，为标记为「待生成」的槽位生成具体内容。"
+    "输出将直接用于最终视频渲染，不得包含占位符或模糊描述。"
+)
+
+SLOT_GENERATION_USER_TEMPLATE = """## 视频主题
+{user_brief}
+
+## 模板结构
+
+下面列出所有 segment 及其槽位。已填槽位作为上下文参考，你需要为每个 [待生成] 的槽位生成内容。
+
+{template_segments}
+
+## 生成规则
+
+1. visual_text 槽位：
+   - 若约束中有 max_chars，严格控制字数
+   - 文字精炼有力，适合短视频竖屏显示
+   - 与所在 segment 的 narrative_intent 对齐
+
+2. narration 槽位：
+   - 若约束中有 max_duration_sec，按中文 ~4 字/秒 估算字数
+   - 口语化、自然，适合旁白配音
+   - 相邻 segment 的 narration 之间要有逻辑递进
+
+3. 整体要求：
+   - segment 之间有叙事连贯性，不是孤立片段
+   - 语气、风格统一，符合 user_brief 的目标受众和调性
+   - 生成内容不要出现「文案」「旁白」「这里写」等元描述
+
+## 输出格式（严格遵守，只输出 JSON，不加任何解释）
+
+{{
+  "generated_slots": [
+    {{"slot_id": "seg0_narration", "value": "具体旁白内容..."}},
+    {{"slot_id": "seg1_visual_text", "value": "具体画面文字..."}}
+  ]
+}}
+"""
+

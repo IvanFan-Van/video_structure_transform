@@ -100,6 +100,12 @@ Base URL: `http://127.0.0.1:8000`
     - [请求参数](#请求参数-11)
     - [响应示例](#响应示例-1)
     - [错误响应](#错误响应-14)
+  - [17. POST /plan/{plan\_id}/generate — 批量 AI 生成槽位内容](#17-post-planplan_idgenerate--批量-ai-生成槽位内容)
+    - [路径参数](#路径参数-5)
+    - [成功响应 (202)](#成功响应-202-7)
+    - [通过 SSE / 轮询获取结果](#通过-sse--轮询获取结果)
+    - [生成逻辑](#生成逻辑)
+    - [错误响应](#错误响应-15)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
     - [服务端错误 (5xx) — 附带 `data.code` 和 `data.details`](#服务端错误-5xx--附带-datacode-和-datadetails)
@@ -1811,6 +1817,70 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 | 404 | `Slot xxx 不存在` | slot_id 在模板中不存在 |
 | 404 | `素材 xxx 不存在` | 提供的 asset_id 无对应记录 |
 | 422 | `fill_method 为 xxx 时必须提供 value` | 校验失败 |
+
+---
+
+## 17. POST /plan/{plan_id}/generate — 批量 AI 生成槽位内容
+
+将模板中所有 `status="pending"` 的文本类槽位（visual_text / narration）一次性批量生成。LLM 会拥有全部 segment 的上下文，确保生成的文案在整条视频中叙事连贯、语气统一。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `POST` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | —（无请求体） |
+
+### 路径参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `plan_id` | string | **是** | 模板 ID（即任务 task_id） |
+
+### 成功响应 (202)
+
+生成任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取结果。
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "kkkkkkkk-kkkk-kkkk-kkkk-kkkkkkkkkkkk"
+  }
+}
+```
+
+### 通过 SSE / 轮询获取结果
+
+任务类型为 `"slot-generation"`，任务完成后 `result` 返回：
+
+```json
+{
+  "generated": 3
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `generated` | int | 成功生成的槽位数量 |
+
+生成后的 slot 内容已直接写入原 plan 模板中。通过 `GET /task/{plan_id}/stream` 重新获取模板即可看到更新后的 slot 值（status 变为 `filled`，fill_method 变为 `ai_generate`）。
+
+### 生成逻辑
+
+1. 忽略已填（`filled`）和未标记（`empty`）的 slot，只处理 `status="pending"` 的 `visual_text` 和 `narration`
+2. 若没有 pending 的文本 slot → 返回 `{"generated": 0}`
+3. 将完整模板结构 + 用户 brief + 已填 slot 的值作为上下文传给 LLM
+4. LLM 一次调用生成所有 pending slot 的文本内容
+5. 写回模板，通过 `GET /task/{plan_id}` 可获取更新后的模板
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 400 | `计划尚未生成完成` | plan 任务仍在运行中 |
+| 403 | `无权访问该计划` | 模板不属于当前用户 |
+| 404 | `计划不存在` | plan_id 不存在（或对应任务类型非 plan） |
 
 ---
 

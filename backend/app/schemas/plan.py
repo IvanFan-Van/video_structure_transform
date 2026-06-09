@@ -157,3 +157,15 @@ class RawSegment(BaseModel):
 class PlanOutput(BaseModel):
     bgm_mood: str | None = None
     segments: list[RawSegment]
+
+
+# ── Slot 批量生成模型（/plan/{id}/generate）─────────────────
+
+
+class GeneratedSlot(BaseModel):
+    slot_id: str
+    value: str
+
+
+class SlotGenerationOutput(BaseModel):
+    generated_slots: list[GeneratedSlot]

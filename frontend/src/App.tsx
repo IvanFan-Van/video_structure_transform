@@ -18,6 +18,7 @@ import { SplitNode } from "./components/nodes/SplitNode";
 import { EffectAnalysisNode } from "./components/nodes/EffectAnalysisNode";
 import { PlanNode } from "./components/nodes/PlanNode";
 import { SlotNode } from "./components/nodes/SlotNode";
+import { GenerateNode } from "./components/nodes/GenerateNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { SelectionRect } from "./components/ui/SelectionRect";
 import { TourGuide } from "./components/ui/TourGuide";
@@ -385,6 +386,11 @@ function App() {
                     <PlanNode
                         x={offset + 2190}
                         y={30}
+                        onPosChange={updatePos}
+                    />
+                    <GenerateNode
+                        x={offset + 2190}
+                        y={400}
                         onPosChange={updatePos}
                     />
                     {planResult?.segments?.map((seg, i) => (
