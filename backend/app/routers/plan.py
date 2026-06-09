@@ -82,6 +82,8 @@ def fill_slot(
         target_slot.status = SlotStatus.filled
 
     elif body.fill_method == FillMethod.user_upload:
+        if body.value is None:
+            raise HTTPException(400, "value 不能为空")
         asset = get_asset_by_id(db, body.value)
         if asset is None:
             raise HTTPException(404, f"素材 {body.value} 不存在")

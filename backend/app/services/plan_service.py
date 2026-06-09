@@ -5,6 +5,7 @@ import uuid
 from datetime import UTC, datetime
 
 import instructor
+from backend.app.schemas.visual import CameraMovement
 from pydantic import ValidationError
 
 from app.llm import async_client
@@ -84,7 +85,7 @@ def _find_camera_movement(
     seg_start: float,
     seg_end: float,
     scaled_shots: list[dict],
-) -> str | None:
+) -> CameraMovement | None:
     best_shot = None
     best_overlap = 0.0
     for shot in scaled_shots:
