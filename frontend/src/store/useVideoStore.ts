@@ -17,6 +17,7 @@ import {
     SplitConfig,
     SplitResult,
     EffectResult,
+    PlanResult,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -28,6 +29,7 @@ const streamControllers: Record<string, AbortController | null> = {
     script: null,
     split: null,
     visual: null,
+    plan: null,
 };
 
 function abortStream(key: string) {
@@ -235,6 +237,19 @@ interface VideoState {
     effectStatuses: Record<number, NodeStatus>;
     effectResults: Record<number, EffectResult | null>;
 
+    planableTaskIds: {
+        script: string | null;
+        visual: string | null;
+        audio: string | null;
+        split: string | null;
+    };
+    effectTaskIds: Record<number, string>;
+
+    planStatus: NodeStatus;
+    planTime: number | null;
+    planResult: PlanResult | null;
+    planTaskId: string | null;
+
     videoErrors: NodeError[];
 }
 
@@ -257,6 +272,8 @@ interface VideoActions {
     startSplit: () => Promise<void>;
     stopSplit: () => Promise<void>;
     analyzeEffect: (assetId: string, segmentIndex: number) => Promise<void>;
+    startPlan: (userBrief: string, targetDuration?: number) => Promise<void>;
+    stopPlan: () => Promise<void>;
     dismissError: (id: number) => void;
 }
 
@@ -317,6 +334,14 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     effectStatuses: {},
     effectResults: {},
 
+    planableTaskIds: { script: null, visual: null, audio: null, split: null },
+    effectTaskIds: {},
+
+    planStatus: "idle",
+    planTime: null,
+    planResult: null,
+    planTaskId: null,
+
     videoErrors: [],
 
     // ── Actions ────────────────────────────────────────────────────────────────
@@ -343,6 +368,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             streamArr: [],
             audioGlobal: null,
             audioBgmAssetId: null,
+            planableTaskIds: { script: null, visual: null, audio: null, split: null },
+            effectTaskIds: {},
+            planStatus: "idle",
+            planTime: null,
+            planResult: null,
+            planTaskId: null,
         });
 
         const formData = new FormData();
@@ -561,6 +592,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     scriptStatus: "success",
                     scriptTime: elapsed,
                     extractTaskId: null,
+                    planableTaskIds: {
+                        ...get().planableTaskIds,
+                        script: taskId,
+                    },
                 }),
                 onFailed: (elapsed) => ({
                     transcriptResult: null,
@@ -696,6 +731,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                                 audioTime: elapsed,
                                 audioTaskId: null,
                                 audioGlobal: data.result || data.running_global,
+                                planableTaskIds: {
+                                    ...s.planableTaskIds,
+                                    audio: taskId,
+                                },
                                 videoErrors: s.videoErrors.filter(
                                     (e) => e.nodeId !== "audio",
                                 ),
@@ -826,6 +865,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     visualTime: elapsed,
                     isAnalyzingVisual: false,
                     visualTaskId: null,
+                    planableTaskIds: {
+                        ...get().planableTaskIds,
+                        visual: taskId,
+                    },
                 }),
                 onFailed: (elapsed) => ({
                     visualResult: null,
@@ -940,6 +983,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     splitTime: elapsed,
                     isSplitting: false,
                     splitTaskId: null,
+                    planableTaskIds: {
+                        ...get().planableTaskIds,
+                        split: taskId,
+                    },
                 }),
                 onFailed: (elapsed) => ({
                     splitResult: null,
@@ -1034,6 +1081,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                         ...get().effectStatuses,
                         [segmentIndex]: "success" as NodeStatus,
                     },
+                    effectTaskIds: {
+                        ...get().effectTaskIds,
+                        [segmentIndex]: taskId,
+                    },
                 }),
                 onFailed: (elapsed) => ({
                     effectStatuses: {
@@ -1067,6 +1118,103 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 ],
             }));
         }
+    },
+
+    startPlan: async (userBrief, targetDuration?) => {
+        const { planableTaskIds, effectTaskIds } = get();
+        const token = useAuthStore.getState().token;
+        if (!token) return;
+        if (!planableTaskIds.script && !planableTaskIds.visual) return;
+        const t0 = Date.now();
+
+        set({
+            planStatus: "loading",
+            planTime: null,
+            planTaskId: null,
+            planResult: null,
+        });
+
+        try {
+            const body: Record<string, unknown> = { user_brief: userBrief };
+            if (planableTaskIds.script) body.script_task_id = planableTaskIds.script;
+            if (planableTaskIds.visual) body.visual_task_id = planableTaskIds.visual;
+            if (planableTaskIds.audio) body.audio_task_id = planableTaskIds.audio;
+            if (targetDuration != null) body.target_duration = targetDuration;
+            const effectIds = Object.values(effectTaskIds).filter(Boolean);
+            if (effectIds.length > 0) body.effect_task_id = effectIds[0];
+
+            const res = await axios.post("/api/plan", body, {
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (res.data.status !== "success") {
+                const elapsed = (Date.now() - t0) / 1000;
+                const { msg, code, details } = parseApiError(res.data, "Plan failed");
+                set((s) => ({
+                    planResult: null,
+                    planStatus: "error",
+                    planTime: elapsed,
+                    videoErrors: [
+                        ...s.videoErrors.filter((e) => e.nodeId !== "plan"),
+                        makeError("plan", msg, code, details),
+                    ],
+                }));
+                return;
+            }
+
+            const taskId: string = res.data.data.task_id;
+            set({ planTaskId: taskId });
+
+            await subscribeTaskStream<PlanResult>(taskId, token, {
+                controllerKey: "plan",
+                t0,
+                set,
+                nodeId: "plan",
+                failureLabel: "Plan generation failed",
+                onCompleted: (result, _elapsed) => ({
+                    planResult: result,
+                    planStatus: "success",
+                    planTime: _elapsed,
+                    planTaskId: null,
+                }),
+                onFailed: (_elapsed) => ({
+                    planResult: null,
+                    planStatus: "error",
+                    planTime: _elapsed,
+                    planTaskId: null,
+                }),
+                onCancelled: () => ({
+                    planStatus: "idle",
+                    planTaskId: null,
+                }),
+            });
+        } catch {
+            const elapsed = (Date.now() - t0) / 1000;
+            set((s) => ({
+                planResult: null,
+                planStatus: "error",
+                planTime: elapsed,
+                videoErrors: [
+                    ...s.videoErrors.filter((e) => e.nodeId !== "plan"),
+                    makeError("plan", "Network error", "NETWORK_ERROR", NETWORK_ERROR_DETAILS),
+                ],
+            }));
+        }
+    },
+
+    stopPlan: async () => {
+        abortStream("plan");
+        const { planTaskId } = get();
+        if (planTaskId) await cancelTaskRequest(planTaskId);
+        set({
+            planStatus: "cancelled",
+            planTaskId: null,
+            planResult: null,
+            planTime: null,
+        });
     },
 
     dismissError: (id) => {

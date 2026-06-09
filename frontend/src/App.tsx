@@ -16,6 +16,7 @@ import { AudioAnalysisNode } from "./components/nodes/AudioAnalysisNode";
 import { VisualAnalysisNode } from "./components/nodes/VisualAnalysisNode";
 import { SplitNode } from "./components/nodes/SplitNode";
 import { EffectAnalysisNode } from "./components/nodes/EffectAnalysisNode";
+import { PlanNode } from "./components/nodes/PlanNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
@@ -71,7 +72,7 @@ function App() {
     const [offset, setOffset] = useState(60);
     useEffect(() => {
         const calcOffset = () => {
-            const totalWidth = 2070;
+            const totalWidth = 2550;
             const ox = Math.max(
                 60,
                 Math.floor((window.innerWidth - totalWidth) / 2),
@@ -88,6 +89,7 @@ function App() {
         if (splitResult?.segments) {
             for (let i = 0; i < splitResult.segments.length; i++) {
                 base.push(["split", `effect_segment_${i}`]);
+                base.push([`effect_segment_${i}`, "plan"]);
             }
         }
         return base;
@@ -318,6 +320,11 @@ function App() {
                     />
                     <VisualAnalysisNode
                         x={offset + 1880}
+                        y={30}
+                        onPosChange={updatePos}
+                    />
+                    <PlanNode
+                        x={offset + 2190}
                         y={30}
                         onPosChange={updatePos}
                     />

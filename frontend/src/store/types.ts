@@ -251,4 +251,43 @@ export interface EffectResult {
     effects: EffectItem[];
 }
 
+export interface PlanSlot {
+    slot_id: string;
+    slot_type: string;
+    description: string;
+    constraints: Record<string, unknown>;
+    status: string;
+    fill_method: string | null;
+    value: string | null;
+}
+
+export interface PlanSegment {
+    index: number;
+    stage: string;
+    start_time: number;
+    end_time: number;
+    narrative_intent: string;
+    hook_type: string | null;
+    cta_type: string | null;
+    slots: PlanSlot[];
+}
+
+export interface PlanBgmSpec {
+    genre: string;
+    bpm: number;
+    mood: string;
+    reference_audio_asset_id?: string;
+}
+
+export interface PlanResult {
+    plan_id: string;
+    user_brief: string;
+    reference_asset_id: string;
+    estimated_duration: number;
+    narrator_perspective: string;
+    bgm_spec: PlanBgmSpec;
+    segments: PlanSegment[];
+    created_at: string;
+}
+
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;

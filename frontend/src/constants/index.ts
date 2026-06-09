@@ -40,4 +40,7 @@ export const WIRES: [string, string][] = [
     ["extracting", "script_analysis"],
     ["extracting", "audio_analysis"],
     ["extracting", "visual_analysis"],
+    ["script_analysis", "plan"],
+    ["audio_analysis", "plan"],
+    ["visual_analysis", "plan"],
 ];

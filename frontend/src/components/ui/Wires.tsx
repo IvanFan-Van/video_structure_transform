@@ -28,7 +28,7 @@ export function Wires({ positions, wires, zoom, panX, panY }: WiresProps) {
                 width: "100vw",
                 height: "100vh",
                 pointerEvents: "none",
-                zIndex: 5,
+                // zIndex: 1,
             }}
         >
             {wires.map(([from, to], i) => {

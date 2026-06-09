@@ -14,6 +14,7 @@ const DEFAULT_POSITIONS: Record<string, Pos> = {
     script_analysis: { x: 1201, y: 315, w: 300, h: 91.5 },
     audio_analysis: { x: 1233, y: 560, w: 300, h: 91.5 },
     visual_analysis: { x: 1280, y: 787, w: 300, h: 91.5 },
+    plan: { x: 1700, y: 400, w: 380, h: 200 },
 };
 
 const PRESET_KEY = "canvas-preset";
