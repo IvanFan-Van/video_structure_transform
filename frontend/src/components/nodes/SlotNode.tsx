@@ -289,13 +289,6 @@ export function SlotNode({ x, y, segmentIndex, onPosChange }: Props) {
                                                             background:
                                                                 "#f0f0f0",
                                                             borderRadius: "3px",
-                                                            cursor: slotTip
-                                                                ? "help"
-                                                                : undefined,
-                                                            borderBottom:
-                                                                slotTip
-                                                                    ? "1px dotted #ccc"
-                                                                    : undefined,
                                                         }}
                                                     >
                                                         {slot.slot_type}

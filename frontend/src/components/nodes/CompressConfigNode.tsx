@@ -10,7 +10,7 @@ function Row({ label, tip, children }: { label: string; tip?: string; children: 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
       <Tooltip tip={tip ?? ''} inline>
-        <span style={{ fontSize: '9px', color: tip ? '#555' : '#999', minWidth: '80px', cursor: tip ? 'help' : undefined, borderBottom: tip ? '1px dotted #ccc' : undefined }}>{label}</span>
+        <span style={{ fontSize: '9px', color: tip ? '#555' : '#999', minWidth: '80px' }}>{label}</span>
       </Tooltip>
       {children}
     </div>

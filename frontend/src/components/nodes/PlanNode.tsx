@@ -116,7 +116,7 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                     <>
                         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                             <Tooltip tip="描述你的视频主题、风格和需求，AI 会据此生成包含叙事结构和分镜的完整计划" inline>
-                                <span style={{ fontSize: "8px", color: "#8b5cf6", cursor: "help", borderBottom: "1px dotted #c4b5fd" }}>Brief ?</span>
+                                <span style={{ fontSize: "8px", color: "#8b5cf6" }}>Brief ?</span>
                             </Tooltip>
                         </div>
                         <textarea
@@ -144,9 +144,9 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                                 (e.currentTarget.style.borderColor = "#e0e0e0")
                             }
                         />
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                             <Tooltip tip="目标视频时长（秒），留空由 AI 自动决定" inline>
-                                <span style={{ fontSize: "8px", color: "#8b5cf6", cursor: "help", borderBottom: "1px dotted #c4b5fd", whiteSpace: "nowrap" }}>Duration ?</span>
+                                <span style={{ fontSize: "8px", color: "#8b5cf6", whiteSpace: "nowrap" }}>Duration ?</span>
                             </Tooltip>
                             <input
                                 type="number"
@@ -158,7 +158,7 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                                 min={0}
                                 step={1}
                                 style={{
-                                    flex: 1,
+                                    width: "100%",
                                     padding: "4px 8px",
                                     fontSize: "9px",
                                     fontFamily: "inherit",

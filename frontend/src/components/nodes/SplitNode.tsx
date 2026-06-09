@@ -88,7 +88,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                             }}
                         >
                             <Tooltip tip="开启后使用 AI 模型智能检测场景切换；关闭则使用传统算法（基于帧差异）" inline>
-                                <span style={{ cursor: "help", borderBottom: "1px dotted #ccc" }}>AI Detection</span>
+                                AI Detection
                             </Tooltip>
                             <label
                                 style={{
@@ -158,7 +158,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                     }}
                                 >
                                     <Tooltip tip="检测敏感度。值越低越敏感，产生的片段更多更细" inline>
-                                        <span style={{ cursor: "help", borderBottom: "1px dotted #ccc" }}>Threshold</span>
+                                        Threshold
                                     </Tooltip>
                                     <span
                                         style={{
@@ -198,7 +198,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                             }}
                         >
                             <Tooltip tip="最短片段帧数。低于此长度的相邻片段会被合并，避免碎片化" inline>
-                                <span style={{ cursor: "help", borderBottom: "1px dotted #ccc" }}>Min Scene Len</span>
+                                Min Scene Len
                             </Tooltip>
                             <span style={{ color: "#999", fontSize: "9px" }}>
                                 {splitConfig.min_scene_len} frames

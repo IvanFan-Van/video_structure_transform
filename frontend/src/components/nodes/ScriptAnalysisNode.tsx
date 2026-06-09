@@ -229,8 +229,6 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             letterSpacing:
                                                                 "1px",
                                                             color: "#bbb",
-                                                            cursor: "help",
-                                                            borderBottom: "1px dotted #ccc",
                                                         }}
                                                     >
                                                         EMOTIONAL TONE
@@ -270,8 +268,6 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             letterSpacing:
                                                                 "1px",
                                                             color: "#bbb",
-                                                            cursor: "help",
-                                                            borderBottom: "1px dotted #ccc",
                                                         }}
                                                     >
                                                         HOOK TYPE
@@ -311,8 +307,6 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             letterSpacing:
                                                                 "1px",
                                                             color: "#bbb",
-                                                            cursor: "help",
-                                                            borderBottom: "1px dotted #ccc",
                                                         }}
                                                     >
                                                         CTA TYPE

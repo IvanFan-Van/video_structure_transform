@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import type { DriveStep } from "driver.js";
+import { useCanvasStore } from "../../store/useCanvasStore";
 
 interface Props {
     onClose: () => void;
@@ -18,6 +19,12 @@ export function TourGuide({ onClose, planResultReady }: Props) {
     useEffect(() => {
         if (started.current) return;
         started.current = true;
+
+        // Save current canvas state and reset for tour
+        const canvas = useCanvasStore.getState();
+        const savedView = { zoom: canvas.zoom, panX: canvas.panX, panY: canvas.panY };
+        canvas.setZoom(() => 0.5);
+        canvas.setPan(() => ({ x: 0, y: 0 }));
 
         const steps: DriveStep[] = [
             {
@@ -136,6 +143,9 @@ export function TourGuide({ onClose, planResultReady }: Props) {
             smoothScroll: true,
             steps,
             onDestroyed: () => {
+                const s = useCanvasStore.getState();
+                s.setZoom(() => savedView.zoom);
+                s.setPan(() => ({ x: savedView.panX, y: savedView.panY }));
                 onClose();
             },
         });

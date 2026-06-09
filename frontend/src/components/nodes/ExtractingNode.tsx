@@ -234,8 +234,6 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                                                 status === "loading"
                                                     ? 600
                                                     : 400,
-                                            cursor: "help",
-                                            borderBottom: "1px dotted #ccc",
                                         }}
                                     >
                                         <Tooltip tip={item.tip} inline>{item.label}</Tooltip>

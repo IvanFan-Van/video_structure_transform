@@ -146,8 +146,6 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                         fontSize: "7px",
                                         color: "#bbb",
                                         letterSpacing: "1px",
-                                        cursor: "help",
-                                        borderBottom: "1px dotted #ccc",
                                     }}
                                 >
                                     PACE
@@ -181,8 +179,6 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                         fontSize: "7px",
                                         color: "#bbb",
                                         letterSpacing: "1px",
-                                        cursor: "help",
-                                        borderBottom: "1px dotted #ccc",
                                     }}
                                 >
                                     AVG SHOT

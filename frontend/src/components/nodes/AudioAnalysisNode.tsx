@@ -122,8 +122,6 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                                 fontSize: "7px",
                                                 color: "#bbb",
                                                 letterSpacing: "1px",
-                                                cursor: "help",
-                                                borderBottom: "1px dotted #ccc",
                                                 display: "inline-block",
                                             }}
                                         >
@@ -159,8 +157,6 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         color: "#bbb",
                                         letterSpacing: "1px",
                                         marginBottom: "2px",
-                                        cursor: "help",
-                                        borderBottom: "1px dotted #ccc",
                                         display: "inline-block",
                                     }}
                                 >
@@ -189,8 +185,6 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         color: "#bbb",
                                         letterSpacing: "1px",
                                         marginBottom: "2px",
-                                        cursor: "help",
-                                        borderBottom: "1px dotted #ccc",
                                         display: "inline-block",
                                     }}
                                 >
@@ -221,8 +215,6 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         color: "#bbb",
                                         letterSpacing: "1px",
                                         marginBottom: "2px",
-                                        cursor: "help",
-                                        borderBottom: "1px dotted #ccc",
                                         display: "inline-block",
                                     }}
                                 >
@@ -253,8 +245,6 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         color: "#bbb",
                                         letterSpacing: "1px",
                                         marginBottom: "2px",
-                                        cursor: "help",
-                                        borderBottom: "1px dotted #ccc",
                                         display: "inline-block",
                                     }}
                                 >
