@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { FiExternalLink } from "react-icons/fi";
-import { useAuthStore } from "../../store/useAuthStore";
+import { apiFetch } from "../../lib/api";
 
 interface CoverImageProps {
     coverImageAssetId: string | null | undefined;
@@ -30,10 +30,7 @@ export function CoverImage({
         let objectUrl: string | null = null;
         setLoading(true);
 
-        const token = useAuthStore.getState().token;
-        fetch(`/api/files/${coverImageAssetId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-        })
+        apiFetch(`/api/files/${coverImageAssetId}`)
             .then((res) => {
                 if (!res.ok) throw new Error("fetch failed");
                 return res.blob();
@@ -66,10 +63,7 @@ export function CoverImage({
     const handleOpenVideo = async () => {
         if (!videoAssetId) return;
         try {
-            const token = useAuthStore.getState().token;
-            const res = await fetch(`/api/files/${videoAssetId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await apiFetch(`/api/files/${videoAssetId}`);
             if (!res.ok) return;
             const blob = await res.blob();
             const videoUrl = URL.createObjectURL(blob);

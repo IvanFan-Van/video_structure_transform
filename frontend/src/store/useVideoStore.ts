@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+import { apiAxios } from "../lib/api";
 import {
     UploadResult,
     CompressResult,
@@ -79,18 +80,10 @@ function parseApiError(
 }
 
 async function cancelTaskRequest(taskId: string) {
-    const token = useAuthStore.getState().token;
     try {
-        await axios.post(
-            `/api/task/${taskId}/cancel`,
-            {},
-            {
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-            },
-        );
+        await apiAxios.post(`/api/task/${taskId}/cancel`, {}, {
+            headers: { "Content-Type": "application/json" },
+        });
     } catch {
         // best-effort cancel
     }
@@ -144,6 +137,10 @@ async function subscribeTaskStream<TResult>(
             headers: { Authorization: `Bearer ${token ?? ""}` },
             signal,
             onopen: async (response) => {
+                if (response.status === 401) {
+                    useAuthStore.getState().logout();
+                    throw new Error("Unauthorized");
+                }
                 if (!response.ok) {
                     setNetworkError();
                     throw new Error("Bad response status");
@@ -372,7 +369,6 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     // ── Actions ────────────────────────────────────────────────────────────────
 
     uploadVideo: async (file) => {
-        const token = useAuthStore.getState().token;
         abortAllStreams();
 
         set({
@@ -413,11 +409,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         formData.append("file", file);
 
         try {
-            const res = await axios.post<ApiResponse<UploadResult>>(
+            const res = await apiAxios.post<ApiResponse<UploadResult>>(
                 "/api/upload",
                 formData,
                 {
-                    headers: { Authorization: `Bearer ${token}` },
                     onUploadProgress: (e) => {
                         if (e.total) {
                             set({
@@ -448,7 +443,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             let code = "NETWORK_ERROR";
             let details = NETWORK_ERROR_DETAILS;
 
-            if (axios.isAxiosError(error)) {
+            if (error instanceof AxiosError) {
                 const axiosError = error as AxiosError<ApiErrorResponse>;
                 if (axiosError.response) {
                     msg = axiosError.response.statusText;
@@ -489,13 +484,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
 
         try {
-            const res = await axios.post(
+            const res = await apiAxios.post(
                 "/api/compress",
                 { asset_id: uploadResult.asset_id, ...compressConfig },
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                 },
             );
@@ -580,13 +574,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
 
         try {
-            const res = await axios.post(
+            const res = await apiAxios.post(
                 "/api/analyze-script",
                 { asset_id: compressResult.asset_id },
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                 },
             );
@@ -688,13 +681,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
 
         try {
-            const res = await axios.post(
+            const res = await apiAxios.post(
                 "/api/analyze-audio",
                 { asset_id: compressResult.asset_id },
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                 },
             );
@@ -794,13 +786,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
 
         try {
-            const res = await axios.post(
+            const res = await apiAxios.post(
                 "/api/analyze-visual",
                 { asset_id: compressResult.asset_id },
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                 },
             );
@@ -915,13 +906,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
 
         try {
-            const res = await axios.post(
+            const res = await apiAxios.post(
                 "/api/split",
                 { asset_id: compressResult.asset_id, ...splitConfig },
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                 },
             );
@@ -1016,13 +1006,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         }));
 
         try {
-            const res = await axios.post(
+            const res = await apiAxios.post(
                 "/api/analyze-effect",
                 { asset_id: assetId },
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                 },
             );
@@ -1120,10 +1109,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             const effectIds = Object.values(effectTaskIds).filter(Boolean);
             if (effectIds.length > 0) body.effect_task_id = effectIds[0];
 
-            const res = await axios.post("/api/plan", body, {
+            const res = await apiAxios.post("/api/plan", body, {
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
                 },
             });
 
@@ -1208,10 +1196,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         const formData = new FormData();
         formData.append("file", file);
         try {
-            const res = await axios.post<ApiResponse<UploadResult>>(
+            const res = await apiAxios.post<ApiResponse<UploadResult>>(
                 "/api/upload",
                 formData,
-                { headers: { Authorization: `Bearer ${token}` } },
             );
             if (res.data.status === "success") {
                 return res.data.data.asset_id;
@@ -1237,13 +1224,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             const body: Record<string, string> = { fill_method: fillMethod };
             if (value !== undefined) body.value = value;
 
-            const res = await axios.patch<ApiResponse<SlotFillResult>>(
+            const res = await apiAxios.patch<ApiResponse<SlotFillResult>>(
                 `/api/plan/${planId}/slot/${slotId}`,
                 body,
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                 },
             );
@@ -1330,13 +1316,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
 
         try {
-            const res = await axios.post(
+            const res = await apiAxios.post(
                 `/api/plan/${planResult.plan_id}/generate`,
                 {},
                 {
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
                     },
                 },
             );
@@ -1390,13 +1375,8 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
             if (get().generateStatus === "success") {
                 try {
-                    const planRes = await axios.get(
+                    const planRes = await apiAxios.get(
                         `/api/task/${planResult.plan_id}/stream`,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                            },
-                        },
                     );
                     if (
                         planRes.data.status === "success" &&
@@ -1447,7 +1427,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         }));
     },
 
-    removeEffect: (segmentIndex, effectIndex) =>
+    removeEffect: (segmentIndex, effectIndex) => {
         set((s) => {
             const result = s.effectResults[segmentIndex];
             if (!result) return {};
@@ -1462,9 +1442,21 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     },
                 },
             };
-        }),
+        });
+        const { effectTaskIds, effectResults } = get();
+        const taskId = effectTaskIds[segmentIndex];
+        const result = effectResults[segmentIndex];
+        if (taskId && result) {
+            apiAxios
+                .patch("/api/effects", {
+                    task_id: taskId,
+                    effects: result.effects,
+                })
+                .catch(() => {});
+        }
+    },
 
-    addEffect: (segmentIndex, effect) =>
+    addEffect: (segmentIndex, effect) => {
         set((s) => {
             const result = s.effectResults[segmentIndex];
             if (!result) return {};
@@ -1477,7 +1469,19 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     },
                 },
             };
-        }),
+        });
+        const { effectTaskIds, effectResults } = get();
+        const taskId = effectTaskIds[segmentIndex];
+        const result = effectResults[segmentIndex];
+        if (taskId && result) {
+            apiAxios
+                .patch("/api/effects", {
+                    task_id: taskId,
+                    effects: result.effects,
+                })
+                .catch(() => {});
+        }
+    },
 
     resetAll: () => {
         abortAllStreams();

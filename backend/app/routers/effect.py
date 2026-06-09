@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
 
@@ -6,6 +6,8 @@ from app.database import get_session
 from app.deps import get_current_user
 from app.models import User
 from app.repositories import search_effects
+from app.schemas import UpdateEffectRequest
+from app.services.task import get_task_for_user
 
 router = APIRouter(tags=["effects"])
 
@@ -24,3 +26,32 @@ async def list_effects(
             for e in effects
         ],
     })
+
+
+@router.patch("/effects")
+async def update_effects(
+    req: UpdateEffectRequest,
+    current_user: User = Depends(get_current_user),
+):
+    task_info = get_task_for_user(req.task_id, current_user)
+
+    if task_info.type != "analyze-effect":
+        raise HTTPException(
+            status_code=400,
+            detail=f"任务类型为 {task_info.type}，仅 analyze-effect 可修改 effects",
+        )
+    if task_info.status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"任务状态为 {task_info.status}，仅 completed 可修改 effects",
+        )
+
+    task_info.result["effects"] = [ef.model_dump() for ef in req.effects]
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success",
+            "data": task_info.result["effects"],
+        },
+    )

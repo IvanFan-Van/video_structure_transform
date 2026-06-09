@@ -68,6 +68,7 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应 (202)](#成功响应-202-3)
     - [获取分析结果](#获取分析结果)
     - [任务完成后 result 结构](#任务完成后-result-结构)
+    - [result 字段说明](#result-字段说明)
     - [前端集成示例](#前端集成示例)
     - [错误响应](#错误响应-9)
   - [12. GET /files/{asset\_id} — 访问素材文件](#12-get-filesasset_id--访问素材文件)
@@ -88,29 +89,27 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应 (202)](#成功响应-202-5)
     - [响应字段说明](#响应字段说明-3)
     - [错误响应](#错误响应-12)
-  - [15. GET /effects — 查询特效库](#15-get-effects--查询特效库)
-    - [查询参数](#查询参数-1)
-    - [请求示例](#请求示例-11)
-    - [成功响应 (200)](#成功响应-200-3)
-    - [响应字段说明](#响应字段说明-4)
-    - [错误响应](#错误响应-13)
+  - [15. GET / PATCH /effects — 查询与编辑特效](#15-get--patch-effects--查询与编辑特效)
+    - [15.1 GET /effects — 查询特效库](#151-get-effects--查询特效库)
+    - [15.2 PATCH /effects — 校正任务特效](#152-patch-effects--校正任务特效)
   - [16. POST /plan — 生成视频模板](#16-post-plan--生成视频模板)
     - [请求参数](#请求参数-10)
-    - [请求示例](#请求示例-12)
+    - [请求示例](#请求示例-11)
     - [成功响应 (202)](#成功响应-202-6)
     - [通过 SSE / 轮询获取模板](#通过-sse--轮询获取模板)
-    - [错误响应](#错误响应-14)
+    - [错误响应](#错误响应-13)
   - [17. PATCH /plan/{plan\_id}/slot/{slot\_id} — 填充模板槽位](#17-patch-planplan_idslotslot_id--填充模板槽位)
     - [路径参数](#路径参数-4)
     - [请求参数](#请求参数-11)
     - [响应示例](#响应示例-1)
-    - [错误响应](#错误响应-15)
+    - [错误响应](#错误响应-14)
   - [18. POST /plan/{plan\_id}/generate — 批量 AI 生成槽位内容](#18-post-planplan_idgenerate--批量-ai-生成槽位内容)
     - [路径参数](#路径参数-5)
     - [成功响应 (202)](#成功响应-202-7)
     - [通过 SSE / 轮询获取结果](#通过-sse--轮询获取结果)
     - [生成逻辑](#生成逻辑)
-    - [错误响应](#错误响应-16)
+    - [错误响应](#错误响应-15)
+    - [错误响应](#错误响应-17)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
     - [服务端错误 (5xx) — 附带 `data.code` 和 `data.details`](#服务端错误-5xx--附带-datacode-和-datadetails)
@@ -1075,7 +1074,6 @@ curl -X POST http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/can
 | 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
 | 403 | `无权操作该任务` | 试图取消其他用户的任务 |
 | 404 | `任务 xxx 不存在` | task_id 不在注册表中 |
-
 ---
 
 ## 11. POST /analyze-audio — 异步音频分析
@@ -1527,7 +1525,9 @@ curl -X POST http://127.0.0.1:8000/analyze-effect \
 
 ---
 
-## 15. GET /effects — 查询特效库
+## 15. GET / PATCH /effects — 查询与编辑特效
+
+### 15.1 GET /effects — 查询特效库
 
 获取所有可用的视觉特效组件列表，支持模糊搜索。
 
@@ -1538,13 +1538,13 @@ curl -X POST http://127.0.0.1:8000/analyze-effect \
 
 > **数据来源**：`Effect` 表在服务启动时从 `components_description.json` 自动初始化（59 个 remocn 组件），后续通过此接口查询。
 
-### 查询参数
+#### 查询参数
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `q` | string | 否 | 模糊搜索关键词，匹配 name、category、description 三个字段。省略时返回全部 59 条 |
 
-### 请求示例
+#### 请求示例
 
 ```bash
 curl "http://127.0.0.1:8000/effects?q=blur" \
@@ -1556,7 +1556,7 @@ curl "http://127.0.0.1:8000/effects" \
   -H "Authorization: Bearer <token>"
 ```
 
-### 成功响应 (200)
+#### 成功响应 (200)
 
 ```json
 {
@@ -1576,7 +1576,7 @@ curl "http://127.0.0.1:8000/effects" \
 }
 ```
 
-### 响应字段说明
+#### 响应字段说明
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
@@ -1584,12 +1584,76 @@ curl "http://127.0.0.1:8000/effects" \
 | `category` | string | 分类：Typography / Core Primitives / Environment & Lighting / UI Blocks / Transitions / Compositions |
 | `description` | string | 中文功能描述 |
 
-### 错误响应
+#### 错误响应
 
 | HTTP 状态码 | message | 说明 |
 |---|---|---|
 | 401 | `未提供认证令牌` | 请求头缺少 Authorization |
 | 401 | `令牌已过期或无效` | JWT 解码失败 |
+
+### 15.2 PATCH /effects — 校正任务特效
+
+修改已完成 `/analyze-effect` 任务的 effects 列表。前端在查看 AI 分析结果后可删除误判或补充遗漏的特效，修正后的列表会被 `/plan` 端点消费。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `PATCH` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | `application/json` |
+
+> **约束**：只能修改 `type=analyze-effect` 且 `status=completed` 的任务。`task.result.effects` 被全量替换（不在新列表中的被删除，新增的在列表中）。修改直接在内存中生效，`observations` 字段不可修改。
+
+#### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `task_id` | string | **是** | `/analyze-effect` 返回的 task_id |
+| `effects` | array | **是** | 用户校正后的完整 effects 列表（**替换**原有列表） |
+
+`effects[]` 元素:
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `name` | string | **是** | 特效名称（不强制 59 白名单，用户可自由命名） |
+| `evidence` | string | **是** | 视频中观察到该特效的具体视觉证据 |
+
+#### 请求示例
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/effects \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_id": "uuid-of-analyze-effect-task",
+    "effects": [
+      {"name": "BlurReveal", "evidence": "文字从模糊到清晰"},
+      {"name": "Typewriter", "evidence": "逐字出现效果"},
+      {"name": "ShimmerSweep", "evidence": "光带扫过文字"}
+    ]
+  }'
+```
+
+#### 成功响应 (200)
+
+```json
+{
+  "status": "success",
+  "data": [
+    {"name": "BlurReveal", "evidence": "文字从模糊到清晰"},
+    {"name": "Typewriter", "evidence": "逐字出现效果"},
+    {"name": "ShimmerSweep", "evidence": "光带扫过文字"}
+  ]
+}
+```
+
+#### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 400 | `任务类型为 xxx，仅 analyze-effect 可修改 effects` | task_id 对应的不是特效分析任务 |
+| 400 | `任务状态为 xxx，仅 completed 可修改 effects` | 任务尚未完成或已失败 |
+
+> 其余认证/权限错误与 `GET /task/{task_id}` 一致。
 
 ---
 

@@ -88,8 +88,11 @@ function App() {
         return () => window.removeEventListener("keydown", onKey);
     }, [clearSelection]);
 
-    const { isSelecting, rect: selRect, onMouseDown: onBoxMouseDown } =
-        useBoxSelect(zoom, panX, panY, positions, setSelection);
+    const {
+        isSelecting,
+        rect: selRect,
+        onMouseDown: onBoxMouseDown,
+    } = useBoxSelect(zoom, panX, panY, positions, setSelection);
 
     const [offset, setOffset] = useState(60);
     useEffect(() => {
@@ -208,115 +211,112 @@ function App() {
                     ? Guide
                 </button>
                 {user && (
-                    <div
-                        ref={dropdownRef}
-                        style={{ position: "relative" }}
-                    >
-                    <button
-                        onClick={() => setDropdownOpen(!dropdownOpen)}
-                        style={{
-                            fontSize: "10px",
-                            fontFamily: "inherit",
-                            color: "#555",
-                            background: "#fff",
-                            border: "1px solid #e0e0e0",
-                            borderRadius: "20px",
-                            padding: "5px 14px",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                        }}
-                    >
-                        <span
+                    <div ref={dropdownRef} style={{ position: "relative" }}>
+                        <button
+                            onClick={() => setDropdownOpen(!dropdownOpen)}
                             style={{
-                                maxWidth: "180px",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                            }}
-                        >
-                            {user.email}
-                        </span>
-                        <span style={{ fontSize: "8px", color: "#bbb" }}>
-                            ▼
-                        </span>
-                    </button>
-                    {dropdownOpen && (
-                        <div
-                            style={{
-                                position: "absolute",
-                                top: "110%",
-                                right: 0,
+                                fontSize: "10px",
+                                fontFamily: "inherit",
+                                color: "#555",
                                 background: "#fff",
-                                border: "1px solid #e8e8e8",
-                                borderRadius: "6px",
-                                boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                                overflow: "hidden",
-                                minWidth: "120px",
+                                border: "1px solid #e0e0e0",
+                                borderRadius: "20px",
+                                padding: "5px 14px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                             }}
                         >
-                            <button
-                                onClick={() => {
-                                    savePreset();
-                                    setToast("Layout saved");
-                                    setDropdownOpen(false);
-                                }}
+                            <span
                                 style={{
-                                    width: "100%",
-                                    padding: "8px 16px",
-                                    textAlign: "left",
-                                    fontSize: "10px",
-                                    fontFamily: "inherit",
-                                    color: "#666",
-                                    background: "transparent",
-                                    border: "none",
-                                    cursor: "pointer",
+                                    maxWidth: "180px",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
                                 }}
-                                onMouseEnter={(e) =>
-                                    (e.currentTarget.style.background =
-                                        "#f5f5f5")
-                                }
-                                onMouseLeave={(e) =>
-                                    (e.currentTarget.style.background =
-                                        "transparent")
-                                }
                             >
-                                Save layout
-                            </button>
-                            <button
-                                onClick={() => {
-                                    logout();
-                                    setDropdownOpen(false);
-                                    navigate("/login");
-                                }}
+                                {user.email}
+                            </span>
+                            <span style={{ fontSize: "8px", color: "#bbb" }}>
+                                ▼
+                            </span>
+                        </button>
+                        {dropdownOpen && (
+                            <div
                                 style={{
-                                    width: "100%",
-                                    padding: "8px 16px",
-                                    textAlign: "left",
-                                    fontSize: "10px",
-                                    fontFamily: "inherit",
-                                    color: "#666",
-                                    background: "transparent",
-                                    border: "none",
-                                    cursor: "pointer",
+                                    position: "absolute",
+                                    top: "110%",
+                                    right: 0,
+                                    background: "#fff",
+                                    border: "1px solid #e8e8e8",
+                                    borderRadius: "6px",
+                                    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                                    overflow: "hidden",
+                                    minWidth: "120px",
                                 }}
-                                onMouseEnter={(e) =>
-                                    (e.currentTarget.style.background =
-                                        "#f5f5f5")
-                                }
-                                onMouseLeave={(e) =>
-                                    (e.currentTarget.style.background =
-                                        "transparent")
-                                }
                             >
-                                Log out
-                            </button>
-                        </div>
-                    )}
-                </div>
-            )}
+                                <button
+                                    onClick={() => {
+                                        savePreset();
+                                        setToast("Layout saved");
+                                        setDropdownOpen(false);
+                                    }}
+                                    style={{
+                                        width: "100%",
+                                        padding: "8px 16px",
+                                        textAlign: "left",
+                                        fontSize: "10px",
+                                        fontFamily: "inherit",
+                                        color: "#666",
+                                        background: "transparent",
+                                        border: "none",
+                                        cursor: "pointer",
+                                    }}
+                                    onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background =
+                                            "#f5f5f5")
+                                    }
+                                    onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background =
+                                            "transparent")
+                                    }
+                                >
+                                    Save layout
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        logout();
+                                        setDropdownOpen(false);
+                                        navigate("/login");
+                                    }}
+                                    style={{
+                                        width: "100%",
+                                        padding: "8px 16px",
+                                        textAlign: "left",
+                                        fontSize: "10px",
+                                        fontFamily: "inherit",
+                                        color: "#666",
+                                        background: "transparent",
+                                        border: "none",
+                                        cursor: "pointer",
+                                    }}
+                                    onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background =
+                                            "#f5f5f5")
+                                    }
+                                    onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background =
+                                            "transparent")
+                                    }
+                                >
+                                    Log out
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div
@@ -334,7 +334,8 @@ function App() {
                 <div>Ctrl + Scroll &mdash; Zoom</div>
                 <div>Drag background &mdash; Pan</div>
                 <div>Drag nodes &mdash; Move</div>
-                <div>Ctrl + Drag &mdash; Box select</div>
+                <div>Ctrl + Drag background &mdash; Box select nodes</div>
+                <div>Escape &mdash; Clear selection</div>
             </div>
 
             <ZoomContext.Provider value={zoom}>

@@ -1,7 +1,7 @@
 from .analyze import AnalyzeRequest
 from .auth import LoginRequest, RegisterRequest
 from .compress import CompressRequest
-from .effect import EffectAnalysisResult, EffectMatch
+from .effect import EffectAnalysisResult, EffectMatch, UpdateEffectRequest
 from .plan import (
     FillSlotRequest,
     PlanOutput,
@@ -29,6 +29,7 @@ __all__ = [
     "SplitResult",
     "TextDensityPoint",
     "TextElement",
+    "UpdateEffectRequest",
     "VideoStructure",
     "VideoTemplate",
     "VideoVisualAnalysis",

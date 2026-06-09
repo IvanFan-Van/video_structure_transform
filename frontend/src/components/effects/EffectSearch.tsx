@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useAuthStore } from "../../store/useAuthStore";
-import axios from "axios";
+import { apiAxios } from "../../lib/api";
 
 interface EffectInfo {
     name: string;
@@ -47,12 +46,9 @@ export function EffectSearch({ open, onClose, onSelect, triggerRef }: Props) {
         setQuery("");
         setTimeout(() => inputRef.current?.focus(), 0);
 
-        const token = useAuthStore.getState().token;
         setLoading(true);
-        axios
-            .get("/api/effects", {
-                headers: { Authorization: `Bearer ${token}` },
-            })
+        apiAxios
+            .get("/api/effects")
             .then((res) => {
                 if (res.data.status === "success") {
                     const list = res.data.data ?? [];
