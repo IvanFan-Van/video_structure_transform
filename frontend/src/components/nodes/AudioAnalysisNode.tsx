@@ -1,5 +1,6 @@
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
+import { Tooltip } from "../ui/Tooltip";
 import { EnergyChart } from "../charts/EnergyChart";
 import { CentroidChart } from "../charts/CentroidChart";
 import { FluxChart } from "../charts/FluxChart";
@@ -37,6 +38,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
             accent="#f59e0b"
             error={hasError}
             id="audio_analysis"
+            tourId="audio_analysis"
             onPosChange={onPosChange}
         >
             <div
@@ -81,26 +83,31 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         value: audioGlobal.estimated_bpm.toFixed(
                                             0,
                                         ),
+                                        tip: "每分钟节拍数，反映音乐速度",
                                     },
                                     {
                                         label: "GENRE",
                                         value: audioGlobal.genre,
+                                        tip: "AI 识别的音乐流派",
                                     },
                                     {
                                         label: "BRIGHT",
                                         value: `${(audioGlobal.overall_brightness_hz / 1000).toFixed(1)}kHz`,
+                                        tip: "频谱亮度质心频率，值越高音色越亮",
                                     },
                                     {
                                         label: "DURATION",
                                         value: `${audioGlobal.duration?.toFixed(1)}s`,
+                                        tip: "音频总时长",
                                     },
                                     {
                                         label: "RANGE",
                                         value: (
                                             audioGlobal.dynamic_range * 100
                                         ).toFixed(1),
+                                        tip: "动态范围，音量变化的幅度",
                                     },
-                                ].map(({ label, value }) => (
+                                ].map(({ label, value, tip }) => (
                                     <div
                                         key={label}
                                         style={{
@@ -109,15 +116,20 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                             padding: "5px 7px",
                                         }}
                                     >
+                                        <Tooltip tip={tip} inline>
                                         <div
                                             style={{
                                                 fontSize: "7px",
                                                 color: "#bbb",
                                                 letterSpacing: "1px",
+                                                cursor: "help",
+                                                borderBottom: "1px dotted #ccc",
+                                                display: "inline-block",
                                             }}
                                         >
                                             {label}
                                         </div>
+                                        </Tooltip>
                                         <div
                                             style={{
                                                 fontWeight: 700,
@@ -147,9 +159,12 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         color: "#bbb",
                                         letterSpacing: "1px",
                                         marginBottom: "2px",
+                                        cursor: "help",
+                                        borderBottom: "1px dotted #ccc",
+                                        display: "inline-block",
                                     }}
                                 >
-                                    ENERGY
+                                    <Tooltip tip="RMS 能量随时间变化曲线，反映音量起伏" inline>ENERGY</Tooltip>
                                 </div>
                                 <div
                                     style={{
@@ -174,9 +189,12 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         color: "#bbb",
                                         letterSpacing: "1px",
                                         marginBottom: "2px",
+                                        cursor: "help",
+                                        borderBottom: "1px dotted #ccc",
+                                        display: "inline-block",
                                     }}
                                 >
-                                    BRIGHTNESS
+                                    <Tooltip tip="频谱质心随时间变化，反映音色明亮度分布" inline>BRIGHTNESS</Tooltip>
                                 </div>
                                 <div
                                     style={{
@@ -195,7 +213,7 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                 </div>
                             </div>
 
-                            <div>
+                             <div>
                                 <div
                                     style={{
                                         fontSize: "7px",
@@ -203,9 +221,12 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         color: "#bbb",
                                         letterSpacing: "1px",
                                         marginBottom: "2px",
+                                        cursor: "help",
+                                        borderBottom: "1px dotted #ccc",
+                                        display: "inline-block",
                                     }}
                                 >
-                                    FLUX
+                                    <Tooltip tip="频谱通量，相邻帧频谱差异，反映音频变化剧烈程度" inline>FLUX</Tooltip>
                                 </div>
                                 <div
                                     style={{
@@ -232,9 +253,12 @@ export function AudioAnalysisNode({ x, y, onPosChange }: Props) {
                                         color: "#bbb",
                                         letterSpacing: "1px",
                                         marginBottom: "2px",
+                                        cursor: "help",
+                                        borderBottom: "1px dotted #ccc",
+                                        display: "inline-block",
                                     }}
                                 >
-                                    ONSET
+                                    <Tooltip tip="音符起始检测，标记每个音符/节拍的开始时刻" inline>ONSET</Tooltip>
                                 </div>
                                 <div
                                     style={{

@@ -3,6 +3,7 @@ import { BaseNode } from "../ui/BaseNode";
 import { ActionButton } from "../ui/ActionButton";
 import { StatusHeader } from "../ui/StatusHeader";
 import { AccordionItem } from "../ui/AccordionItem";
+import { Tooltip } from "../ui/Tooltip";
 import { useVideoStore } from "../../store/useVideoStore";
 import { useNodeError } from "../../hooks/useNodeError";
 import { NodeStatus } from "../../store/types";
@@ -70,6 +71,7 @@ export function PlanNode({ x, y, onPosChange }: Props) {
             accent="#8b5cf6"
             error={hasError}
             id={NODE_ID}
+            tourId="plan"
             onPosChange={onPosChange}
         >
             <div
@@ -112,6 +114,11 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                 {/* ── Idle state ── */}
                 {(planStatus === "idle" || planStatus === "cancelled") && (
                     <>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <Tooltip tip="描述你的视频主题、风格和需求，AI 会据此生成包含叙事结构和分镜的完整计划" inline>
+                                <span style={{ fontSize: "8px", color: "#8b5cf6", cursor: "help", borderBottom: "1px dotted #c4b5fd" }}>Brief ?</span>
+                            </Tooltip>
+                        </div>
                         <textarea
                             value={userBrief}
                             onChange={(e) => setUserBrief(e.target.value)}
@@ -137,7 +144,10 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                                 (e.currentTarget.style.borderColor = "#e0e0e0")
                             }
                         />
-                        <div style={{ display: "flex", gap: "8px" }}>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                            <Tooltip tip="目标视频时长（秒），留空由 AI 自动决定" inline>
+                                <span style={{ fontSize: "8px", color: "#8b5cf6", cursor: "help", borderBottom: "1px dotted #c4b5fd", whiteSpace: "nowrap" }}>Duration ?</span>
+                            </Tooltip>
                             <input
                                 type="number"
                                 value={targetDuration}

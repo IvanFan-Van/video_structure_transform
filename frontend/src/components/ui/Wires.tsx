@@ -28,7 +28,6 @@ export function Wires({ positions, wires, zoom, panX, panY }: WiresProps) {
                 width: "100vw",
                 height: "100vh",
                 pointerEvents: "none",
-                // zIndex: 1,
             }}
         >
             {wires.map(([from, to], i) => {
@@ -36,7 +35,6 @@ export function Wires({ positions, wires, zoom, panX, panY }: WiresProps) {
                     b = positions[to];
                 if (!a || !b) return null;
 
-                // 仍在逻辑空间计算哪条边连接
                 const aCx = a.x + a.w / 2,
                     aCy = a.y + a.h / 2;
                 const bCx = b.x + b.w / 2,
@@ -83,6 +81,26 @@ export function Wires({ positions, wires, zoom, panX, panY }: WiresProps) {
                     d = `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`;
                 }
 
+                // Bezier midpoint (t=0.5) + tangent direction
+                let midX: number, midY: number, tangentAngle: number;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    midX = mx;
+                    midY = (y1 + y2) / 2;
+                    tangentAngle = Math.atan2(1.5 * (y2 - y1), 0.75 * (x2 - x1));
+                } else {
+                    midX = (x1 + x2) / 2;
+                    midY = my;
+                    tangentAngle = Math.atan2(0.75 * (y2 - y1), 1.5 * (x2 - x1));
+                }
+
+                const arrW = 7 * zoom;
+                const arrH = 4 * zoom;
+                const ta = tangentAngle;
+                const p1x = midX - Math.cos(ta) * arrW + Math.sin(ta) * arrH;
+                const p1y = midY - Math.sin(ta) * arrW - Math.cos(ta) * arrH;
+                const p2x = midX - Math.cos(ta) * arrW - Math.sin(ta) * arrH;
+                const p2y = midY - Math.sin(ta) * arrW + Math.cos(ta) * arrH;
+
                 return (
                     <g key={i}>
                         <path
@@ -92,7 +110,10 @@ export function Wires({ positions, wires, zoom, panX, panY }: WiresProps) {
                             strokeWidth={1.5 * zoom}
                             strokeDasharray="6,4"
                         />
-                        <circle cx={x2} cy={y2} r={3 * zoom} fill="#d4d4d4" />
+                        <polygon
+                            points={`${midX},${midY} ${p1x},${p1y} ${p2x},${p2y}`}
+                            fill="#d4d4d4"
+                        />
                         <circle
                             cx={x1}
                             cy={y1}
@@ -100,6 +121,12 @@ export function Wires({ positions, wires, zoom, panX, panY }: WiresProps) {
                             fill="none"
                             stroke="#d4d4d4"
                             strokeWidth="1"
+                        />
+                        <circle
+                            cx={x2}
+                            cy={y2}
+                            r={2 * zoom}
+                            fill="#d4d4d4"
                         />
                     </g>
                 );

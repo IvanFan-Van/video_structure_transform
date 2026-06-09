@@ -1,5 +1,6 @@
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
+import { Tooltip } from "../ui/Tooltip";
 import { NodeStatus } from "../../store/types";
 import { useNodeError } from "../../hooks/useNodeError";
 import { ActionButton } from "../ui/ActionButton";
@@ -17,9 +18,9 @@ interface Props {
 }
 
 const TODO_ITEMS = [
-    { key: "script", label: "Analyze Script Structure" },
-    { key: "bgm", label: "Analyze BGM Features" },
-    { key: "features", label: "Analyze Video Features" },
+    { key: "script", label: "Analyze Script Structure", tip: "提取字幕/台词文本，分析叙事结构（Hook/Setup/Story/Insight/CTA/Outro）" },
+    { key: "bgm", label: "Analyze BGM Features", tip: "分析背景音乐的 BPM、流派、频谱亮度、动态范围等特征" },
+    { key: "features", label: "Analyze Video Features", tip: "分析镜头节奏、相机运动、转场方式和画面文字元素" },
 ] as const;
 
 const STATUS_CONFIG: Record<
@@ -133,6 +134,7 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
             accent="#7c3aed"
             error={hasError}
             id="extracting"
+            tourId="extracting"
             onPosChange={onPosChange}
         >
             <div
@@ -232,9 +234,11 @@ export function ExtractingNode({ x, y, onPosChange }: Props) {
                                                 status === "loading"
                                                     ? 600
                                                     : 400,
+                                            cursor: "help",
+                                            borderBottom: "1px dotted #ccc",
                                         }}
                                     >
-                                        {item.label}
+                                        <Tooltip tip={item.tip} inline>{item.label}</Tooltip>
                                     </span>
                                     <span
                                         style={{

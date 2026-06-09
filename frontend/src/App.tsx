@@ -19,6 +19,8 @@ import { EffectAnalysisNode } from "./components/nodes/EffectAnalysisNode";
 import { PlanNode } from "./components/nodes/PlanNode";
 import { SlotNode } from "./components/nodes/SlotNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
+import { TourGuide } from "./components/ui/TourGuide";
+import { useTour } from "./hooks/useTour";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
 import { ZoomContext } from "./context/ZoomContext";
@@ -38,6 +40,8 @@ function App() {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [toast, setToast] = useState<string | null>(null);
+    const [showTour, setShowTour] = useState(false);
+    const tour = useTour();
 
     useEffect(() => {
         initWorker();
@@ -131,16 +135,39 @@ function App() {
             >
                 VIRAL STYLE
             </div>
-            {user && (
-                <div
-                    ref={dropdownRef}
+            <div
+                style={{
+                    position: "fixed",
+                    top: 12,
+                    right: 20,
+                    zIndex: 100,
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "center",
+                }}
+            >
+                <button
+                    onClick={() => setShowTour(true)}
+                    title="Start guided tour"
                     style={{
-                        position: "fixed",
-                        top: 12,
-                        right: 20,
-                        zIndex: 100,
+                        fontSize: "10px",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        color: "#777",
+                        background: "#fff",
+                        border: "1px solid #e0e0e0",
+                        borderRadius: "20px",
+                        padding: "5px 14px",
+                        cursor: "pointer",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                     }}
                 >
+                    ? Guide
+                </button>
+                {user && (
+                    <div
+                        ref={dropdownRef}
+                        style={{ position: "relative" }}
+                    >
                     <button
                         onClick={() => setDropdownOpen(!dropdownOpen)}
                         style={{
@@ -246,6 +273,7 @@ function App() {
                     )}
                 </div>
             )}
+            </div>
 
             <div
                 style={{
@@ -393,6 +421,15 @@ function App() {
                 </div>
             )}
             <NodeErrorToast />
+            {showTour && (
+                <TourGuide
+                    onClose={() => {
+                        setShowTour(false);
+                        tour.markSeen();
+                    }}
+                    planResultReady={!!planResult?.segments?.length}
+                />
+            )}
         </div>
     );
 }

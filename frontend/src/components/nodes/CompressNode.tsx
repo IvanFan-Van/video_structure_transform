@@ -4,6 +4,7 @@ import { useNodeError } from "../../hooks/useNodeError";
 import { ActionButton } from "../ui/ActionButton";
 import { CoverImage } from "../ui/CoverImage";
 import { StatusHeader } from "../ui/StatusHeader";
+import { Tooltip } from "../ui/Tooltip";
 import { fmtSize } from "../../utils";
 
 interface Props {
@@ -66,12 +67,14 @@ export function CompressNode({ x, y, onPosChange }: Props) {
             accent="#06b6d4"
             error={hasError}
             id="compress"
+            tourId="compress"
             onPosChange={onPosChange}
         >
             <div
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
             >
                 {!isCompressing && !compressResult && (
+                    <Tooltip tip="使用 Compress Config 中的参数压缩视频，减小文件体积便于后续处理">
                     <ActionButton
                         variant="primary"
                         label="▶ COMPRESS"
@@ -79,6 +82,7 @@ export function CompressNode({ x, y, onPosChange }: Props) {
                         accent="#06b6d4"
                         onClick={startCompress}
                     />
+                    </Tooltip>
                 )}
                 {isCompressing && (
                     <>

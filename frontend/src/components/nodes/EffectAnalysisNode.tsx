@@ -4,6 +4,7 @@ import { CoverImage } from "../ui/CoverImage";
 import { ActionButton } from "../ui/ActionButton";
 import { StatusHeader } from "../ui/StatusHeader";
 import { AccordionItem } from "../ui/AccordionItem";
+import { Tooltip } from "../ui/Tooltip";
 import { useVideoStore } from "../../store/useVideoStore";
 import { useNodeError } from "../../hooks/useNodeError";
 import { SplitSegment, SplitClipAsset } from "../../store/types";
@@ -51,6 +52,7 @@ export function EffectAnalysisNode({
             accent="#f97316"
             error={hasError}
             id={nodeId}
+            tourId={nodeId}
             onPosChange={onPosChange}
         >
             <div
@@ -169,6 +171,7 @@ export function EffectAnalysisNode({
                     }}
                 >
                     {status === "idle" && (
+                        <Tooltip tip="AI 分析该片段中的视觉特效和编辑手法（如转场、滤镜、文字动画等）">
                         <ActionButton
                             variant="muted"
                             label="▶ Analyze Effects"
@@ -177,6 +180,7 @@ export function EffectAnalysisNode({
                                 analyzeEffect(clip.asset_id, index)
                             }
                         />
+                        </Tooltip>
                     )}
 
                     {status === "loading" && (

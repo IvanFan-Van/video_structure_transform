@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
 import { CoverImage } from "../ui/CoverImage";
+import { Tooltip } from "../ui/Tooltip";
 import { useNodeError } from "../../hooks/useNodeError";
 import { fmtSize } from "../../utils";
 
@@ -43,6 +44,7 @@ export function ReferenceNode({ x, y, onPosChange }: Props) {
             accent="#6366f1"
             error={hasError}
             id="reference"
+            tourId="reference"
             onPosChange={onPosChange}
         >
             <div
@@ -58,6 +60,7 @@ export function ReferenceNode({ x, y, onPosChange }: Props) {
                         if (f) handleFile(f);
                     }}
                 />
+                <Tooltip tip="拖拽视频文件到此处或点击选择。支持 .mp4 .mov .avi .mkv .webm .flv .wmv 格式">
                 <div
                     onDragOver={(e) => {
                         e.preventDefault();
@@ -89,6 +92,7 @@ export function ReferenceNode({ x, y, onPosChange }: Props) {
                         .mp4 .mov .avi .mkv .webm
                     </div>
                 </div>
+                </Tooltip>
                 {uploadResult && (
                     <CoverImage
                         coverImageAssetId={uploadResult.cover_image_asset_id}

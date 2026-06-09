@@ -3,6 +3,7 @@ import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
 import { StatusHeader } from "../ui/StatusHeader";
 import { AccordionItem } from "../ui/AccordionItem";
+import { Tooltip } from "../ui/Tooltip";
 import { VisualShot, VisualTextElement } from "../../store/types";
 
 interface Props {
@@ -99,6 +100,7 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
             active={hasData}
             accent={accent}
             id="visual_analysis"
+            tourId="visual_analysis"
             onPosChange={onPosChange}
         >
             <div
@@ -148,15 +150,19 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                     alignItems: "center",
                                 }}
                             >
+                                <Tooltip tip="镜头切换节奏：Fast(快) Medium(中) Slow(慢)，基于平均镜头时长判断" inline>
                                 <span
                                     style={{
                                         fontSize: "7px",
                                         color: "#bbb",
                                         letterSpacing: "1px",
+                                        cursor: "help",
+                                        borderBottom: "1px dotted #ccc",
                                     }}
                                 >
                                     PACE
                                 </span>
+                                </Tooltip>
                                 <span
                                     style={{
                                         fontWeight: 700,
@@ -179,15 +185,19 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                     alignItems: "center",
                                 }}
                             >
+                                <Tooltip tip="平均每个镜头的时长（秒），用于判断剪辑节奏" inline>
                                 <span
                                     style={{
                                         fontSize: "7px",
                                         color: "#bbb",
                                         letterSpacing: "1px",
+                                        cursor: "help",
+                                        borderBottom: "1px dotted #ccc",
                                     }}
                                 >
                                     AVG SHOT
                                 </span>
+                                </Tooltip>
                                 <span
                                     style={{
                                         fontWeight: 700,

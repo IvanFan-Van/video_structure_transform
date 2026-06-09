@@ -1,6 +1,7 @@
 import { BaseNode } from "../ui/BaseNode";
 import { ActionButton } from "../ui/ActionButton";
 import { StatusHeader } from "../ui/StatusHeader";
+import { Tooltip } from "../ui/Tooltip";
 import { useVideoStore } from "../../store/useVideoStore";
 import { useNodeError } from "../../hooks/useNodeError";
 
@@ -51,6 +52,7 @@ export function SplitNode({ x, y, onPosChange }: Props) {
             accent="#f97316"
             error={hasError}
             id="split"
+            tourId="split"
             onPosChange={onPosChange}
         >
             <div
@@ -85,7 +87,9 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                 color: "#555",
                             }}
                         >
-                            <span>AI Detection</span>
+                            <Tooltip tip="开启后使用 AI 模型智能检测场景切换；关闭则使用传统算法（基于帧差异）" inline>
+                                <span style={{ cursor: "help", borderBottom: "1px dotted #ccc" }}>AI Detection</span>
+                            </Tooltip>
                             <label
                                 style={{
                                     position: "relative",
@@ -153,7 +157,9 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                         color: "#555",
                                     }}
                                 >
-                                    <span>Threshold</span>
+                                    <Tooltip tip="检测敏感度。值越低越敏感，产生的片段更多更细" inline>
+                                        <span style={{ cursor: "help", borderBottom: "1px dotted #ccc" }}>Threshold</span>
+                                    </Tooltip>
                                     <span
                                         style={{
                                             color: "#999",
@@ -191,7 +197,9 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                 color: "#555",
                             }}
                         >
-                            <span>Min Scene Len</span>
+                            <Tooltip tip="最短片段帧数。低于此长度的相邻片段会被合并，避免碎片化" inline>
+                                <span style={{ cursor: "help", borderBottom: "1px dotted #ccc" }}>Min Scene Len</span>
+                            </Tooltip>
                             <span style={{ color: "#999", fontSize: "9px" }}>
                                 {splitConfig.min_scene_len} frames
                             </span>

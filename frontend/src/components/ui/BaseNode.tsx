@@ -11,6 +11,7 @@ interface BaseNodeProps {
     accent?: string;
     error?: boolean;
     id: string;
+    tourId?: string;
     onPosChange: (
         id: string,
         x: number,
@@ -30,6 +31,7 @@ export function BaseNode({
     accent,
     error,
     id,
+    tourId,
     onPosChange,
 }: BaseNodeProps) {
     const { p, onMouseDown, ref } = useDraggable(x, y, id, onPosChange);
@@ -49,6 +51,7 @@ export function BaseNode({
         <div
             ref={ref}
             onMouseDown={onMouseDown}
+            data-tour={tourId}
             style={{
                 position: "absolute",
                 left: p.x,

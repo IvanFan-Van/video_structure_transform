@@ -3,6 +3,7 @@ import { useVideoStore } from "../../store/useVideoStore";
 import { BaseNode } from "../ui/BaseNode";
 import { StatusHeader } from "../ui/StatusHeader";
 import { AccordionItem } from "../ui/AccordionItem";
+import { Tooltip } from "../ui/Tooltip";
 import { TranscriptResult, TranscriptStage } from "../../store/types";
 
 interface Props {
@@ -96,6 +97,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
             active={scriptStatus !== "idle" && scriptStatus !== "cancelled"}
             accent="#10b981"
             id="script_analysis"
+            tourId="script_analysis"
             onPosChange={onPosChange}
         >
             <div
@@ -218,6 +220,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             "center",
                                                     }}
                                                 >
+                                                    <Tooltip tip="该阶段的情感基调：积极/消极/中性/悬疑" inline>
                                                     <span
                                                         style={{
                                                             fontSize:
@@ -226,10 +229,13 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             letterSpacing:
                                                                 "1px",
                                                             color: "#bbb",
+                                                            cursor: "help",
+                                                            borderBottom: "1px dotted #ccc",
                                                         }}
                                                     >
                                                         EMOTIONAL TONE
                                                     </span>
+                                                    </Tooltip>
                                                     <span
                                                         style={{
                                                             fontSize:
@@ -255,6 +261,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             "center",
                                                     }}
                                                 >
+                                                    <Tooltip tip="开场钩子类型：痛点/悬念/结果前置/反直觉/数字冲击/身份锁定/场景沉浸/对比反转" inline>
                                                     <span
                                                         style={{
                                                             fontSize:
@@ -263,10 +270,13 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             letterSpacing:
                                                                 "1px",
                                                             color: "#bbb",
+                                                            cursor: "help",
+                                                            borderBottom: "1px dotted #ccc",
                                                         }}
                                                     >
                                                         HOOK TYPE
                                                     </span>
+                                                    </Tooltip>
                                                     <span
                                                         style={{
                                                             fontSize:
@@ -292,6 +302,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             "center",
                                                     }}
                                                 >
+                                                    <Tooltip tip="行动号召类型：关注/点赞收藏/评论/购买/优惠钩子/私信引流/分享传播/挑战" inline>
                                                     <span
                                                         style={{
                                                             fontSize:
@@ -300,10 +311,13 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             letterSpacing:
                                                                 "1px",
                                                             color: "#bbb",
+                                                            cursor: "help",
+                                                            borderBottom: "1px dotted #ccc",
                                                         }}
                                                     >
                                                         CTA TYPE
                                                     </span>
+                                                    </Tooltip>
                                                     <span
                                                         style={{
                                                             fontSize:

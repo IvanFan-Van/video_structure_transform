@@ -3,6 +3,7 @@ import { BaseNode } from "../ui/BaseNode";
 import { ActionButton } from "../ui/ActionButton";
 import { StatusHeader } from "../ui/StatusHeader";
 import { AccordionItem } from "../ui/AccordionItem";
+import { Tooltip } from "../ui/Tooltip";
 import { useVideoStore } from "../../store/useVideoStore";
 import { useNodeError } from "../../hooks/useNodeError";
 
@@ -14,6 +15,13 @@ interface Props {
 }
 
 const TEXT_SLOT_TYPES = new Set(["visual_text", "narration"]);
+
+const SLOT_TIPS: Record<string, string> = {
+    visual_text: "画面文字/字幕内容，会直接显示在视频画面上",
+    narration: "旁白/配音文本，由 TTS 引擎转换为语音",
+    visual_asset: "画面素材（视频片段/图片），直接放入时间线对应位置",
+    audio_asset: "音频素材（BGM/音效），叠加到对应时间段",
+};
 
 function formatTime(seconds: number) {
     const m = Math.floor(seconds / 60);
@@ -70,6 +78,7 @@ export function SlotNode({ x, y, segmentIndex, onPosChange }: Props) {
             accent="#ec4899"
             error={hasError}
             id={nodeId}
+            tourId={nodeId}
             onPosChange={onPosChange}
         >
             <input
@@ -181,18 +190,30 @@ export function SlotNode({ x, y, segmentIndex, onPosChange }: Props) {
                                             alignItems: "center",
                                         }}
                                     >
-                                        <span
-                                            style={{
-                                                fontSize: "8px",
-                                                fontWeight: 600,
-                                                color: "#666",
-                                                padding: "1px 6px",
-                                                background: "#f0f0f0",
-                                                borderRadius: "3px",
-                                            }}
-                                        >
-                                            {slot.slot_type}
-                                        </span>
+                                        {(() => {
+                                            let slotTip = SLOT_TIPS[slot.slot_type];
+                                            if (!slotTip) {
+                                                const s = slot.slot_type || "";
+                                                slotTip = s.includes("visual") || s.includes("image") ? "视觉素材槽位" : s.includes("audio") || s.includes("bgm") ? "音频素材槽位" : "";
+                                            }
+                                            return (
+                                        <Tooltip tip={slotTip || ""} inline>
+                                            <span
+                                                style={{
+                                                    fontSize: "8px",
+                                                    fontWeight: 600,
+                                                    color: "#666",
+                                                    padding: "1px 6px",
+                                                    background: "#f0f0f0",
+                                                    borderRadius: "3px",
+                                                    cursor: slotTip ? "help" : undefined,
+                                                    borderBottom: slotTip ? "1px dotted #ccc" : undefined,
+                                                }}
+                                            >
+                                                {slot.slot_type}
+                                            </span>
+                                        </Tooltip>
+                                            );})()}
                                         <span
                                             style={{
                                                 fontSize: "7px",
