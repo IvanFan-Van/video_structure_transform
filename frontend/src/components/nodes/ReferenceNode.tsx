@@ -60,7 +60,7 @@ export function ReferenceNode({ x, y, onPosChange }: Props) {
                         if (f) handleFile(f);
                     }}
                 />
-                <Tooltip tip="拖拽视频文件到此处或点击选择。支持 .mp4 .mov .avi .mkv .webm .flv .wmv 格式">
+                <Tooltip tip={{ en: "Drag and drop a video file here or click to select. Supports .mp4 .mov .avi .mkv .webm .flv .wmv formats", zh: "拖拽视频文件到此处或点击选择。支持 .mp4 .mov .avi .mkv .webm .flv .wmv 格式" }}>
                 <div
                     onDragOver={(e) => {
                         e.preventDefault();

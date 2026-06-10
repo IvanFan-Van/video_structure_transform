@@ -220,7 +220,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             "center",
                                                     }}
                                                 >
-                                                    <Tooltip tip="该阶段的情感基调：积极/消极/中性/悬疑" inline>
+                                                    <Tooltip tip={{ en: "Emotional tone of this stage: positive/negative/neutral/suspenseful", zh: "该阶段的情感基调：积极/消极/中性/悬疑" }} inline>
                                                     <span
                                                         style={{
                                                             fontSize:
@@ -259,7 +259,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             "center",
                                                     }}
                                                 >
-                                                    <Tooltip tip="开场钩子类型：痛点/悬念/结果前置/反直觉/数字冲击/身份锁定/场景沉浸/对比反转" inline>
+                                                    <Tooltip tip={{ en: "Hook type: pain_point/suspense/result_first/counter_intuitive/number_shock/identity_lock/scene_immersion/contrast_flip", zh: "开场钩子类型：痛点/悬念/结果前置/反直觉/数字冲击/身份锁定/场景沉浸/对比反转" }} inline>
                                                     <span
                                                         style={{
                                                             fontSize:
@@ -298,7 +298,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                             "center",
                                                     }}
                                                 >
-                                                    <Tooltip tip="行动号召类型：关注/点赞收藏/评论/购买/优惠钩子/私信引流/分享传播/挑战" inline>
+                                                    <Tooltip tip={{ en: "CTA type: follow/like_collect/comment/purchase/discount_hook/dm_funnel/share_spread/challenge", zh: "行动号召类型：关注/点赞收藏/评论/购买/优惠钩子/私信引流/分享传播/挑战" }} inline>
                                                     <span
                                                         style={{
                                                             fontSize:

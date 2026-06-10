@@ -6,10 +6,10 @@ import { sliderStyle } from '../../utils';
 
 interface Props { x: number; y: number; onPosChange: (id: string, x: number, y: number, w: number, h: number) => void; }
 
-function Row({ label, tip, children }: { label: string; tip?: string; children: React.ReactNode }) {
+function Row({ label, tip, children }: { label: string; tip?: string | { en: string; zh: string }; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <Tooltip tip={tip ?? ''} inline>
+      <Tooltip tip={tip ?? ""} inline>
         <span style={{ fontSize: '9px', color: tip ? '#555' : '#999', minWidth: '80px' }}>{label}</span>
       </Tooltip>
       {children}
@@ -33,45 +33,45 @@ export function CompressConfigNode({ x, y, onPosChange }: Props) {
   return (
     <BaseNode x={x} y={y} w={300} title="Compress Config" active={!!uploadResult} accent="#14b8a6" id="compress_config" tourId="compress_config" onPosChange={onPosChange}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <Row label="vcodec" tip="视频编码器。libx264 兼容性最好；libx265 压缩率更高但编码速度较慢">
+        <Row label="vcodec" tip={{ en: "Video codec. libx264 has best compatibility; libx265 compresses more but encodes slower", zh: "视频编码器。libx264 兼容性最好；libx265 压缩率更高但编码速度较慢" }}>
           <select value={compressConfig.vcodec} onChange={(e) => setCompressConfig({ ...compressConfig, vcodec: e.target.value })}
             style={selectStyle}>
             <option value="libx264">libx264</option>
             <option value="libx265">libx265</option>
           </select>
         </Row>
-        <Row label="crf" tip="恒定质量因子，0=无损 23=默认 51=最差。值越小质量越高、文件越大。设置 target bitrate 后此项失效">
+        <Row label="crf" tip={{ en: "Constant quality factor, 0=lossless 23=default 51=worst. Lower value = higher quality/larger file. Ignored when target bitrate is set", zh: "恒定质量因子，0=无损 23=默认 51=最差。值越小质量越高、文件越大。设置 target bitrate 后此项失效" }}>
           <input type="range" min={0} max={51} step={1} value={compressConfig.crf ?? 32}
             disabled={hasTargetBitrate}
             onChange={(e) => setCompressConfig({ ...compressConfig, crf: parseInt(e.target.value), target_v_bitrate: null })} style={sliderStyle} />
           <Val>{hasTargetBitrate ? '—' : compressConfig.crf}</Val>
         </Row>
-        <Row label="target bitrate" tip="目标视频比特率（如 2M、500k）。设置后 CRF 模式失效，编码器以此比特率为目标">
+        <Row label="target bitrate" tip={{ en: "Target video bitrate (e.g. 2M, 500k). When set, CRF mode is disabled and encoder targets this bitrate", zh: "目标视频比特率（如 2M、500k）。设置后 CRF 模式失效，编码器以此比特率为目标" }}>
           <input type="text" value={compressConfig.target_v_bitrate ?? ''}
             placeholder="e.g. 2M"
             onChange={(e) => setCompressConfig({ ...compressConfig, target_v_bitrate: e.target.value || null, crf: e.target.value ? null : compressConfig.crf })}
             style={inputTextStyle} />
         </Row>
-        <Row label="scale width" tip="缩放目标宽度（像素），高度按比例自动计算。留空保持原始分辨率">
+        <Row label="scale width" tip={{ en: "Target width in pixels, height auto-calculated proportionally. Leave blank to keep original resolution", zh: "缩放目标宽度（像素），高度按比例自动计算。留空保持原始分辨率" }}>
           <input type="number" value={compressConfig.scale_width ?? ''}
             placeholder="original"
             onChange={(e) => setCompressConfig({ ...compressConfig, scale_width: e.target.value ? parseInt(e.target.value) : null })}
             style={inputTextStyle} />
         </Row>
-        <Row label="max fps" tip="最大帧率限制。留空保持原始帧率">
+        <Row label="max fps" tip={{ en: "Maximum frame rate limit. Leave blank to keep original frame rate", zh: "最大帧率限制。留空保持原始帧率" }}>
           <input type="number" value={compressConfig.max_fps ?? ''}
             placeholder="original"
             onChange={(e) => setCompressConfig({ ...compressConfig, max_fps: e.target.value ? parseInt(e.target.value) : null })}
             style={inputTextStyle} />
         </Row>
-        <Row label="acodec" tip="音频编码器。aac 通用兼容性好；libmp3lame 输出 MP3 格式">
+        <Row label="acodec" tip={{ en: "Audio codec. aac has best compatibility; libmp3lame outputs MP3 format", zh: "音频编码器。aac 通用兼容性好；libmp3lame 输出 MP3 格式" }}>
           <select value={compressConfig.acodec} onChange={(e) => setCompressConfig({ ...compressConfig, acodec: e.target.value })}
             style={selectStyle}>
             <option value="aac">aac</option>
             <option value="libmp3lame">libmp3lame</option>
           </select>
         </Row>
-        <Row label="audio bitrate" tip="音频比特率（如 128k、192k）。值越高音质越好、文件越大">
+        <Row label="audio bitrate" tip={{ en: "Audio bitrate (e.g. 128k, 192k). Higher value = better quality/larger file", zh: "音频比特率（如 128k、192k）。值越高音质越好、文件越大" }}>
           <input type="text" value={compressConfig.target_a_bitrate}
             onChange={(e) => setCompressConfig({ ...compressConfig, target_a_bitrate: e.target.value })}
             style={inputTextStyle} />

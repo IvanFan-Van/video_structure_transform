@@ -176,7 +176,7 @@ export function EffectAnalysisNode({
                     }}
                 >
                     {status === "idle" && (
-                        <Tooltip tip="AI 分析该片段中的视觉特效和编辑手法（如转场、滤镜、文字动画等）">
+                        <Tooltip tip={{ en: "AI analyzes visual effects and editing techniques in this clip (transitions, filters, text animations, etc.)", zh: "AI 分析该片段中的视觉特效和编辑手法（如转场、滤镜、文字动画等）" }}>
                         <ActionButton
                             variant="muted"
                             label="▶ Analyze Effects"

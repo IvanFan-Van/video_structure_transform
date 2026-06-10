@@ -1,12 +1,18 @@
 import { useState, useRef, useEffect, ReactNode } from "react";
+import { useTourLang } from "../../context/TourLangContext";
+
+type TipText = string | { en: string; zh: string };
 
 interface TooltipProps {
-    tip: string;
+    tip: TipText;
     inline?: boolean;
     children: ReactNode;
 }
 
 export function Tooltip({ tip, inline, children }: TooltipProps) {
+    const lang = useTourLang();
+    const text = typeof tip === "string" ? tip : tip[lang] ?? tip.en ?? "";
+
     const [show, setShow] = useState(false);
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const wrapperRef = useRef<HTMLSpanElement>(null);
@@ -20,7 +26,6 @@ export function Tooltip({ tip, inline, children }: TooltipProps) {
 
     const enter = () => {
         timer.current = setTimeout(() => {
-            // Check if there's room above
             if (wrapperRef.current) {
                 const rect = wrapperRef.current.getBoundingClientRect();
                 setAbove(rect.top > 56);
@@ -67,7 +72,7 @@ export function Tooltip({ tip, inline, children }: TooltipProps) {
                         textAlign: "left",
                     }}
                 >
-                    {tip}
+                    {text}
                 </span>
             )}
         </span>

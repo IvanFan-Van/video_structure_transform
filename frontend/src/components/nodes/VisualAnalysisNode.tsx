@@ -140,7 +140,7 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                     alignItems: "center",
                                 }}
                             >
-                                <Tooltip tip="镜头切换节奏：Fast(快) Medium(中) Slow(慢)，基于平均镜头时长判断" inline>
+                                <Tooltip tip={{ en: "Shot pacing: Fast (<2s avg) / Medium (2-4s) / Slow (>4s), based on average shot duration", zh: "镜头切换节奏：Fast(快) Medium(中) Slow(慢)，基于平均镜头时长判断" }} inline>
                                 <span
                                     style={{
                                         fontSize: "7px",
@@ -173,7 +173,7 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                     alignItems: "center",
                                 }}
                             >
-                                <Tooltip tip="平均每个镜头的时长（秒），用于判断剪辑节奏" inline>
+                                <Tooltip tip={{ en: "Average duration per shot (seconds), used to assess editing rhythm", zh: "平均每个镜头的时长（秒），用于判断剪辑节奏" }} inline>
                                 <span
                                     style={{
                                         fontSize: "7px",

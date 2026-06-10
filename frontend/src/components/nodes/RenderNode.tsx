@@ -65,6 +65,7 @@ export function RenderNode({ x, y, onPosChange }: Props) {
             accent={ACCENT}
             error={hasError}
             id={NODE_ID}
+            tourId="render"
             onPosChange={onPosChange}
         >
             <div
@@ -88,10 +89,10 @@ export function RenderNode({ x, y, onPosChange }: Props) {
                         <Tooltip
                             tip={
                                 enabled
-                                    ? "基于已填充的 Plan 模板调用 Remotion 引擎渲染最终视频"
+                                    ? { en: "Render the filled Plan template into a final video using the Remotion engine", zh: "基于已填充的 Plan 模板调用 Remotion 引擎渲染最终视频" }
                                     : planResult
-                                      ? "需先在 Slot 节点中填充素材，或通过 Generate 批量生成"
-                                      : "需要先生成 Plan 模板"
+                                      ? { en: "Fill material in Slot nodes first, or batch generate via Generate node", zh: "需先在 Slot 节点中填充素材，或通过 Generate 批量生成" }
+                                      : { en: "Generate a Plan template first", zh: "需要先生成 Plan 模板" }
                             }
                         >
                             <ActionButton

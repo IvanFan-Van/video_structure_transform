@@ -16,6 +16,7 @@ const DEFAULT_POSITIONS: Record<string, Pos> = {
     visual_analysis: { x: 1280, y: 787, w: 300, h: 91.5 },
     plan: { x: 1700, y: 400, w: 380, h: 200 },
     plan_generate: { x: 1700, y: 700, w: 260, h: 150 },
+    render: { x: 2210, y: 400, w: 300, h: 150 },
 };
 
 const PRESET_KEY = "canvas-preset";

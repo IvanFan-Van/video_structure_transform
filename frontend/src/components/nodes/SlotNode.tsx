@@ -21,11 +21,11 @@ interface Props {
 
 const TEXT_SLOT_TYPES = new Set(["visual_text", "narration"]);
 
-const SLOT_TIPS: Record<string, string> = {
-    visual_text: "画面文字/字幕内容，会直接显示在视频画面上",
-    narration: "旁白/配音文本，由 TTS 引擎转换为语音",
-    visual_asset: "画面素材（视频片段/图片），直接放入时间线对应位置",
-    audio_asset: "音频素材（BGM/音效），叠加到对应时间段",
+const SLOT_TIPS: Record<string, { en: string; zh: string }> = {
+    visual_text: { en: "On-screen text/captions displayed directly on the video", zh: "画面文字/字幕内容，会直接显示在视频画面上" },
+    narration: { en: "Voiceover/dubbing text converted to speech by TTS engine", zh: "旁白/配音文本，由 TTS 引擎转换为语音" },
+    visual_asset: { en: "Visual material (video clip/image) placed directly on the timeline", zh: "画面素材（视频片段/图片），直接放入时间线对应位置" },
+    audio_asset: { en: "Audio material (BGM/sound effects) overlaid on the corresponding time range", zh: "音频素材（BGM/音效），叠加到对应时间段" },
 };
 
 function formatTime(seconds: number) {
@@ -262,22 +262,33 @@ export function SlotNode({ x, y, segmentIndex, onPosChange }: Props) {
                                         }}
                                     >
                                         {(() => {
-                                            let slotTip =
+                                            let slotTip:
+                                                | { en: string; zh: string }
+                                                | undefined =
                                                 SLOT_TIPS[slot.slot_type];
                                             if (!slotTip) {
                                                 const s = slot.slot_type || "";
-                                                slotTip =
+                                                if (
                                                     s.includes("visual") ||
                                                     s.includes("image")
-                                                        ? "视觉素材槽位"
-                                                        : s.includes("audio") ||
-                                                            s.includes("bgm")
-                                                          ? "音频素材槽位"
-                                                          : "";
+                                                ) {
+                                                    slotTip = {
+                                                        en: "Visual material slot",
+                                                        zh: "视觉素材槽位",
+                                                    };
+                                                } else if (
+                                                    s.includes("audio") ||
+                                                    s.includes("bgm")
+                                                ) {
+                                                    slotTip = {
+                                                        en: "Audio material slot",
+                                                        zh: "音频素材槽位",
+                                                    };
+                                                }
                                             }
                                             return (
                                                 <Tooltip
-                                                    tip={slotTip || ""}
+                                                    tip={slotTip ?? ""}
                                                     inline
                                                 >
                                                     <span

@@ -18,9 +18,9 @@ interface Props {
 }
 
 const TODO_ITEMS = [
-    { key: "script", label: "Analyze Script Structure", tip: "提取字幕/台词文本，分析叙事结构（Hook/Setup/Story/Insight/CTA/Outro）" },
-    { key: "bgm", label: "Analyze BGM Features", tip: "分析背景音乐的 BPM、流派、频谱亮度、动态范围等特征" },
-    { key: "features", label: "Analyze Video Features", tip: "分析镜头节奏、相机运动、转场方式和画面文字元素" },
+    { key: "script", label: "Analyze Script Structure", tip: { en: "Extract subtitle/speech text, analyze narrative structure (Hook/Setup/Story/Insight/CTA/Outro)", zh: "提取字幕/台词文本，分析叙事结构（Hook/Setup/Story/Insight/CTA/Outro）" } },
+    { key: "bgm", label: "Analyze BGM Features", tip: { en: "Analyze BGM features: BPM, genre, spectral brightness, dynamic range, etc.", zh: "分析背景音乐的 BPM、流派、频谱亮度、动态范围等特征" } },
+    { key: "features", label: "Analyze Video Features", tip: { en: "Analyze shot pacing, camera movement, transitions and on-screen text elements", zh: "分析镜头节奏、相机运动、转场方式和画面文字元素" } },
 ] as const;
 
 const STATUS_CONFIG: Record<

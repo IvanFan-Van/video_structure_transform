@@ -28,6 +28,7 @@ import { useBoxSelect } from "./hooks/useBoxSelect";
 import { useZoom } from "./hooks/useZoom";
 import { usePan } from "./hooks/usePan";
 import { ZoomContext } from "./context/ZoomContext";
+import { TourLangContext } from "./context/TourLangContext";
 
 function App() {
     const { positions, update: updatePos } = useNodePositions();
@@ -45,6 +46,7 @@ function App() {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [toast, setToast] = useState<string | null>(null);
     const [showTour, setShowTour] = useState(false);
+    const [tourLang, setTourLang] = useState<"en" | "zh">("en");
     const tour = useTour();
 
     useEffect(() => {
@@ -128,6 +130,7 @@ function App() {
     }, [splitResult, planResult]);
 
     return (
+        <TourLangContext.Provider value={tourLang}>
         <div
             onMouseDown={(e) => {
                 if (e.ctrlKey) {
@@ -195,6 +198,33 @@ function App() {
                 >
                     ↺ Reset
                 </button>
+                <div
+                    style={{
+                        display: "flex",
+                        border: "1px solid #e0e0e0",
+                        borderRadius: "20px",
+                        overflow: "hidden",
+                    }}
+                >
+                    {(["en", "zh"] as const).map((l) => (
+                        <button
+                            key={l}
+                            onClick={() => setTourLang(l)}
+                            style={{
+                                padding: "5px 10px",
+                                fontSize: "10px",
+                                fontFamily: "'JetBrains Mono', monospace",
+                                cursor: "pointer",
+                                color: tourLang === l ? "#fff" : "#aaa",
+                                background: tourLang === l ? "#8b5cf6" : "#fff",
+                                border: "none",
+                                outline: "none",
+                            }}
+                        >
+                            {l.toUpperCase()}
+                        </button>
+                    ))}
+                </div>
                 <button
                     onClick={() => setShowTour(true)}
                     title="Start guided tour"
@@ -496,9 +526,11 @@ function App() {
                         tour.markSeen();
                     }}
                     planResultReady={!!planResult?.segments?.length}
+                    lang={tourLang}
                 />
             )}
         </div>
+        </TourLangContext.Provider>
     );
 }
 

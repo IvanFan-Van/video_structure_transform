@@ -115,7 +115,7 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                 {(planStatus === "idle" || planStatus === "cancelled") && (
                     <>
                         <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                            <Tooltip tip="描述你的视频主题、风格和需求，AI 会据此生成包含叙事结构和分镜的完整计划" inline>
+                            <Tooltip tip={{ en: "Describe your video topic, style and requirements. AI will generate a complete plan with narrative structure and shot breakdown.", zh: "描述你的视频主题、风格和需求，AI 会据此生成包含叙事结构和分镜的完整计划" }} inline>
                                 <span style={{ fontSize: "8px", color: "#8b5cf6" }}>Brief ?</span>
                             </Tooltip>
                         </div>
@@ -145,7 +145,7 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                             }
                         />
                         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            <Tooltip tip="目标视频时长（秒），留空由 AI 自动决定" inline>
+                            <Tooltip tip={{ en: "Target video duration (seconds). Leave blank and AI will decide automatically.", zh: "目标视频时长（秒），留空由 AI 自动决定" }} inline>
                                 <span style={{ fontSize: "8px", color: "#8b5cf6", whiteSpace: "nowrap" }}>Duration ?</span>
                             </Tooltip>
                             <input

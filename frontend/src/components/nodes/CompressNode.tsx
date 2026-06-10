@@ -74,7 +74,7 @@ export function CompressNode({ x, y, onPosChange }: Props) {
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
             >
                 {!isCompressing && !compressResult && (
-                    <Tooltip tip="使用 Compress Config 中的参数压缩视频，减小文件体积便于后续处理">
+                    <Tooltip tip={{ en: "Compress video using settings from Compress Config to reduce file size for downstream processing", zh: "使用 Compress Config 中的参数压缩视频，减小文件体积便于后续处理" }}>
                     <ActionButton
                         variant="primary"
                         label="▶ COMPRESS"
