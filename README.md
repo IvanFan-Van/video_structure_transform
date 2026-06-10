@@ -8,7 +8,7 @@
 >
 > **代码仓库**：(https://github.com/IvanFan-Van/video_structure_transform.git)
 >
-> **演示视频**：在 github 仓库内 demo.mp4
+> **演示视频**：(https://drive.google.com/file/d/1_UVm80NZq5OzuHRALEXAeZHByeYhQ0KA/view?usp=sharing)
 
 ---
 
