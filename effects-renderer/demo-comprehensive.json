@@ -1,0 +1,813 @@
+{
+  "version": "1.0",
+  "composition": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "backgroundColor": "#0a0a0a"
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "durationInFrames": 120,
+      "background": {
+        "type": "effect",
+        "effectId": "mesh-gradient-bg",
+        "effectProps": {
+          "colors": ["#ff0080", "#7928ca", "#00d4ff", "#ffb800"],
+          "blur": 80,
+          "speed": 0.6,
+          "background": "#050505"
+        }
+      },
+      "overlays": [
+        {
+          "id": "intro-title",
+          "type": "effect",
+          "startFrame": 5,
+          "durationInFrames": 65,
+          "position": { "x": "center", "y": "30%" },
+          "width": 1000,
+          "height": 110,
+          "effectId": "tracking-in",
+          "effectProps": {
+            "text": "REMOCN",
+            "fontSize": 100,
+            "fontWeight": 800,
+            "color": "#ffffff",
+            "startTracking": 0.4,
+            "startBlur": 10,
+            "speed": 1
+          }
+        },
+        {
+          "id": "intro-subtitle",
+          "type": "effect",
+          "startFrame": 55,
+          "durationInFrames": 55,
+          "position": { "x": "center", "y": "55%" },
+          "width": 900,
+          "height": 80,
+          "effectId": "blur-reveal",
+          "effectProps": {
+            "text": "60+ Effect Components",
+            "fontSize": 42,
+            "fontWeight": 500,
+            "color": "#cccccc",
+            "blur": 8,
+            "speed": 1
+          }
+        },
+        {
+          "id": "intro-tagline",
+          "type": "effect",
+          "startFrame": 85,
+          "durationInFrames": 30,
+          "position": { "x": "center", "y": "70%" },
+          "width": 700,
+          "height": 50,
+          "effectId": "typewriter",
+          "effectProps": {
+            "text": "Production-ready motion for React",
+            "cursor": true,
+            "fontSize": 22,
+            "fontWeight": 400,
+            "color": "#888888",
+            "cursorColor": "#888888",
+            "speed": 15
+          }
+        }
+      ],
+      "transitionOut": {
+        "type": "effect",
+        "effectId": "directional-wipe",
+        "durationInFrames": 60,
+        "effectProps": { "direction": "left" }
+      }
+    },
+    {
+      "id": "typography-showcase",
+      "durationInFrames": 180,
+      "background": { "type": "solid", "color": "#0a0a0a" },
+      "overlays": [
+        {
+          "id": "typo-heading",
+          "type": "effect",
+          "startFrame": 5,
+          "durationInFrames": 60,
+          "position": { "x": "center", "y": "12%" },
+          "width": 900,
+          "height": 80,
+          "effectId": "staggered-fade-up",
+          "effectProps": {
+            "text": "Typography Effects",
+            "fontSize": 64,
+            "fontWeight": 700,
+            "color": "#ffffff",
+            "staggerDelay": 3,
+            "distance": 24,
+            "speed": 1
+          }
+        },
+        {
+          "id": "typo-shimmer",
+          "type": "effect",
+          "startFrame": 50,
+          "durationInFrames": 70,
+          "position": { "x": "center", "y": "28%" },
+          "width": 800,
+          "height": 90,
+          "effectId": "shimmer-sweep",
+          "effectProps": {
+            "text": "SHIMMER SWEEP",
+            "baseColor": "#3f3f46",
+            "shineColor": "#fafafa",
+            "fontSize": 72,
+            "fontWeight": 800,
+            "speed": 1
+          }
+        },
+        {
+          "id": "typo-typewriter",
+          "type": "effect",
+          "startFrame": 90,
+          "durationInFrames": 70,
+          "position": { "x": "center", "y": "42%" },
+          "width": 800,
+          "height": 60,
+          "effectId": "typewriter",
+          "effectProps": {
+            "text": "Typewriter with blinking cursor...",
+            "cursor": true,
+            "fontSize": 36,
+            "fontWeight": 500,
+            "color": "#e4e4e7",
+            "cursorColor": "#22c55e",
+            "speed": 20
+          }
+        },
+        {
+          "id": "typo-marker",
+          "type": "effect",
+          "startFrame": 120,
+          "durationInFrames": 55,
+          "position": { "x": "center", "y": "56%" },
+          "width": 900,
+          "height": 70,
+          "effectId": "marker-highlight",
+          "effectProps": {
+            "before": "The ",
+            "highlight": "marker highlight",
+            "after": " sweeps behind the text",
+            "markerColor": "#facc15",
+            "baseColor": "#a3a3a3",
+            "highlightedTextColor": "#171717",
+            "fontSize": 36,
+            "fontWeight": 600,
+            "speed": 1
+          }
+        },
+        {
+          "id": "typo-inline",
+          "type": "effect",
+          "startFrame": 140,
+          "durationInFrames": 35,
+          "position": { "x": "center", "y": "68%" },
+          "width": 900,
+          "height": 50,
+          "effectId": "inline-highlight",
+          "effectProps": {
+            "before": "Built for ",
+            "highlight": "modern",
+            "after": " React developers",
+            "baseColor": "#a3a3a3",
+            "highlightColor": "#ff5e3a",
+            "fontSize": 32,
+            "fontWeight": 500,
+            "speed": 1
+          }
+        },
+        {
+          "id": "typo-marquee-bottom",
+          "type": "effect",
+          "startFrame": 0,
+          "durationInFrames": 180,
+          "position": { "x": "center", "y": "90%" },
+          "width": 1920,
+          "height": 60,
+          "effectId": "infinite-marquee",
+          "effectProps": {
+            "text": "blur-reveal · staggered-fade-up · shimmer-sweep · typewriter · marker-highlight · inline-highlight · matrix-decode · rgb-glitch · tracking-in · ",
+            "fontSize": 18,
+            "color": "#3f3f46",
+            "fontWeight": 500,
+            "pixelsPerFrame": 2,
+            "background": "#0a0a0a",
+            "speed": 1
+          }
+        }
+      ],
+      "transitionOut": {
+        "type": "effect",
+        "effectId": "frosted-glass-wipe",
+        "durationInFrames": 60,
+        "effectProps": { "glassBlur": 24 }
+      }
+    },
+    {
+      "id": "data-visualization",
+      "durationInFrames": 180,
+      "background": {
+        "type": "effect",
+        "effectId": "dynamic-grid",
+        "effectProps": {
+          "cellSize": 40,
+          "lineColor": "#1f1f23",
+          "background": "#0a0a0a",
+          "speed": 0.5,
+          "direction": "diagonal"
+        }
+      },
+      "overlays": [
+        {
+          "id": "dataviz-heading",
+          "type": "effect",
+          "startFrame": 5,
+          "durationInFrames": 50,
+          "position": { "x": "center", "y": "8%" },
+          "width": 800,
+          "height": 70,
+          "effectId": "blur-reveal",
+          "effectProps": {
+            "text": "Data Visualization",
+            "fontSize": 56,
+            "fontWeight": 700,
+            "color": "#ffffff",
+            "blur": 6,
+            "speed": 1
+          }
+        },
+        {
+          "id": "dataviz-line-chart",
+          "type": "effect",
+          "startFrame": 30,
+          "durationInFrames": 150,
+          "position": { "x": 60, "y": 230 },
+          "width": 850,
+          "height": 450,
+          "effectId": "animated-line-chart",
+          "effectProps": {
+            "data": [12, 19, 8, 15, 22, 18, 28, 25, 32],
+            "width": 850,
+            "height": 450,
+            "strokeColor": "#22c55e",
+            "strokeWidth": 4,
+            "background": "transparent",
+            "gridColor": "#27272a",
+            "showDot": true,
+            "speed": 1
+          }
+        },
+        {
+          "id": "dataviz-bar-chart",
+          "type": "effect",
+          "startFrame": 50,
+          "durationInFrames": 130,
+          "position": { "x": 970, "y": 230 },
+          "width": 850,
+          "height": 450,
+          "effectId": "animated-bar-chart",
+          "effectProps": {
+            "data": [35, 60, 45, 80, 55, 70, 90, 65],
+            "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Aug"],
+            "width": 850,
+            "height": 450,
+            "barColor": "#0ea5e9",
+            "background": "transparent",
+            "gap": 16,
+            "staggerFrames": 6,
+            "speed": 1
+          }
+        },
+        {
+          "id": "dataviz-price",
+          "type": "effect",
+          "startFrame": 130,
+          "durationInFrames": 45,
+          "position": { "x": "center", "y": "82%" },
+          "width": 500,
+          "height": 100,
+          "effectId": "slot-machine-roll",
+          "effectProps": {
+            "from": "$99",
+            "to": "$199",
+            "fontSize": 72,
+            "color": "#22c55e",
+            "fontWeight": 800,
+            "speed": 1
+          }
+        }
+      ],
+      "transitionOut": {
+        "type": "effect",
+        "effectId": "spatial-push",
+        "durationInFrames": 60,
+        "effectProps": { "direction": "up" }
+      }
+    },
+    {
+      "id": "developer-tools",
+      "durationInFrames": 210,
+      "background": { "type": "solid", "color": "#050505" },
+      "overlays": [
+        {
+          "id": "dev-heading",
+          "type": "effect",
+          "startFrame": 5,
+          "durationInFrames": 50,
+          "position": { "x": "center", "y": "5%" },
+          "width": 800,
+          "height": 70,
+          "effectId": "tracking-in",
+          "effectProps": {
+            "text": "Developer Tools",
+            "fontSize": 56,
+            "fontWeight": 700,
+            "color": "#ffffff",
+            "startTracking": 0.3,
+            "startBlur": 6,
+            "speed": 1
+          }
+        },
+        {
+          "id": "dev-terminal",
+          "type": "effect",
+          "startFrame": 30,
+          "durationInFrames": 140,
+          "position": { "x": 80, "y": 160 },
+          "width": 840,
+          "height": 440,
+          "effectId": "terminal-simulator",
+          "effectProps": {
+            "lines": [
+              { "text": "$ npm install @remotion/renderer", "type": "command" },
+              { "text": "added 142 packages in 12s", "type": "log" },
+              { "text": "$ npx remotion render", "type": "command" },
+              { "text": "Bundling project...", "type": "log" },
+              { "text": "Rendered 90/90 frames", "type": "success" },
+              { "text": "Output: out/video.mp4 (2.4 MB)", "type": "success" }
+            ],
+            "prompt": "$",
+            "title": "~/projects/remocn",
+            "background": "#0a0a0a",
+            "chromeColor": "#1a1a1a",
+            "fontSize": 16,
+            "charsPerFrame": 1,
+            "speed": 1
+          }
+        },
+        {
+          "id": "dev-glass-code",
+          "type": "effect",
+          "startFrame": 50,
+          "durationInFrames": 120,
+          "position": { "x": 970, "y": 160 },
+          "width": 760,
+          "height": 440,
+          "effectId": "glass-code-block",
+          "effectProps": {
+            "code": "export function VideoComposer(\n  props: Record<string, unknown>\n) {\n  const project = props.project;\n  const timeline = computeTimeline(\n    project.scenes\n  );\n  return (\n    <AbsoluteFill>\n      {timeline.scenes.map(\n        (s) => <SceneRenderer\n          scene={s}\n        />\n      )}\n    </AbsoluteFill>\n  );\n}",
+            "title": "composer.tsx",
+            "width": 760,
+            "height": 440,
+            "fontSize": 15,
+            "background": "#050505",
+            "glassColor": "rgba(10,10,10,0.6)",
+            "staggerFrames": 4,
+            "showTrafficLights": true,
+            "speed": 1
+          }
+        },
+        {
+          "id": "dev-accordion",
+          "type": "effect",
+          "startFrame": 140,
+          "durationInFrames": 65,
+          "position": { "x": 80, "y": 620 },
+          "width": 720,
+          "height": 280,
+          "effectId": "code-accordion",
+          "effectProps": {
+            "lines": [
+              "import { bundle } from '@remotion/bundler'",
+              "",
+              "export async function render() {",
+              "  const bundled = await bundle({",
+              "    entryPoint: 'src/index.ts'",
+              "  })",
+              "  await renderMedia({",
+              "    serveUrl: bundled,",
+              "    composition: comp,",
+              "    codec: 'h264',",
+              "    outputLocation: 'out/video.mp4'",
+              "  })",
+              "}"
+            ],
+            "collapseRange": [2, 11],
+            "collapseAt": 30,
+            "title": "render.ts",
+            "fontSize": 13,
+            "width": 720,
+            "background": "#050505",
+            "cardColor": "#0a0a0a",
+            "textColor": "#e4e4e7",
+            "mutedColor": "#52525b",
+            "speed": 1
+          }
+        },
+        {
+          "id": "dev-diff-wipe",
+          "type": "effect",
+          "startFrame": 140,
+          "durationInFrames": 65,
+          "position": { "x": 850, "y": 620 },
+          "width": 720,
+          "height": 280,
+          "effectId": "code-diff-wipe",
+          "effectProps": {
+            "before": "function render() {\n  remotion render\n    src/index.ts\n    VideoComposition\n    out/demo.mp4\n}",
+            "after": "function render() {\n  npx tsx scripts/\n    render-compose.ts\n    -p video.json\n    -o out/video.mp4\n}",
+            "language": "plaintext",
+            "background": "#0a0a0a",
+            "accent": "#22c55e",
+            "transitionStart": 15,
+            "transitionDuration": 45,
+            "showHandle": true,
+            "speed": 1
+          }
+        }
+      ],
+      "transitionOut": {
+        "type": "effect",
+        "effectId": "grid-pixelate-wipe",
+        "durationInFrames": 60,
+        "effectProps": {
+          "cols": 12,
+          "rows": 7,
+          "pattern": "wave",
+          "cellFadeFrames": 4
+        }
+      }
+    },
+    {
+      "id": "ui-components",
+      "durationInFrames": 180,
+      "background": {
+        "type": "effect",
+        "effectId": "spotlight-card",
+        "effectProps": {
+          "title": "",
+          "body": "",
+          "cardWidth": 520,
+          "cardHeight": 320,
+          "glowSize": 600,
+          "glowOpacity": 0.06,
+          "background": "#050505",
+          "cardColor": "#0a0a0a",
+          "textColor": "#fafafa",
+          "mutedColor": "#71717a",
+          "speed": 1
+        }
+      },
+      "overlays": [
+        {
+          "id": "ui-heading",
+          "type": "effect",
+          "startFrame": 5,
+          "durationInFrames": 50,
+          "position": { "x": "center", "y": "5%" },
+          "width": 800,
+          "height": 70,
+          "effectId": "staggered-fade-up",
+          "effectProps": {
+            "text": "UI Components",
+            "fontSize": 56,
+            "fontWeight": 700,
+            "color": "#ffffff",
+            "staggerDelay": 3,
+            "distance": 20,
+            "speed": 1
+          }
+        },
+        {
+          "id": "ui-bento-grid",
+          "type": "effect",
+          "startFrame": 30,
+          "durationInFrames": 150,
+          "position": { "x": 80, "y": 120 },
+          "width": 900,
+          "height": 500,
+          "effectId": "staggered-bento-grid",
+          "effectProps": {
+            "items": [
+              { "title": "Animations", "body": "Spring-tuned", "span": 2 },
+              { "title": "Transitions", "body": "Cinematic", "span": 1 },
+              { "title": "Backgrounds", "body": "Dynamic", "span": 1 },
+              { "title": "Charts", "body": "Data-driven", "span": 1 },
+              { "title": "Code Blocks", "body": "Syntax-highlighted", "span": 1 }
+            ],
+            "staggerDelay": 6,
+            "columns": 3,
+            "background": "transparent",
+            "cardColor": "#1a1a1a",
+            "textColor": "white",
+            "speed": 1
+          }
+        },
+        {
+          "id": "ui-toast",
+          "type": "effect",
+          "startFrame": 80,
+          "durationInFrames": 90,
+          "position": { "x": 1060, "y": 130 },
+          "width": 380,
+          "height": 120,
+          "effectId": "toast-notification",
+          "effectProps": {
+            "title": "Deployment successful",
+            "message": "Your changes are live at remocn.dev",
+            "variant": "success",
+            "background": "transparent",
+            "cardColor": "#1a1a1a",
+            "textColor": "#fafafa",
+            "mutedColor": "#71717a",
+            "speed": 1
+          }
+        },
+        {
+          "id": "ui-pulsing",
+          "type": "effect",
+          "startFrame": 100,
+          "durationInFrames": 70,
+          "position": { "x": 1060, "y": 280 },
+          "width": 80,
+          "height": 80,
+          "effectId": "pulsing-indicator",
+          "effectProps": {
+            "color": "#22c55e",
+            "size": 16,
+            "speed": 8,
+            "background": "transparent"
+          }
+        },
+        {
+          "id": "ui-tool-menu",
+          "type": "effect",
+          "startFrame": 30,
+          "durationInFrames": 150,
+          "position": { "x": 1080, "y": 400 },
+          "width": 320,
+          "height": 400,
+          "effectId": "tool-menu-slide-in",
+          "effectProps": {
+            "panelStartFrame": 12,
+            "iconStagger": 4,
+            "iconCount": 5,
+            "accent": "#a78bfa",
+            "panelColor": "rgba(18,18,22,0.72)",
+            "background": "#070708",
+            "iconBg": "rgba(255,255,255,0.06)",
+            "speed": 1
+          }
+        },
+        {
+          "id": "ui-drag-drop",
+          "type": "effect",
+          "startFrame": 140,
+          "durationInFrames": 35,
+          "position": { "x": 100, "y": 650 },
+          "width": 400,
+          "height": 100,
+          "effectId": "drag-and-drop-flow",
+          "effectProps": {
+            "accent": "#0ea5e9",
+            "dropzoneLabel": "Drop file to upload",
+            "fileName": "design.fig",
+            "background": "transparent"
+          }
+        }
+      ],
+      "transitionOut": {
+        "type": "effect",
+        "effectId": "swipe-transition-wipe",
+        "durationInFrames": 60,
+        "effectProps": {
+          "labelA": "UI Components",
+          "labelB": "Core Effects",
+          "colorA1": "#0ea5e9",
+          "colorA2": "#1e3a8a",
+          "colorB1": "#f97316",
+          "colorB2": "#9333ea",
+          "background": "#050505",
+          "direction": "left",
+          "swipeAt": 30,
+          "parallaxFactor": 0.6,
+          "dimStrength": 0.4,
+          "speed": 1
+        }
+      }
+    },
+    {
+      "id": "core-primitives",
+      "durationInFrames": 180,
+      "background": { "type": "solid", "color": "#050505" },
+      "overlays": [
+        {
+          "id": "core-heading",
+          "type": "effect",
+          "startFrame": 5,
+          "durationInFrames": 50,
+          "position": { "x": "center", "y": "5%" },
+          "width": 900,
+          "height": 70,
+          "effectId": "shimmer-sweep",
+          "effectProps": {
+            "text": "Core Primitives",
+            "baseColor": "#3f3f46",
+            "shineColor": "#fafafa",
+            "fontSize": 56,
+            "fontWeight": 700,
+            "speed": 1
+          }
+        },
+        {
+          "id": "core-matrix",
+          "type": "effect",
+          "startFrame": 8,
+          "durationInFrames": 70,
+          "position": { "x": "center", "y": "30%" },
+          "width": 900,
+          "height": 100,
+          "effectId": "matrix-decode",
+          "effectProps": {
+            "text": "MATRIX DECODE",
+            "charset": "!@#$%^&*()_+-=<>?/\\|{}[]",
+            "fontSize": 72,
+            "color": "#22c55e",
+            "fontWeight": 800,
+            "revealDuration": 50,
+            "speed": 1
+          }
+        },
+        {
+          "id": "core-spring",
+          "type": "effect",
+          "startFrame": 60,
+          "durationInFrames": 80,
+          "position": { "x": "center", "y": "50%" },
+          "width": 400,
+          "height": 160,
+          "effectId": "spring-pop-in",
+          "effectProps": {
+            "damping": 12,
+            "mass": 1,
+            "stiffness": 100,
+            "delayInFrames": 0,
+            "speed": 1
+          }
+        },
+        {
+          "id": "core-glitch",
+          "type": "effect",
+          "startFrame": 90,
+          "durationInFrames": 80,
+          "position": { "x": "center", "y": "68%" },
+          "width": 900,
+          "height": 100,
+          "effectId": "rgb-glitch-text",
+          "effectProps": {
+            "text": "GLITCH EFFECT",
+            "fontSize": 64,
+            "color": "#fafafa",
+            "fontWeight": 700,
+            "glitchAt": 45,
+            "glitchDuration": 8,
+            "intensity": 6,
+            "seed": "glitch",
+            "speed": 1
+          }
+        },
+        {
+          "id": "core-confetti",
+          "type": "effect",
+          "startFrame": 130,
+          "durationInFrames": 45,
+          "position": { "x": "center", "y": "35%" },
+          "width": 600,
+          "height": 300,
+          "effectId": "success-confetti",
+          "effectProps": {
+            "count": 60,
+            "colors": ["#ff5e3a", "#22c55e", "#0ea5e9", "#facc15", "#a855f7"],
+            "originX": 0.5,
+            "originY": 0.5,
+            "gravity": 0.4,
+            "velocity": 12,
+            "text": "Ready!",
+            "textColor": "#ffffff",
+            "background": "transparent",
+            "seed": "remocn",
+            "speed": 1
+          }
+        }
+      ],
+      "transitionOut": {
+        "type": "effect",
+        "effectId": "chromatic-aberration-wipe",
+        "durationInFrames": 60,
+        "effectProps": {
+          "direction": "left",
+          "transitionDuration": 7,
+          "aberrationOffset": 8
+        }
+      }
+    },
+    {
+      "id": "outro",
+      "durationInFrames": 120,
+      "background": {
+        "type": "effect",
+        "effectId": "mesh-gradient-bg",
+        "effectProps": {
+          "colors": ["#22c55e", "#0ea5e9", "#7928ca", "#ff0080"],
+          "blur": 80,
+          "speed": 0.8,
+          "background": "#050505"
+        }
+      },
+      "overlays": [
+        {
+          "id": "outro-heading",
+          "type": "effect",
+          "startFrame": 10,
+          "durationInFrames": 70,
+          "position": { "x": "center", "y": "28%" },
+          "width": 1000,
+          "height": 120,
+          "effectId": "blur-reveal",
+          "effectProps": {
+            "text": "Start Building",
+            "fontSize": 96,
+            "fontWeight": 800,
+            "color": "#ffffff",
+            "blur": 12,
+            "speed": 1
+          }
+        },
+        {
+          "id": "outro-subtitle",
+          "type": "effect",
+          "startFrame": 55,
+          "durationInFrames": 40,
+          "position": { "x": "center", "y": "50%" },
+          "width": 800,
+          "height": 60,
+          "effectId": "staggered-fade-up",
+          "effectProps": {
+            "text": "remocn.dev",
+            "fontSize": 36,
+            "fontWeight": 500,
+            "color": "#cccccc",
+            "staggerDelay": 4,
+            "distance": 16,
+            "speed": 1
+          }
+        },
+        {
+          "id": "outro-marquee-bottom",
+          "type": "effect",
+          "startFrame": 80,
+          "durationInFrames": 40,
+          "position": { "x": "center", "y": "85%" },
+          "width": 1920,
+          "height": 100,
+          "effectId": "perspective-marquee",
+          "effectProps": {
+            "items": ["Remotion", "React", "TypeScript", "Motion", "Video", "Render", "Composition", "Spring", "Keyframe", "Animations"],
+            "fontSize": 42,
+            "color": "#fafafa",
+            "fontWeight": 600,
+            "pixelsPerFrame": 2,
+            "rotateY": -24,
+            "rotateX": 6,
+            "perspective": 1000,
+            "fadeColor": "#050505",
+            "background": "#050505",
+            "speed": 1
+          }
+        }
+      ],
+      "transitionOut": { "type": "cut" }
+    }
+  ]
+}

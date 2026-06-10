@@ -1,0 +1,189 @@
+{
+  "version": "1.0",
+  "composition": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "backgroundColor": "#0a0a0a"
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "durationInFrames": 90,
+      "background": {
+        "type": "effect",
+        "effectId": "mesh-gradient-bg",
+        "effectProps": {
+          "colors": [
+            "#ff0080",
+            "#7928ca",
+            "#00d4ff",
+            "#ffb800"
+          ],
+          "blur": 80,
+          "speed": 0.6,
+          "background": "#050505"
+        }
+      },
+      "overlays": [
+        {
+          "id": "title",
+          "type": "effect",
+          "startFrame": 15,
+          "durationInFrames": 75,
+          "position": {
+            "x": "center",
+            "y": "35%"
+          },
+          "width": 900,
+          "height": 100,
+          "effectId": "blur-reveal",
+          "effectProps": {
+            "text": "Welcome to Video Composer",
+            "fontSize": 64,
+            "fontWeight": 700,
+            "color": "#ffffff"
+          }
+        },
+        {
+          "id": "subtitle",
+          "type": "effect",
+          "startFrame": 60,
+          "durationInFrames": 25,
+          "position": {
+            "x": "center",
+            "y": "60%"
+          },
+          "width": 700,
+          "height": 60,
+          "effectId": "typewriter",
+          "effectProps": {
+            "text": "Built with Remotion + Remocn",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#cccccc",
+            "cursor": true,
+            "speed": 15
+          }
+        }
+      ],
+      "transitionOut": {
+        "type": "effect",
+        "effectId": "directional-wipe",
+        "durationInFrames": 30,
+        "effectProps": {
+          "direction": "left"
+        }
+      }
+    },
+    {
+      "id": "features",
+      "durationInFrames": 120,
+      "background": {
+        "type": "solid",
+        "color": "#050505"
+      },
+      "overlays": [
+        {
+          "id": "feat-title",
+          "type": "effect",
+          "startFrame": 10,
+          "durationInFrames": 50,
+          "position": {
+            "x": "center",
+            "y": "20%"
+          },
+          "width": 800,
+          "height": 80,
+          "effectId": "tracking-in",
+          "effectProps": {
+            "text": "FEATURES",
+            "fontSize": 72,
+            "fontWeight": 700,
+            "color": "#ffffff",
+            "speed": 1
+          }
+        },
+        {
+          "id": "feat-list",
+          "type": "effect",
+          "startFrame": 40,
+          "durationInFrames": 70,
+          "position": {
+            "x": "center",
+            "y": "45%"
+          },
+          "width": 900,
+          "height": 200,
+          "effectId": "staggered-fade-up",
+          "effectProps": {
+            "text": "60+ Effects\nJSON-driven Timeline\nScene-based Architecture",
+            "fontSize": 36,
+            "fontWeight": 400,
+            "color": "#e0e0e0",
+            "staggerDelay": 8
+          }
+        }
+      ],
+      "transitionOut": {
+        "type": "effect",
+        "effectId": "frosted-glass-wipe",
+        "durationInFrames": 25,
+        "effectProps": {
+          "glassBlur": 24
+        }
+      }
+    },
+    {
+      "id": "outro",
+      "durationInFrames": 120,
+      "background": {
+        "type": "solid",
+        "color": "#141318"
+      },
+      "overlays": [
+        {
+          "id": "cta",
+          "type": "effect",
+          "startFrame": 20,
+          "durationInFrames": 70,
+          "position": {
+            "x": "center",
+            "y": "40%"
+          },
+          "width": 800,
+          "height": 120,
+          "effectId": "shimmer-sweep",
+          "effectProps": {
+            "text": "Start Building",
+            "baseColor": "#3f3f46",
+            "shineColor": "#ffffff",
+            "fontSize": 80,
+            "fontWeight": 700
+          }
+        },
+        {
+          "id": "success",
+          "type": "effect",
+          "startFrame": 70,
+          "durationInFrames": 40,
+          "position": {
+            "x": "center",
+            "y": "65%"
+          },
+          "width": 400,
+          "height": 100,
+          "effectId": "success-confetti",
+          "effectProps": {
+            "count": 40,
+            "text": "Ready!",
+            "background": "transparent"
+          }
+        }
+      ],
+      "transitionOut": {
+        "type": "cut"
+      }
+    }
+  ]
+}
