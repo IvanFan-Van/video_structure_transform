@@ -182,8 +182,7 @@ function App() {
                 <button
                     onClick={() => {
                         useCanvasStore.getState().resetToDefaults();
-                        useVideoStore.getState().resetAll();
-                        setToast("All reset to defaults");
+                        setToast("Canvas layout reset to defaults");
                     }}
                     title="Reset all canvas state to defaults"
                     style={{
