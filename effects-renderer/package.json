@@ -36,7 +36,7 @@
     "dev": "remotion studio",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
-    "render": "npx tsx scripts/render.ts",
+    "render": "remotion render src/index.ts render out/demo.mp4",
     "lint": "eslint src && tsc"
   },
   "sideEffects": [

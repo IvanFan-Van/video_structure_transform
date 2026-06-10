@@ -21,6 +21,7 @@ import librosa
 from audio_separator.separator import Separator
 
 STORAGE_TMP = Path("storage/tmp")
+MODELS_DIR = Path(__file__).parent.parent.parent / "models"
 
 _separator: Separator | None = None
 _separator_lock = threading.Lock()
@@ -51,10 +52,12 @@ def _get_classifier():
             if _classifier is None:
                 from transformers import pipeline
 
+                MODELS_DIR.mkdir(parents=True, exist_ok=True)
                 _classifier = pipeline(
                     "audio-classification",
                     model="dima806/music_genres_classification",
                     trust_remote_code=True,
+                    cache_dir=str(MODELS_DIR),
                 )
     return _classifier
 
@@ -147,7 +150,7 @@ def analyze_audio_features(audio_path: str | Path) -> dict:
     duration = float(librosa.get_duration(y=y, sr=sr))
 
     tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
-    bpm = float(tempo[0]) if hasattr(tempo, "__iter__") else float(tempo)
+    bpm = float(tempo[0]) if hasattr(tempo, "__iter__") else float(tempo)  # type: ignore
     beat_times = librosa.frames_to_time(beat_frames, sr=sr)
 
     rms = librosa.feature.rms(y=y)[0]

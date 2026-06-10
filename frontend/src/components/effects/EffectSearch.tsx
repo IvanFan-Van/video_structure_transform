@@ -6,6 +6,7 @@ interface EffectInfo {
     name: string;
     category: string;
     description: string;
+    demo_path: string | null;
 }
 
 interface Props {
@@ -30,6 +31,7 @@ export function EffectSearch({ open, onClose, onSelect, triggerRef }: Props) {
         text: string;
         x: number;
         y: number;
+        demoUrl: string | null;
     } | null>(null);
 
     useEffect(() => {
@@ -258,6 +260,9 @@ export function EffectSearch({ open, onClose, onSelect, triggerRef }: Props) {
                                         text: ef.description,
                                         x: r.right + 8,
                                         y: r.top,
+                                        demoUrl: ef.demo_path
+                                            ? `/api${ef.demo_path}`
+                                            : null,
                                     });
                                 }, 600);
                             }}
@@ -327,6 +332,31 @@ export function EffectSearch({ open, onClose, onSelect, triggerRef }: Props) {
                     }}
                 >
                     {tooltip.text}
+                    {tooltip.demoUrl ? (
+                        <video
+                            src={tooltip.demoUrl}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            style={{
+                                width: 200,
+                                marginTop: 6,
+                                borderRadius: 4,
+                                display: "block",
+                            }}
+                        />
+                    ) : (
+                        <div
+                            style={{
+                                fontSize: "8px",
+                                color: "#888",
+                                marginTop: 4,
+                            }}
+                        >
+                            (No demo available)
+                        </div>
+                    )}
                 </div>
             )}
         </div>,

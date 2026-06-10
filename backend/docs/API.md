@@ -92,6 +92,7 @@ Base URL: `http://127.0.0.1:8000`
   - [15. GET / PATCH /effects — 查询与编辑特效](#15-get--patch-effects--查询与编辑特效)
     - [15.1 GET /effects — 查询特效库](#151-get-effects--查询特效库)
     - [15.2 PATCH /effects — 校正任务特效](#152-patch-effects--校正任务特效)
+    - [15.3 GET /effects/demo/{filename} — 获取特效 Demo 视频](#153-get-effectsdemofilename--获取特效-demo-视频)
   - [16. POST /plan — 生成视频模板](#16-post-plan--生成视频模板)
     - [请求参数](#请求参数-10)
     - [请求示例](#请求示例-11)
@@ -1572,12 +1573,14 @@ curl "http://127.0.0.1:8000/effects" \
     {
       "name": "BlurReveal",
       "category": "Typography",
-      "description": "文字从严重模糊聚焦至锐利，由虚到实单次进场。..."
+      "description": "文字从严重模糊聚焦至锐利，由虚到实单次进场。...",
+      "demo_path": null
     },
     {
       "name": "FrostedGlassWipe",
       "category": "Transitions",
-      "description": "磨砂玻璃面板从画面一侧滑过遮旧场景露新场景。..."
+      "description": "磨砂玻璃面板从画面一侧滑过遮旧场景露新场景。...",
+      "demo_path": "/effects/demo/frosted-glass-wipe.mp4"
     }
   ]
 }
@@ -1590,6 +1593,7 @@ curl "http://127.0.0.1:8000/effects" \
 | `name` | string | 组件唯一名称（59 个白名单内） |
 | `category` | string | 分类：Typography / Core Primitives / Environment & Lighting / UI Blocks / Transitions / Compositions |
 | `description` | string | 中文功能描述 |
+| `demo_path` | string \| null | 特效 Demo 视频的 URL 路径，前端使用时需加 `/api` 前缀；无 Demo 视频时为 `null` |
 
 #### 错误响应
 
@@ -1661,6 +1665,47 @@ curl -X PATCH http://127.0.0.1:8000/effects \
 | 400 | `任务状态为 xxx，仅 completed 可修改 effects` | 任务尚未完成或已失败 |
 
 > 其余认证/权限错误与 `GET /task/{task_id}` 一致。
+
+### 15.3 GET /effects/demo/{filename} — 获取特效 Demo 视频
+
+获取特效组件的预渲染演示视频。**公开访问，无需认证。**
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `GET` |
+| **认证** | 不需要 |
+| **响应类型** | `video/mp4` |
+
+> **数据来源**：Demo 视频由 `effects-renderer` 项目预渲染生成，存放在 `effects-renderer/out/` 目录下。文件名采用特效名称的 kebab-case 形式（如 `typewriter.mp4`、`frosted-glass-wipe.mp4`）。前端通过 `GET /effects` 获取 `demo_path` 字段后拼接此 URL 即可访问。
+
+#### 路径参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `filename` | string | **是** | Demo 视频文件名（含 `.mp4` 扩展名），如 `typewriter.mp4` |
+
+#### 请求示例
+
+```bash
+# 直接播放 Typewriter 特效的 Demo 视频
+curl "http://127.0.0.1:8000/effects/demo/typewriter.mp4" -o demo.mp4
+```
+
+```html
+<!-- 前端使用（Vite 代理会自动将 /api 前缀映射到后端） -->
+<video src="/api/effects/demo/typewriter.mp4" controls></video>
+```
+
+#### 成功响应
+
+直接返回 MP4 视频二进制流，`Content-Type` 为 `video/mp4`。
+
+#### 错误响应
+
+| HTTP 状态码 | detail | 说明 |
+|---|---|---|
+| 400 | `Invalid filename` | 文件名包含 `..`、`/` 或 `\` 等路径穿越字符 |
+| 404 | `Demo not found` | 该特效暂无 Demo 视频（如 BlurReveal、TerminalSimulator、ChatToPreviewLayout） |
 
 ---
 

@@ -1474,15 +1474,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
 
         try {
-            const res = await axios.post(
+            const res = await apiAxios.post(
                 "/api/render",
                 { plan_id: planResult.plan_id },
-                {
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                },
             );
 
             if (res.data.status !== "success") {

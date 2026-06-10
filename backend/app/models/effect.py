@@ -8,3 +8,4 @@ class Effect(SQLModel, table=True):
     description: str = Field()
     library: str = Field()
     doc_path: str | None = Field(default=None)
+    demo_path: str | None = Field(default=None)

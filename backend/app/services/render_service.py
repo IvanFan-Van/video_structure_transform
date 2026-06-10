@@ -28,7 +28,7 @@ WIDTH = 1080
 HEIGHT = 1920
 
 
-def start_render_task(user_id: str, plan_id: str) -> str:
+def start_render_task(session: Session, user_id: str, plan_id: str) -> str:
     task_id = str(uuid.uuid4())
     VIDEO_DIR.mkdir(parents=True, exist_ok=True)
     RENDER_DIR.mkdir(parents=True, exist_ok=True)
@@ -40,13 +40,14 @@ def start_render_task(user_id: str, plan_id: str) -> str:
         user_id=user_id,
         task_type="render",
         resource_id=plan_id,
-        coro=_run_render(task_id, user_id, plan_id, queue),
+        coro=_run_render(session, task_id, user_id, plan_id, queue),
         stream_queue=queue,
     )
     return task_id
 
 
 async def _run_render(
+    session: Session,
     task_id: str,
     user_id: str,
     plan_id: str,
@@ -62,7 +63,9 @@ async def _run_render(
         _push(queue, {"phase": "loading", "message": "Loading plan data..."})
         plan_task = task_registry.get(plan_id)
         if plan_task is None or plan_task.status != "completed":
-            _push(queue, {"phase": "error", "message": "Plan not found or not completed"})
+            _push(
+                queue, {"phase": "error", "message": "Plan not found or not completed"}
+            )
             task_registry.set_error(task_id, "Plan not found or not completed")
             return
 
@@ -73,14 +76,13 @@ async def _run_render(
         bgm_filename = None
         bgm_asset_id = plan.bgm_spec.reference_audio_asset_id
         if bgm_asset_id:
-            with Session(engine) as session:
-                asset = get_asset_by_id(session, bgm_asset_id)
-                if asset and Path(asset.path).exists():
-                    public_dir = REMOTION_DIR / "public"
-                    public_dir.mkdir(parents=True, exist_ok=True)
-                    bgm_dest = public_dir / "bgm.wav"
-                    shutil.copy2(asset.path, str(bgm_dest))
-                    bgm_filename = "bgm.wav"
+            asset = get_asset_by_id(session, bgm_asset_id)
+            if asset and Path(asset.path).exists():
+                public_dir = REMOTION_DIR / "public"
+                public_dir.mkdir(parents=True, exist_ok=True)
+                bgm_dest = public_dir / "bgm.wav"
+                shutil.copy2(asset.path, str(bgm_dest))
+                bgm_filename = "bgm.wav"
 
         # 3. 构建 remotion_props
         _push(queue, {"phase": "building", "message": "Building render config..."})
@@ -91,7 +93,15 @@ async def _run_render(
             json.dump(props, f, ensure_ascii=False)
 
         # 4. 调用 Remotion CLI
-        _push(queue, {"phase": "rendering", "progress": 0, "frame": 0, "totalFrames": props["durationInFrames"]})
+        _push(
+            queue,
+            {
+                "phase": "rendering",
+                "progress": 0,
+                "frame": 0,
+                "totalFrames": props["durationInFrames"],
+            },
+        )
         await _render_with_progress(props_path, output_path, queue)
 
         # 5. 创建 Asset
@@ -101,6 +111,7 @@ async def _run_render(
             return
 
         import ffmpeg
+
         probe = ffmpeg.probe(output_path)
         video_stream = next(s for s in probe["streams"] if s["codec_type"] == "video")
         dur = float(probe["format"].get("duration", 0))
@@ -165,31 +176,31 @@ def _build_remotion_props(plan: VideoTemplate, bgm_filename: str | None) -> dict
             scene_type = "text_overlay"
 
         text_style = _build_text_style(seg)
-        beat_frames = _compute_beat_frames(
-            plan.bgm_spec.bpm, duration_frames
-        )
+        beat_frames = _compute_beat_frames(plan.bgm_spec.bpm, duration_frames)
 
-        scenes.append({
-            "id": seg.stage,
-            "slot_id": seg.index + 1,
-            "startFrame": frame_offset,
-            "durationFrames": duration_frames,
-            "type": scene_type,
-            "text": text,
-            "textStyle": text_style,
-            "visualHint": seg.narrative_intent,
-            "emotion": seg.emotional_tone or "neutral",
-            "beatFrames": beat_frames,
-            "hasMaterial": bool(visual_text or narration),
-            "backgroundVideo": None,
-            "backgroundImage": None,
-            "backgroundColorFallback": "#0D0D0D",
-            "requiredElements": [],
-            "gapFilled": True,
-            "gapStrategy": "color_bg+text",
-            "fill_method": "color_bg",
-            "remocnEffects": [],
-        })
+        scenes.append(
+            {
+                "id": seg.stage,
+                "slot_id": seg.index + 1,
+                "startFrame": frame_offset,
+                "durationFrames": duration_frames,
+                "type": scene_type,
+                "text": text,
+                "textStyle": text_style,
+                "visualHint": seg.narrative_intent,
+                "emotion": seg.emotional_tone or "neutral",
+                "beatFrames": beat_frames,
+                "hasMaterial": bool(visual_text or narration),
+                "backgroundVideo": None,
+                "backgroundImage": None,
+                "backgroundColorFallback": "#0D0D0D",
+                "requiredElements": [],
+                "gapFilled": True,
+                "gapStrategy": "color_bg+text",
+                "fill_method": "color_bg",
+                "remocnEffects": [],
+            }
+        )
 
         frame_offset += duration_frames
 
@@ -222,16 +233,25 @@ def _build_text_style(seg) -> dict:
         c = slot.constraints
         if c.position:
             pos_map = {
-                "top_center": 15, "center": 50, "bottom_center": 82,
-                "overlay_left": 50, "overlay_right": 50, "full_screen": 50,
+                "top_center": 15,
+                "center": 50,
+                "bottom_center": 82,
+                "overlay_left": 50,
+                "overlay_right": 50,
+                "full_screen": 50,
             }
-            pos_y = pos_map.get(c.position.value if hasattr(c.position, "value") else str(c.position), 50)
+            pos_y = pos_map.get(
+                c.position.value if hasattr(c.position, "value") else str(c.position),
+                50,
+            )
         if c.appear_style:
             animation = c.appear_style
         if c.emphasis:
             emphasis_map = {
-                "zoom": "bounce", "shake": "glitch",
-                "color_change": "fade_in", "stroke": "typewriter",
+                "zoom": "bounce",
+                "shake": "glitch",
+                "color_change": "fade_in",
+                "stroke": "typewriter",
             }
             animation = emphasis_map.get(
                 c.emphasis.value if hasattr(c.emphasis, "value") else str(c.emphasis),
@@ -271,8 +291,11 @@ async def _render_with_progress(
     queue: asyncio.Queue,
 ) -> None:
     process = await asyncio.create_subprocess_exec(
-        REMOTION_CLI, "render",
-        "src/index.ts", "VideoComposition", str(output_path),
+        REMOTION_CLI,
+        "render",
+        "src/index.ts",
+        "VideoComposition",
+        str(output_path),
         f"--props={props_path}",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
@@ -293,12 +316,15 @@ async def _render_with_progress(
                         frame = int(frame_str)
                         total = int(total_str)
                         progress = int(frame / total * 100)
-                        _push(queue, {
-                            "phase": "rendering",
-                            "progress": progress,
-                            "frame": frame,
-                            "totalFrames": total,
-                        })
+                        _push(
+                            queue,
+                            {
+                                "phase": "rendering",
+                                "progress": progress,
+                                "frame": frame,
+                                "totalFrames": total,
+                            },
+                        )
                         break
             except (ValueError, IndexError):
                 pass
