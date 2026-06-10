@@ -20,8 +20,7 @@ import ffmpeg
 import librosa
 from audio_separator.separator import Separator
 
-STORAGE_TMP = Path("storage/tmp")
-MODELS_DIR = Path(__file__).parent.parent.parent / "models"
+from app.config import MODELS_DIR, TMP_DIR
 
 _separator: Separator | None = None
 _separator_lock = threading.Lock()
@@ -35,9 +34,9 @@ def _get_separator() -> Separator:
     if _separator is None:
         with _separator_lock:
             if _separator is None:
-                STORAGE_TMP.mkdir(parents=True, exist_ok=True)
+                TMP_DIR.mkdir(parents=True, exist_ok=True)
                 _separator = Separator(
-                    output_dir=str(STORAGE_TMP),
+                    output_dir=str(TMP_DIR),
                     output_format="wav",
                     log_level=logging.ERROR,
                 )
@@ -90,9 +89,9 @@ def extract_bgm(
     """
     video_path = Path(video_path)
     dst_dir.mkdir(parents=True, exist_ok=True)
-    STORAGE_TMP.mkdir(parents=True, exist_ok=True)
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
 
-    audio_wav = STORAGE_TMP / f"{audio_asset_id}_audio.wav"
+    audio_wav = TMP_DIR / f"{audio_asset_id}_audio.wav"
     ffmpeg.input(str(video_path)).output(str(audio_wav), loglevel="error").run(
         overwrite_output=True
     )
@@ -106,7 +105,7 @@ def extract_bgm(
             },
         )
 
-    bgm_src = STORAGE_TMP / Path(output_files[0])
+    bgm_src = TMP_DIR / Path(output_files[0])
     bgm_dst = dst_dir / f"{audio_asset_id}_bgm.wav"
     bgm_src.rename(bgm_dst)
 

@@ -9,4 +9,10 @@ notebooks/*
 !notebooks/*.ipynb
 models/
 !app/models
-storage/
+storage/images/
+storage/videos/
+storage/audios/
+storage/tmp/
+
+.ruff_cache/
+.pytest_cache/

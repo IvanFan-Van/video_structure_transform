@@ -87,9 +87,13 @@ function parseApiError(
 
 async function cancelTaskRequest(taskId: string) {
     try {
-        await apiAxios.post(`/api/task/${taskId}/cancel`, {}, {
-            headers: { "Content-Type": "application/json" },
-        });
+        await apiAxios.post(
+            `/api/task/${taskId}/cancel`,
+            {},
+            {
+                headers: { "Content-Type": "application/json" },
+            },
+        );
     } catch {
         // best-effort cancel
     }
@@ -1198,6 +1202,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             }
 
             const taskId: string = res.data.data.task_id;
+            console.log(`Plan TaskID: ${taskId}`);
             set({ planTaskId: taskId });
 
             await subscribeTaskStream<PlanResult>(taskId, token, {
@@ -1439,9 +1444,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
             if (get().generateStatus === "success") {
                 try {
-                        const planRes = await apiAxios.get(
-                            `/api/task/${planResult.plan_id}`,
-                        );
+                    const planRes = await apiAxios.get(
+                        `/api/task/${planResult.plan_id}`,
+                    );
                     if (
                         planRes.data.status === "success" &&
                         planRes.data.data?.result
@@ -1503,10 +1508,10 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
 
         try {
-            const res = await apiAxios.post(
-                "/api/render",
-                { plan_id: planResult.plan_id, style: selectedStyle },
-            );
+            const res = await apiAxios.post("/api/render", {
+                plan_id: planResult.plan_id,
+                style: selectedStyle,
+            });
 
             if (res.data.status !== "success") {
                 const { msg, code, details } = parseApiError(
@@ -1628,10 +1633,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         });
 
         try {
-            const res = await apiAxios.post(
-                "/api/render/preview",
-                { plan_id: planResult.plan_id },
-            );
+            const res = await apiAxios.post("/api/render/preview", {
+                plan_id: planResult.plan_id,
+            });
 
             if (res.data.status !== "success") {
                 const { msg, code, details } = parseApiError(

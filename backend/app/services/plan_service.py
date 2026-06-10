@@ -366,8 +366,12 @@ def start_plan_generation(request: PlanRequest, user_id: str) -> str:
 def _build_slot_gen_prompt(template: VideoTemplate) -> str:
     segments_lines: list[str] = []
     type_hints = {
-        "visual_text": lambda c: f"最大{c.max_chars}字" if c and c.max_chars else "画面文字",
-        "narration": lambda c: f"最大{c.max_duration_sec}秒" if c and c.max_duration_sec else "旁白",
+        "visual_text": lambda c: f"最大{c.max_chars}字"
+        if c and c.max_chars
+        else "画面文字",
+        "narration": lambda c: f"最大{c.max_duration_sec}秒"
+        if c and c.max_duration_sec
+        else "旁白",
         "background_video": lambda c: "背景视频",
         "background_image": lambda c: "背景图片",
     }
@@ -378,10 +382,12 @@ def _build_slot_gen_prompt(template: VideoTemplate) -> str:
             f'intent="{seg.narrative_intent}"'
         ]
         for slot in seg.slots:
-            hint_fn = type_hints.get(slot.slot_type.value, lambda c: slot.slot_type.value)
+            hint_fn = type_hints.get(
+                slot.slot_type.value, lambda c: slot.slot_type.value
+            )
             hint = hint_fn(slot.constraints)
             if slot.status == SlotStatus.filled:
-                tag = f"[已填] \"{slot.value}\""
+                tag = f'[已填] "{slot.value}"'
             elif slot.status == SlotStatus.pending:
                 tag = "[待生成]"
             else:

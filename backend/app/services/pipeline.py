@@ -8,6 +8,7 @@ import instructor
 from fastapi import HTTPException, UploadFile
 from sqlmodel import Session, select
 
+from app.config import AUDIO_DIR, IMAGE_DIR, VIDEO_DIR
 from app.database import engine
 from app.lib.audio import analyze_audio_features, extract_bgm
 from app.lib.image import probe_image
@@ -62,10 +63,6 @@ ALLOWED_IMAGE_MIME_TYPES = {
     "image/webp",
     "image/bmp",
 }
-STORAGE_DIR = Path("storage")
-VIDEO_STORAGE_DIR = STORAGE_DIR / "videos"
-AUDIO_STORAGE_DIR = STORAGE_DIR / "audios"
-IMAGES_STORAGE_DIR = STORAGE_DIR / "images"
 MAX_ANALYZE_SIZE_MB = int(os.getenv("MAX_ANALYZE_SIZE_MB", "50"))
 
 
@@ -92,9 +89,9 @@ def extract_cover_for_video(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"封面提取失败: {str(e)}")
 
-    IMAGES_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     cover_id = str(uuid.uuid4())
-    cover_path = IMAGES_STORAGE_DIR / f"{cover_id}.jpg"
+    cover_path = IMAGE_DIR / f"{cover_id}.jpg"
     img.save(str(cover_path), "JPEG", quality=85)
 
     asset = Asset(
@@ -185,8 +182,8 @@ def start_compress_task(
 ) -> str:
     compressed_asset_id = str(uuid.uuid4())
     compressed_filename = f"{compressed_asset_id}_compressed.mp4"
-    compressed_path = VIDEO_STORAGE_DIR / compressed_filename
-    VIDEO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    compressed_path = VIDEO_DIR / compressed_filename
+    VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 
     task_id = str(uuid.uuid4())
     register_and_launch(
@@ -291,7 +288,7 @@ async def run_audio_analysis(
 def start_audio_analysis(
     session: Session, user: User, video_path_str: str, source_asset_id: str
 ) -> str:
-    AUDIO_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    AUDIO_DIR.mkdir(parents=True, exist_ok=True)
     audio_asset_id = str(uuid.uuid4())
     task_id = str(uuid.uuid4())
 
@@ -307,7 +304,7 @@ def start_audio_analysis(
             source_asset_id=source_asset_id,
             video_path_str=video_path_str,
             audio_asset_id=audio_asset_id,
-            dst_dir=str(AUDIO_STORAGE_DIR),
+            dst_dir=str(AUDIO_DIR),
         ),
     )
     return task_id
@@ -494,7 +491,7 @@ async def run_split_task(
             )
             method = "scenedetect"
 
-        output_dir = Path("storage/videos")
+        output_dir = VIDEO_DIR
         clip_prefix = str(uuid.uuid4())
         clip_paths = await loop.run_in_executor(
             None,
@@ -653,22 +650,20 @@ def check_analysis_size_limit(meta) -> None:
 async def upload(session: Session, user: User, file: UploadFile) -> dict:
     ext = Path(file.filename or "upload.bin").suffix.lower()
     is_video = (
-        ext in ALLOWED_VIDEO_EXTENSIONS
-        or file.content_type in ALLOWED_VIDEO_MIME_TYPES
+        ext in ALLOWED_VIDEO_EXTENSIONS or file.content_type in ALLOWED_VIDEO_MIME_TYPES
     )
     is_image = (
-        ext in ALLOWED_IMAGE_EXTENSIONS
-        or file.content_type in ALLOWED_IMAGE_MIME_TYPES
+        ext in ALLOWED_IMAGE_EXTENSIONS or file.content_type in ALLOWED_IMAGE_MIME_TYPES
     )
     if not is_video and not is_image:
         raise HTTPException(status_code=400, detail="不支持的文件类型")
 
     if is_video:
         asset_type = "video"
-        storage_dir = VIDEO_STORAGE_DIR
+        storage_dir = VIDEO_DIR
     else:
         asset_type = "image"
-        storage_dir = IMAGES_STORAGE_DIR
+        storage_dir = IMAGE_DIR
 
     storage_dir.mkdir(parents=True, exist_ok=True)
 

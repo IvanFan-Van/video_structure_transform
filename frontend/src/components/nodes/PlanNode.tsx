@@ -11,7 +11,13 @@ import { NodeStatus } from "../../store/types";
 interface Props {
     x: number;
     y: number;
-    onPosChange: (id: string, x: number, y: number, w: number, h: number) => void;
+    onPosChange: (
+        id: string,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+    ) => void;
 }
 
 const NODE_ID = "plan";
@@ -114,9 +120,28 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                 {/* ── Idle state ── */}
                 {(planStatus === "idle" || planStatus === "cancelled") && (
                     <>
-                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                            <Tooltip tip={{ en: "Describe your video topic, style and requirements. AI will generate a complete plan with narrative structure and shot breakdown.", zh: "描述你的视频主题、风格和需求，AI 会据此生成包含叙事结构和分镜的完整计划" }} inline>
-                                <span style={{ fontSize: "8px", color: "#8b5cf6" }}>Brief ?</span>
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                            }}
+                        >
+                            <Tooltip
+                                tip={{
+                                    en: "Describe your video topic, style and requirements. AI will generate a complete plan with narrative structure and shot breakdown.",
+                                    zh: "描述你的视频主题、风格和需求，AI 会据此生成包含叙事结构和分镜的完整计划",
+                                }}
+                                inline
+                            >
+                                <span
+                                    style={{
+                                        fontSize: "8px",
+                                        color: "#8b5cf6",
+                                    }}
+                                >
+                                    Brief ?
+                                </span>
                             </Tooltip>
                         </div>
                         <textarea
@@ -144,9 +169,29 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                                 (e.currentTarget.style.borderColor = "#e0e0e0")
                             }
                         />
-                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            <Tooltip tip={{ en: "Target video duration (seconds). Leave blank and AI will decide automatically.", zh: "目标视频时长（秒），留空由 AI 自动决定" }} inline>
-                                <span style={{ fontSize: "8px", color: "#8b5cf6", whiteSpace: "nowrap" }}>Duration ?</span>
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "4px",
+                            }}
+                        >
+                            <Tooltip
+                                tip={{
+                                    en: "Target video duration (seconds). Leave blank and AI will decide automatically.",
+                                    zh: "目标视频时长（秒），留空由 AI 自动决定",
+                                }}
+                                inline
+                            >
+                                <span
+                                    style={{
+                                        fontSize: "8px",
+                                        color: "#8b5cf6",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    Duration ?
+                                </span>
                             </Tooltip>
                             <input
                                 type="number"
@@ -306,15 +351,11 @@ export function PlanNode({ x, y, onPosChange }: Props) {
                                     {planResult.bgm_spec.genre}
                                 </span>
                                 <span>
-                                    <span style={{ color: "#bbb" }}>
-                                        BPM:
-                                    </span>{" "}
+                                    <span style={{ color: "#bbb" }}>BPM:</span>{" "}
                                     {String(planResult.bgm_spec.bpm)}
                                 </span>
                                 <span>
-                                    <span style={{ color: "#bbb" }}>
-                                        Mood:
-                                    </span>{" "}
+                                    <span style={{ color: "#bbb" }}>Mood:</span>{" "}
                                     {planResult.bgm_spec.mood}
                                 </span>
                             </div>

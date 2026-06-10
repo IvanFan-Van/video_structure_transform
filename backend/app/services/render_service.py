@@ -7,6 +7,7 @@ from pathlib import Path
 
 from sqlmodel import Session
 
+from app.config.config import RENDER_DIR, VIDEO_DIR
 from app.config.style_config import get_available_styles, get_style_config
 from app.database import engine
 from app.models import Asset
@@ -23,8 +24,6 @@ REMOTION_DIR = (
 )
 REMOTION_CLI = str(REMOTION_DIR / "node_modules" / ".bin" / "remotion.cmd")
 STORAGE_DIR = Path("storage")
-VIDEO_DIR = STORAGE_DIR / "videos"
-RENDER_DIR = STORAGE_DIR / "render"
 PREVIEW_DIR = STORAGE_DIR / "preview"
 FPS = 30
 WIDTH = 1080
@@ -83,9 +82,7 @@ async def _run_preview(
     preview_dir = PREVIEW_DIR / task_id
 
     try:
-        _push(
-            queue, {"phase": "loading", "message": "Loading plan data..."}
-        )
+        _push(queue, {"phase": "loading", "message": "Loading plan data..."})
         plan_task = task_registry.get(plan_id)
         if plan_task is None or plan_task.status != "completed":
             _push(
@@ -131,16 +128,12 @@ async def _run_preview(
             style_config = get_style_config(style_name)
             props = _build_remotion_props(plan, bgm_filename, style_config)
 
-            props_path = str(
-                (RENDER_DIR / f"{task_id}_{style_name}.json").resolve()
-            )
+            props_path = str((RENDER_DIR / f"{task_id}_{style_name}.json").resolve())
             with open(props_path, "w", encoding="utf-8") as f:
                 json.dump(props, f, ensure_ascii=False)
 
             midpoint_frame = max(0, props["durationInFrames"] // 3)
-            still_path = str(
-                (preview_dir / f"{style_name}.png").resolve()
-            )
+            still_path = str((preview_dir / f"{style_name}.png").resolve())
 
             _push(
                 queue,
@@ -250,9 +243,7 @@ async def _run_render(
         import ffmpeg
 
         probe = ffmpeg.probe(output_path)
-        video_stream = next(
-            s for s in probe["streams"] if s["codec_type"] == "video"
-        )
+        video_stream = next(s for s in probe["streams"] if s["codec_type"] == "video")
         dur = float(probe["format"].get("duration", 0))
 
         with Session(engine) as session:
@@ -339,9 +330,8 @@ def _build_remotion_props(
 
         text = visual_text or narration or seg.narrative_intent
 
-        if (
-            seg.stage in ("hook", "story", "insight", "cta")
-            and (visual_text or narration)
+        if seg.stage in ("hook", "story", "insight", "cta") and (
+            visual_text or narration
         ):
             scene_type = "emphasis_text"
         else:
@@ -444,9 +434,7 @@ def _build_text_style(seg) -> dict:
                 "full_screen": 50,
             }
             pos_y = pos_map.get(
-                c.position.value
-                if hasattr(c.position, "value")
-                else str(c.position),
+                c.position.value if hasattr(c.position, "value") else str(c.position),
                 50,
             )
         if c.appear_style:
@@ -459,9 +447,7 @@ def _build_text_style(seg) -> dict:
                 "stroke": "typewriter",
             }
             animation = emphasis_map.get(
-                c.emphasis.value
-                if hasattr(c.emphasis, "value")
-                else str(c.emphasis),
+                c.emphasis.value if hasattr(c.emphasis, "value") else str(c.emphasis),
                 animation,
             )
         if c.max_chars:
@@ -483,9 +469,7 @@ def _build_text_style(seg) -> dict:
     }
 
 
-def _compute_beat_frames(
-    bpm: float | None, duration_frames: int
-) -> list[int]:
+def _compute_beat_frames(bpm: float | None, duration_frames: int) -> list[int]:
     if not bpm or bpm <= 0:
         return []
     beat_interval_sec = 60.0 / bpm
@@ -494,9 +478,7 @@ def _compute_beat_frames(
     return [int(i * beat_interval_frames) for i in range(1, num_beats + 1)]
 
 
-async def _render_still(
-    props_path: str, output_path: str, frame: int = 0
-) -> None:
+async def _render_still(props_path: str, output_path: str, frame: int = 0) -> None:
     process = await asyncio.create_subprocess_exec(
         REMOTION_CLI,
         "still",

@@ -53,7 +53,9 @@ export function EffectSearch({ open, onClose, onSelect, triggerRef }: Props) {
             .get("/api/effects")
             .then((res) => {
                 if (res.data.status === "success") {
-                    const list = res.data.data ?? [];
+                    const list = (res.data.data ?? []).sort((a, b) =>
+                        a.name.localeCompare(b.name),
+                    );
                     setAllEffects(list);
                     setResults(list);
                 }

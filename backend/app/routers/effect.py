@@ -1,9 +1,8 @@
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
 from sqlmodel import Session
 
+from app.config import EFFECT_DIR
 from app.database import get_session
 from app.deps import get_current_user
 from app.models import User
@@ -13,14 +12,12 @@ from app.services.task import get_task_for_user
 
 router = APIRouter(tags=["effects"])
 
-OUT_DIR = Path(__file__).parent.parent.parent.parent / "effects-renderer" / "out"
-
 
 @router.get("/effects/demo/{filename}")
 async def serve_effect_demo(filename: str):
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
-    file_path = OUT_DIR / filename
+    file_path = EFFECT_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Demo not found")
     return FileResponse(file_path, media_type="video/mp4")
@@ -33,18 +30,21 @@ async def list_effects(
     current_user: User = Depends(get_current_user),
 ):
     effects = search_effects(session, q)
-    return JSONResponse(status_code=200, content={
-        "status": "success",
-        "data": [
-            {
-                "name": e.name,
-                "category": e.category,
-                "description": e.description,
-                "demo_path": e.demo_path,
-            }
-            for e in effects
-        ],
-    })
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success",
+            "data": [
+                {
+                    "name": e.name,
+                    "category": e.category,
+                    "description": e.description,
+                    "demo_path": e.demo_path,
+                }
+                for e in effects
+            ],
+        },
+    )
 
 
 @router.patch("/effects")
