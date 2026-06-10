@@ -480,6 +480,7 @@ async def run_slot_generation(  # noqa: C901
                 )
             )
 
+            # update task
             gen_map = {s.slot_id: s.value for s in output.generated_slots}
             for seg, slot in pending_text:
                 val = gen_map.get(slot.slot_id)
@@ -495,16 +496,18 @@ async def run_slot_generation(  # noqa: C901
             )
             generated_count += img_count
 
-        plan_task.result = template.model_dump()
         result: dict = {"generated": generated_count}
         if img_warnings:
             result["warnings"] = img_warnings
 
-        plan_task.result = template.model_dump()
         if output is not None:
             result["generated_slots"] = [
                 {"slot_id": s.slot_id, "value": s.value} for s in output.generated_slots
             ]
+
+        task_registry.set_result(task_id, result)
+        gen_map = {s.slot_id: s.value for s in output.generated_slots}
+        plan_task.result = template.model_dump()
         task_registry.set_result(task_id, result)
 
     except asyncio.CancelledError:

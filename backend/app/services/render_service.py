@@ -13,6 +13,7 @@ from app.database import engine
 from app.models import Asset
 from app.repositories import create_asset, get_asset_by_id
 from app.schemas.plan import VideoTemplate
+from app.services.pipeline import extract_cover_for_video
 from app.services.task import register_and_launch
 from app.tasks import task_registry
 from app.tasks.model import STREAM_EOF
@@ -255,6 +256,15 @@ async def _run_render(
             )
             create_asset(session, asset)
 
+            cover_id = await asyncio.get_running_loop().run_in_executor(
+                None,
+                extract_cover_for_video,
+                session,
+                str(Path(output_path).resolve()),
+                user_id,
+                output_asset_id,
+            )
+
         _push_eof(queue)
         task_registry.set_result(
             task_id,
@@ -266,6 +276,7 @@ async def _run_render(
                 "fps": FPS,
                 "width": video_stream.get("width"),
                 "height": video_stream.get("height"),
+                "cover_image_asset_id": cover_id,
             },
         )
     except asyncio.CancelledError:

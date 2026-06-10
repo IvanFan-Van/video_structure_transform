@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AbsoluteFill, Sequence } from "remotion";
+import { AbsoluteFill, Sequence, staticFile } from "remotion";
 import type { Scene } from "./types/composition";
 import { BackgroundRenderer } from "./BackgroundRenderer";
 import { OverlayRenderer } from "./OverlayRenderer";
@@ -50,7 +50,7 @@ function AudioLayer({
   return (
     <Sequence from={0} durationInFrames={sceneDuration}>
       <AudioComponent
-        src={audio.src}
+        src={staticFile(audio.src)}
         volume={audio.volume ?? 1}
         startFrom={
           audio.startFrom !== undefined

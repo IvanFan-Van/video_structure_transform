@@ -1893,7 +1893,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 
 ## 18. POST /render — 渲染视频
 
-基于已完成填充的 Plan 模板，调用 Remotion 引擎渲染生成最终的 MP4 视频。以异步任务模式运行，通过 SSE 实时推送渲染进度。
+基于已完成填充的 Plan 模板，调用 effects-renderer 引擎渲染生成最终的 MP4 视频。以异步任务模式运行，通过 SSE 实时推送渲染进度。
 
 | 属性 | 值 |
 |---|---|
@@ -1912,7 +1912,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 > 2. 所需 slot 已通过 `PATCH /plan/{plan_id}/slot/{slot_id}` 填充
 > 3. BGM 已通过 `POST /analyze-audio` 生成（slot 中的 `reference_audio_asset_id` 指向有效的 BGM 音频文件）
 >
-> 渲染引擎使用 `viral-structure-engine/remotion-video` 项目，输出规格为 1080×1920（9:16 竖屏）30fps H.264 MP4。
+> 渲染引擎使用 `effects-renderer` 项目，输出规格为 1080×1920（9:16 竖屏）30fps H.264 MP4。
 
 ### 请求示例
 
@@ -1947,17 +1947,17 @@ data: {"phase":"loading","message":"Loading plan data..."}
 
 data: {"phase":"bgm","message":"Loading BGM audio..."}
 
-data: {"phase":"building","message":"Building render config..."}
+data: {"phase":"building","message":"Building video project..."}
 
 data: {"phase":"rendering","progress":0,"frame":0,"totalFrames":498}
 
-data: {"phase":"rendering","progress":12,"frame":60,"totalFrames":498}
+data: {"phase":"rendering","progress":12}
 
-data: {"phase":"rendering","progress":25,"frame":125,"totalFrames":498}
+data: {"phase":"rendering","progress":25}
 
 ...
 
-data: {"phase":"rendering","progress":100,"frame":498,"totalFrames":498}
+data: {"phase":"rendering","progress":100}
 
 data: {"phase":"saving","message":"Saving output video..."}
 
@@ -1971,9 +1971,9 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
 | 帧类型 | phase 值 | 额外字段 | 说明 |
 |---|---|---|---|
 | 准备阶段 | `loading` | `message` | 读取 Plan 模板数据 |
-| BGM 准备 | `bgm` | `message` | 拷贝 BGM 音频到渲染目录 |
-| 构建配置 | `building` | `message` | 将 Plan 模板转换为 Remotion props JSON |
-| 渲染中 | `rendering` | `progress`, `frame`, `totalFrames` | 逐帧渲染进度（百分比 + 当前帧/总帧数） |
+| BGM 准备 | `bgm` | `message` | 拷贝 BGM 音频到 effects-renderer/public/ |
+| 构建配置 | `building` | `message` | 将 Plan 模板转换为 VideoProject JSON |
+| 渲染中 | `rendering` | `progress`，首帧附带 `frame` 和 `totalFrames` | 逐帧渲染进度百分比 |
 | 保存中 | `saving` | `message` | 将输出 MP4 写入 storage，创建 Asset 记录 |
 
 ### 任务结果结构
@@ -2011,11 +2011,11 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
 
 ```
 ① 读 PlanResult                   ← task_registry.get(plan_id).result
-② 拷贝 BGM                        ← bgm_spec.reference_audio_asset_id → remotion-video/public/bgm.wav
-③ 构建 remotion_props.json        ← PlanResult → scenes + beatFrames + textStyle
-④ Remotion CLI 渲染               ← npx remotion.cmd render src/index.ts VideoComposition output.mp4 --props=...
+② 拷贝 BGM                        ← bgm_spec.reference_audio_asset_id → effects-renderer/public/bgm.wav
+③ 构建 VideoProject JSON           ← PlanResult → scenes (background + overlays + transition + audio)
+④ effects-renderer CLI 渲染        ← pnpm exec tsx scripts/render-compose.ts --project ... --out ...
 ⑤ 创建 Asset 记录                 ← Asset(asset_id, user_id, path, type="video")
-⑥ 清理临时文件                    ← props JSON + 拷贝的 BGM
+⑥ 清理临时文件（异常/取消时）       ← props JSON + 拷贝的 BGM + 输出 MP4
 ```
 
 ### 错误响应
@@ -2032,8 +2032,8 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
 | 场景 | error 内容 |
 |---|---|
 | Plan 不存在或未完成 | `Plan not found or not completed` |
-| Remotion 渲染失败 | `Remotion render failed with code {n}` |
-| 输出文件丢失 | `Remotion 渲染后未找到输出文件` |
+| effects-renderer 渲染失败 | `effects-renderer failed with code {n}` |
+| 输出文件丢失 | `Render output file not found` |
 | 任务取消 | 清理临时文件后 `status: "cancelled"` |
 
 ---
@@ -2140,7 +2140,7 @@ POST /task/{id}/cancel → 200 "已发起取消"                   ← 中途取
 - **`/analyze-audio`**: 底层 `ffmpeg` 和模型推理被 `asyncio.CancelledError` 中断，中间产物（storage/tmp 下的文件）由任务内部清理
 - **`/split`**: 底层 `ffmpeg` 子进程被终止，已生成的临时切割文件被清理
 - **`/plan`**: 底层异步 LLM 请求被 `asyncio.CancelledError` 中断，API 调用立即中止
-- **`/render`**: 底层 Remotion CLI 子进程被终止，临时文件（props JSON + 拷贝的 BGM + 输出 MP4）被清理
+- **`/render`**: 底层 effects-renderer CLI 子进程被终止，临时文件（props JSON + 拷贝的 BGM + 输出 MP4）被清理
 
 ### 注意事项
 

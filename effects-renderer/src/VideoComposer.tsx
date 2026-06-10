@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
-import { AbsoluteFill, Sequence } from "remotion";
+import { AbsoluteFill, Sequence, staticFile } from "remotion";
 import type { VideoProject } from "./types/composition";
 import { computeTimeline } from "./lib/timeline";
 import { SceneRenderer } from "./SceneRenderer";
@@ -111,7 +111,7 @@ function GlobalAudioLayer({
   return (
     <Sequence from={0} durationInFrames={duration}>
       <AudioComponent
-        src={audio.src}
+        src={staticFile(audio.src)}
         volume={audio.volume ?? 1}
         startFrom={
           audio.startFrom !== undefined

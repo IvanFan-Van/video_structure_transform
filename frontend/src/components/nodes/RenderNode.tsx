@@ -271,7 +271,7 @@ export function RenderNode({ x, y, onPosChange }: Props) {
                             accent={ACCENT}
                         />
                         <CoverImage
-                            coverImageAssetId={renderResult.asset_id}
+                            coverImageAssetId={renderResult.cover_image_asset_id ?? renderResult.asset_id}
                             videoAssetId={renderResult.asset_id}
                             alt="Rendered video cover"
                         />

@@ -1451,6 +1451,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                     const slotMap = new Map(
                         generatedSlots.map((g) => [g.slot_id, g.value]),
                     );
+                    console.log(slotMap);
                     set((s) => {
                         const plan = s.planResult;
                         if (!plan) return {};

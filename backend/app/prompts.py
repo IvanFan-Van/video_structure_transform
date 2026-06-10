@@ -42,7 +42,7 @@ colors:
   surface: "#xxxxxx"        # 表面色（卡片/容器背景）
   muted: "#xxxxxx"          # 柔和色（次要背景）
   secondary-accent: "#xxxxxx"  # 可选：次要强调色
-  
+
 typography:
   headline:
     fontFamily: "Noto Serif SC"  # 必须是 Google Fonts 英文名
@@ -59,17 +59,17 @@ typography:
     fontFamily: "Noto Sans SC"
     fontSize: "1rem"             # 最小 16px
     fontWeight: 500
-    
+
 rounded:
   sm: "8px"
   md: "16px"
   lg: "32px"
-  
+
 spacing:
   sm: "16px"
   md: "32px"
   lg: "64px"
-  
+
 motion:
   energy: "high"               # calm / moderate / high（控制整体节奏）
   easing:
@@ -84,7 +84,7 @@ motion:
     - "radial-glow"            # 径向光晕
     - "ghost-type"             # 幽灵文字（大字低透明度）
   transition: "velocity-matched-upward"  # 主要转场类型
-  
+
 elevation:                     # 可选：深度/阴影系统
   flat: "none"
   subtle: "0 2px 8px rgba(0,0,0,0.08)"
@@ -724,6 +724,7 @@ SLOT_GENERATION_SYSTEM_PROMPT = (
     "你是一个专业的短视频内容创作助手。"
     "根据给定的视频模板和用户主题，为标记为「待生成」的槽位生成具体内容。"
     "输出将直接用于最终视频渲染，不得包含占位符或模糊描述。"
+    "严禁为标记为 [已填] 和 [未填] 的槽位生成内容——只输出带有 [待生成] 标记的槽位。"
 )
 
 SLOT_GENERATION_USER_TEMPLATE = """## 视频主题

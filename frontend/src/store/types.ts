@@ -348,6 +348,7 @@ export interface RenderResult {
     fps: number;
     width: number;
     height: number;
+    cover_image_asset_id?: string | null;
 }
 
 export interface RenderProgress {
