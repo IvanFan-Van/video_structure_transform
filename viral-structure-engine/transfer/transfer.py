@@ -898,7 +898,7 @@ def transfer(
         if ok:
             print(f"🎬 视频已渲染: {mp4_out}")
         else:
-            print(f"⚠️  渲染失败")
+            print("⚠️  渲染失败")
             remotion_cli = str(remotion_dir / "node_modules" / ".bin" / "remotion.cmd")
             print(f"    可手动: {remotion_cli} render src/index.ts VideoComposition out/demo.mp4 --props={Path(output_path).resolve()}")
 
@@ -939,7 +939,7 @@ if __name__ == "__main__":
     if style == "all":
         # 一次性生成全部4种风格
         mp4_paths = transfer_all_styles(sys.argv[1], content, sys.argv[3])
-        print(f"\n🎬 全部渲染完成:")
+        print("\n🎬 全部渲染完成:")
         for s, path in mp4_paths.items():
             print(f"  [{s}] {path}")
     else:

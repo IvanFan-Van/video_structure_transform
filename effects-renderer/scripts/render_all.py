@@ -26,8 +26,8 @@ with open("render_commands.jsonl", "r", encoding="utf-8") as f:
                 if result.stdout:
                     print(f"  STDOUT:\n{result.stdout}")
             else:
-                print(f"  OK")
-        except Exception as e:
+                print("  OK")
+        except Exception:
             effect_id_fallback = "?"
             print(f"[{idx}]: {effect_id_fallback} EXCEPTION:")
             traceback.print_exc()

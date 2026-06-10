@@ -300,6 +300,22 @@ def _build_segments_from_llm_output(
     return segments
 
 
+def _find_closest_text_element(
+    segment_mid: float,
+    text_elements: list[dict],
+    fallback_end: float,
+) -> dict | None:
+    best_te = None
+    best_dist = float("inf")
+    for te in text_elements:
+        te_mid = (te.get("appear_time", 0) + te.get("disappear_time", fallback_end)) / 2
+        dist = abs(te_mid - segment_mid)
+        if dist < best_dist:
+            best_dist = dist
+            best_te = te
+    return best_te
+
+
 def _merge_text_style(segment: Segment, visual_result: dict | None) -> None:
     """Merge font_size, font_weight, font_color, position from TextElement."""
     if not visual_result:
@@ -309,17 +325,7 @@ def _merge_text_style(segment: Segment, visual_result: dict | None) -> None:
         return
 
     mid = (segment.start_time + segment.end_time) / 2
-    best_te = None
-    best_dist = float("inf")
-    for te in text_elements:
-        te_mid = (
-            te.get("appear_time", 0) + te.get("disappear_time", segment.end_time)
-        ) / 2
-        dist = abs(te_mid - mid)
-        if dist < best_dist:
-            best_dist = dist
-            best_te = te
-
+    best_te = _find_closest_text_element(mid, text_elements, segment.end_time)
     if not best_te:
         return
 
@@ -447,16 +453,27 @@ async def _generate_background_images(
     pending_image: list[tuple[Segment, Slot]],
     template: VideoTemplate,
     user_id: str,
-) -> tuple[int, list[str]]:
-    generated = 0
-    warnings: list[str] = []
+) -> list[dict]:
+    results: list[dict] = []
     for seg, slot in pending_image:
         prompt_parts = [slot.description, template.user_brief]
         if seg.narrative_intent:
             prompt_parts.append(seg.narrative_intent)
         prompt = "，".join(p for p in prompt_parts if p.strip())
 
-        image_path, err = await generate_image(prompt)
+        full_prompt = f"{prompt}，竖版构图"
+        image_path, err = await generate_image(full_prompt)
+
+        item = {
+            "slot_id": slot.slot_id,
+            "slot_type": slot.slot_type.value,
+            "stage": seg.stage,
+            "success": False,
+            "value": None,
+            "prompt": full_prompt,
+            "error": None,
+        }
+
         if image_path:
             asset_id = str(uuid.uuid4())
             with SqlSession(db_engine) as s:
@@ -471,10 +488,13 @@ async def _generate_background_images(
             slot.value = asset_id
             slot.status = SlotStatus.filled
             slot.fill_method = FillMethod.ai_generate
-            generated += 1
-        elif err:
-            warnings.append(f"{slot.slot_id}: {err}")
-    return generated, warnings
+            item["success"] = True
+            item["value"] = asset_id
+        else:
+            item["error"] = err
+
+        results.append(item)
+    return results
 
 
 async def run_slot_generation(  # noqa: C901
@@ -499,8 +519,8 @@ async def run_slot_generation(  # noqa: C901
                         pending_image.append((seg, slot))
 
         generated_count = 0
-        img_warnings: list[str] = []
         output = None  # type: ignore
+        generated_slots: list[dict] = []
 
         if not pending_text and not pending_image:
             task_registry.set_result(
@@ -523,33 +543,37 @@ async def run_slot_generation(  # noqa: C901
                 )
             )
 
-            # update task
             gen_map = {s.slot_id: s.value for s in output.generated_slots}
             for seg, slot in pending_text:
                 val = gen_map.get(slot.slot_id)
-                if val:
+                success = val is not None
+                if success:
                     slot.value = val
                     slot.status = SlotStatus.filled
                     slot.fill_method = FillMethod.ai_generate
                     generated_count += 1
+                generated_slots.append({
+                    "slot_id": slot.slot_id,
+                    "slot_type": slot.slot_type.value,
+                    "stage": seg.stage,
+                    "success": success,
+                    "value": val,
+                    "error": None if success else "LLM did not generate for this slot",
+                })
 
         if pending_image:
-            img_count, img_warnings = await _generate_background_images(
+            image_results = await _generate_background_images(
                 pending_image, template, user_id
             )
-            generated_count += img_count
+            generated_slots.extend(image_results)
+            generated_count += sum(1 for r in image_results if r["success"])
 
         plan_task.result = template.model_dump()
 
         result: dict = {
-            "generated_slots": [
-                {"slot_id": s.slot_id, "value": s.value}
-                for s in output.generated_slots
-            ] if output is not None else [],
+            "generated_slots": generated_slots,
             "generated": generated_count,
         }
-        if img_warnings:
-            result["warnings"] = img_warnings
         task_registry.set_result(task_id, result)
 
     except asyncio.CancelledError:

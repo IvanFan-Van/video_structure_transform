@@ -18,3 +18,19 @@ MODELS_DIR = BACKEND_ROOT / "models"
 COMPONENTS_JSON = BACKEND_ROOT / "components_description.json"
 
 REMOTION_DIR = REPO_ROOT / "effects-renderer"
+
+__all__ = [
+    "AUDIO_DIR",
+    "BACKEND_ROOT",
+    "COMPONENTS_JSON",
+    "EFFECT_DIR",
+    "EFFECT_DOC_DIR",
+    "IMAGE_DIR",
+    "MODELS_DIR",
+    "REMOTION_DIR",
+    "RENDER_DIR",
+    "REPO_ROOT",
+    "STORAGE_DIR",
+    "TMP_DIR",
+    "VIDEO_DIR",
+]

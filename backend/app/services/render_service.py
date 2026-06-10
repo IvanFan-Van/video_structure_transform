@@ -215,6 +215,33 @@ async def _run_render(
         # 2.5. 生成 narration TTS 音频
         narration_paths = await _generate_all_narration_audio(plan, public_dir, queue)
 
+        voiceover_filename = None
+        if narration_paths:
+            concat_list = RENDER_DIR / f"{task_id}_concat.txt"
+            with open(concat_list, "w", encoding="utf-8") as f:
+                for p in narration_paths:
+                    f.write(f"file '{p}'\n")
+            voiceover_dest = public_dir / "voiceover.wav"
+            import subprocess
+
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-f",
+                    "concat",
+                    "-safe",
+                    "0",
+                    "-i",
+                    str(concat_list),
+                    "-c",
+                    "copy",
+                    str(voiceover_dest),
+                ],
+                capture_output=True,
+            )
+            voiceover_filename = "voiceover.wav"
+
         # 3. 探测参考视频分辨率
         width = WIDTH
         height = HEIGHT
@@ -240,7 +267,10 @@ async def _run_render(
             },
         )
         style_config = get_style_config(style)
-        props = _build_remotion_props(plan, bgm_filename, style_config, width, height)
+        props = _build_remotion_props(
+            plan, bgm_filename, style_config, width, height,
+            voiceover_path=voiceover_filename,
+        )
         RENDER_DIR.mkdir(parents=True, exist_ok=True)
         props_path = str((RENDER_DIR / f"{task_id}.json").resolve())
         with open(props_path, "w", encoding="utf-8") as f:
@@ -391,6 +421,7 @@ def _build_remotion_props(
     style_config: dict | None = None,
     width: int = WIDTH,
     height: int = HEIGHT,
+    voiceover_path: str | None = None,
 ) -> dict:
     scenes = []
     frame_offset = 0
@@ -475,7 +506,7 @@ def _build_remotion_props(
         "height": height,
         "scenes": scenes,
         "bgmPath": bgm_filename or "",
-        "voiceoverPath": "",
+        "voiceoverPath": voiceover_path or "",
         "voiceoverText": "",
         "ttsRate": "+0%",
         "rhythmPattern": style_config.get("rhythm_pattern", "standard")

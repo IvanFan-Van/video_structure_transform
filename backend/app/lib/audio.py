@@ -57,6 +57,7 @@ def _get_classifier():
                     model="dima806/music_genres_classification",
                     trust_remote_code=True,
                     cache_dir=str(MODELS_DIR),
+                    local_files_only=True,
                 )
     return _classifier
 

@@ -99,7 +99,7 @@ def main():
     print(f"  输出: {run_dir}")
     print(f"  模型: {os.getenv('MODEL')}")
     print(f"  API:  {os.getenv('BASE_URL')}")
-    print(f"  阶段: 0预处理 → 1宏观LLM → 2逐beat并发LLM → 3汇总")
+    print("  阶段: 0预处理 → 1宏观LLM → 2逐beat并发LLM → 3汇总")
     print("=" * 70)
 
     total_start = time.time()

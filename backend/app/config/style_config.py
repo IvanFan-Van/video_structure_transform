@@ -12,7 +12,7 @@ def _load_styles() -> dict:
     if _STYLES_CACHE is None:
         try:
             with open(_CONFIG_PATH, encoding="utf-8") as f:
-                data = yaml.safe_load(f)
+                data: dict = yaml.safe_load(f)
         except Exception:
             data = {}
         _STYLES_CACHE = data or {}
@@ -33,3 +33,6 @@ def get_available_styles() -> list[dict]:
 
 def get_style_config(name: str) -> dict | None:
     return _load_styles().get("styles", {}).get(name)
+
+
+__all__ = ["get_available_styles", "get_style_config"]

@@ -1968,7 +1968,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 
 ## 18. POST /plan/{plan_id}/generate — 批量 AI 生成槽位内容
 
-将模板中所有 `status="pending"` 的文本类槽位（visual_text / narration）一次性批量生成。LLM 会拥有全部 segment 的上下文，确保生成的文案在整条视频中叙事连贯、语气统一。
+将模板中所有 `status="pending"` 的槽位（文本类 / 图片类）一次性批量生成。文本槽位（visual_text / narration）通过 LLM 生成文案；图片槽位（background_image）通过 Agnes API 生成背景图。LLM 拥有全部 segment 上下文，确保文案叙事连贯、语气统一。
 
 | 属性 | 值 |
 |---|---|
@@ -2002,32 +2002,76 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 ```json
 {
   "generated_slots": [
-    {"slot_id": "seg0_visual_text", "value": "为什么你的沟通总被无视？"},
-    {"slot_id": "seg1_visual_text", "value": "原因很简单..."},
-    {"slot_id": "seg0_narration", "value": "你有没有想过..."}
-  ]
+    {
+      "slot_id": "seg0_visual_text",
+      "slot_type": "visual_text",
+      "stage": "hook",
+      "success": true,
+      "value": "为什么你的沟通总被无视？",
+      "error": null
+    },
+    {
+      "slot_id": "seg1_narration",
+      "slot_type": "narration",
+      "stage": "setup",
+      "success": true,
+      "value": "你有没有想过...",
+      "error": null
+    },
+    {
+      "slot_id": "seg2_background_image",
+      "slot_type": "background_image",
+      "stage": "story",
+      "success": true,
+      "value": "c1c1c1c1-c1c1-c1c1-c1c1-c1c1c1c1c1c1",
+      "prompt": "办公室场景，职场高效沟通，刚入职年轻人，竖版构图",
+      "error": null
+    },
+    {
+      "slot_id": "seg3_background_image",
+      "slot_type": "background_image",
+      "stage": "insight",
+      "success": false,
+      "value": null,
+      "prompt": "城市夜景，竖版构图",
+      "error": "AGNES_API_KEY not configured"
+    }
+  ],
+  "generated": 3
 }
 ```
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `generated_slots` | array | 成功生成的槽位列表，每个元素包含 `slot_id` 和 `value` |
-| `generated_slots[].slot_id` | string | 对应 slot 的唯一标识 |
-| `generated_slots[].value` | string | LLM 生成的文本内容 |
+| `generated_slots` | array | 每个 pending slot 的生成结果，文本和图片统一格式 |
+| `generated` | int | 成功生成的 slot 总数 |
 
-> **提示**：前端可通过 `generated_slots.length` 获取生成数量。
+**`generated_slots[]` 元素字段：**
 
-若无 pending 槽位，返回 `{"generated_slots": []}`。
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `slot_id` | string | 对应 slot 的唯一标识 |
+| `slot_type` | string | 槽位类型：`visual_text` / `narration` / `background_image` |
+| `stage` | string | 所属 stage（hook / setup / story / insight / cta / outro） |
+| `success` | bool | 是否生成成功 |
+| `value` | string \| null | 成功时为生成内容（文本：文案字符串；图片：asset_id），失败时为 `null` |
+| `prompt` | string \| null | 仅 `background_image` 类型存在，生成图片使用的 prompt |
+| `error` | string \| null | 失败原因，成功时为 `null` |
+
+> **提示**：前端可通过统计 `success: true` 的项获取成功生成数量。
+
+若无 pending 槽位，返回 `{"generated_slots": [], "generated": 0, "message": "没有待生成的槽位"}`。
 
 生成后的 slot 内容已直接写入原 plan 模板中。通过 `GET /task/{plan_id}/stream` 重新获取模板即可看到更新后的 slot 值（status 变为 `filled`，fill_method 变为 `ai_generate`）。
 
 ### 生成逻辑
 
-1. 忽略已填（`filled`）和未标记（`empty`）的 slot，只处理 `status="pending"` 的 `visual_text` 和 `narration`
-2. 若没有 pending 的文本 slot → 返回 `{"generated_slots": []}`
-3. 将完整模板结构 + 用户 brief + 已填 slot 的值作为上下文传给 LLM
-4. LLM 一次调用生成所有 pending slot 的文本内容
-5. 写回模板，通过 `GET /task/{plan_id}/stream` 可获取更新后的模板
+1. 忽略已填（`filled`）和未标记（`empty`）的 slot，只处理 `status="pending"` 的 `visual_text` / `narration` / `background_image`
+2. 若没有 pending slot → 返回 `{"generated_slots": [], "message": "没有待生成的槽位"}`
+3. 文本类：将完整模板结构 + 用户 brief + 已填 slot 的值作为上下文传给 LLM，一次调用生成所有 pending 文本 slot 的内容
+4. 图片类：依次为每个 `background_image` 调用 Agnes API 生成背景图，写入 Asset 表，slot.value 填入 asset_id
+5. 两类生成结果合并到统一的 `generated_slots` 列表
+6. 写回模板，通过 `GET /task/{plan_id}/stream` 可获取更新后的模板
 
 ### 错误响应
 
