@@ -87,7 +87,13 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                 color: "#555",
                             }}
                         >
-                            <Tooltip tip={{ en: "Enable AI model for smart scene detection; disable for traditional algorithm (frame difference based)", zh: "开启后使用 AI 模型智能检测场景切换；关闭则使用传统算法（基于帧差异）" }} inline>
+                            <Tooltip
+                                tip={{
+                                    en: "Enable AI model for smart scene detection; disable for traditional algorithm (frame difference based)",
+                                    zh: "开启后使用 AI 模型智能检测场景切换；关闭则使用传统算法（基于帧差异）",
+                                }}
+                                inline
+                            >
                                 AI Detection
                             </Tooltip>
                             <label
@@ -157,7 +163,13 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                         color: "#555",
                                     }}
                                 >
-                                    <Tooltip tip={{ en: "Detection sensitivity. Lower values = more sensitive, producing more and finer segments", zh: "检测敏感度。值越低越敏感，产生的片段更多更细" }} inline>
+                                    <Tooltip
+                                        tip={{
+                                            en: "Detection sensitivity. Lower values = more sensitive, producing more and finer segments",
+                                            zh: "检测敏感度。值越低越敏感，产生的片段更多更细",
+                                        }}
+                                        inline
+                                    >
                                         Threshold
                                     </Tooltip>
                                     <span
@@ -197,7 +209,13 @@ export function SplitNode({ x, y, onPosChange }: Props) {
                                 color: "#555",
                             }}
                         >
-                            <Tooltip tip={{ en: "Minimum scene length in frames. Adjacent segments shorter than this are merged to avoid fragmentation", zh: "最短片段帧数。低于此长度的相邻片段会被合并，避免碎片化" }} inline>
+                            <Tooltip
+                                tip={{
+                                    en: "Minimum scene length in frames. Adjacent segments shorter than this are merged to avoid fragmentation",
+                                    zh: "最短片段帧数。低于此长度的相邻片段会被合并，避免碎片化",
+                                }}
+                                inline
+                            >
                                 Min Scene Len
                             </Tooltip>
                             <span style={{ color: "#999", fontSize: "9px" }}>

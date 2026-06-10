@@ -1554,10 +1554,12 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             if (get().generateStatus === "success") {
                 const generatedSlots = get().generateResult?.generated_slots;
                 if (generatedSlots && generatedSlots.length > 0) {
-                    const slotMap = new Map(
-                        generatedSlots.map((g) => [g.slot_id, g.value]),
+                    const succeeded = generatedSlots.filter(
+                        (g) => g.success && g.value != null,
                     );
-                    console.log(slotMap);
+                    const slotMap = new Map(
+                        succeeded.map((g) => [g.slot_id, g.value as string]),
+                    );
                     set((s) => {
                         const plan = s.planResult;
                         if (!plan) return {};
@@ -1575,9 +1577,29 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                                     : slot;
                             }),
                         }));
-                        const newStatuses: Record<string, "filled"> = {};
+                        const newStatuses: Record<
+                            string,
+                            "filled" | "error"
+                        > = {};
                         for (const g of generatedSlots) {
-                            newStatuses[g.slot_id] = "filled";
+                            if (g.success && g.value != null) {
+                                newStatuses[g.slot_id] = "filled";
+                            } else {
+                                newStatuses[g.slot_id] = "error";
+                            }
+                        }
+                        const errorMessages: NodeError[] = [];
+                        for (const g of generatedSlots) {
+                            if (!g.success && g.error) {
+                                errorMessages.push(
+                                    makeError(
+                                        `slot_${g.slot_id}`,
+                                        g.error,
+                                        "GEN_FAILED",
+                                        "",
+                                    ),
+                                );
+                            }
                         }
                         return {
                             planResult: { ...plan, segments },
@@ -1585,6 +1607,17 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                                 ...s.slotFillStatuses,
                                 ...newStatuses,
                             },
+                            videoErrors: [
+                                ...s.videoErrors.filter(
+                                    (e) =>
+                                        !generatedSlots.some(
+                                            (g) =>
+                                                e.nodeId ===
+                                                `slot_${g.slot_id}`,
+                                        ),
+                                ),
+                                ...errorMessages,
+                            ],
                         };
                     });
                 }

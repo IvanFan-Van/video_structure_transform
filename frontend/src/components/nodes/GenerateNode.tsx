@@ -225,12 +225,92 @@ export function GenerateNode({ x, y, onPosChange }: Props) {
                                 color: "#555",
                             }}
                         >
-                            {generateResult.generated_slots.length} slot
-                            {generateResult.generated_slots.length !== 1
-                                ? "s"
-                                : ""}{" "}
-                            filled
+                            {generateResult.generated} /{" "}
+                            {generateResult.generated_slots.length} succeeded
                         </div>
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "3px",
+                                maxHeight: "120px",
+                                overflowY: "auto",
+                            }}
+                        >
+                            {generateResult.generated_slots.map((s) => (
+                                <div
+                                    key={s.slot_id}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        fontSize: "7px",
+                                        padding: "2px 4px",
+                                        borderRadius: "2px",
+                                        background: s.success
+                                            ? "#f0fdf4"
+                                            : "#fef2f2",
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            color: s.success
+                                                ? "#22c55e"
+                                                : "#ef4444",
+                                            fontWeight: 700,
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        {s.success ? "✓" : "✗"}
+                                    </span>
+                                    <span
+                                        style={{
+                                            color: "#888",
+                                            flexShrink: 0,
+                                        }}
+                                        title={s.stage}
+                                    >
+                                        {s.stage}
+                                    </span>
+                                    <span
+                                        style={{
+                                            color: "#555",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        {s.slot_type}
+                                    </span>
+                                    {!s.success && s.error && (
+                                        <span
+                                            style={{
+                                                color: "#ef4444",
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
+                                                whiteSpace: "nowrap",
+                                                flex: 1,
+                                                minWidth: 0,
+                                            }}
+                                            title={s.error}
+                                        >
+                                            {s.error}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        {generateTime != null && (
+                            <div
+                                style={{
+                                    fontSize: "7px",
+                                    color: "#aaa",
+                                    textAlign: "center",
+                                }}
+                            >
+                                {generateTime.toFixed(1)}s
+                            </div>
+                        )}
                         <ActionButton
                             variant="muted"
                             label="↻ Re-generate"

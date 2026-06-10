@@ -140,16 +140,22 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                     alignItems: "center",
                                 }}
                             >
-                                <Tooltip tip={{ en: "Shot pacing: Fast (<2s avg) / Medium (2-4s) / Slow (>4s), based on average shot duration", zh: "镜头切换节奏：Fast(快) Medium(中) Slow(慢)，基于平均镜头时长判断" }} inline>
-                                <span
-                                    style={{
-                                        fontSize: "7px",
-                                        color: "#bbb",
-                                        letterSpacing: "1px",
+                                <Tooltip
+                                    tip={{
+                                        en: "Shot pacing: Fast (<2s avg) / Medium (2-4s) / Slow (>4s), based on average shot duration",
+                                        zh: "镜头切换节奏：Fast(快) Medium(中) Slow(慢)，基于平均镜头时长判断",
                                     }}
+                                    inline
                                 >
-                                    PACE
-                                </span>
+                                    <span
+                                        style={{
+                                            fontSize: "7px",
+                                            color: "#bbb",
+                                            letterSpacing: "1px",
+                                        }}
+                                    >
+                                        PACE
+                                    </span>
                                 </Tooltip>
                                 <span
                                     style={{
@@ -173,16 +179,22 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                     alignItems: "center",
                                 }}
                             >
-                                <Tooltip tip={{ en: "Average duration per shot (seconds), used to assess editing rhythm", zh: "平均每个镜头的时长（秒），用于判断剪辑节奏" }} inline>
-                                <span
-                                    style={{
-                                        fontSize: "7px",
-                                        color: "#bbb",
-                                        letterSpacing: "1px",
+                                <Tooltip
+                                    tip={{
+                                        en: "Average duration per shot (seconds), used to assess editing rhythm",
+                                        zh: "平均每个镜头的时长（秒），用于判断剪辑节奏",
                                     }}
+                                    inline
                                 >
-                                    AVG SHOT
-                                </span>
+                                    <span
+                                        style={{
+                                            fontSize: "7px",
+                                            color: "#bbb",
+                                            letterSpacing: "1px",
+                                        }}
+                                    >
+                                        AVG SHOT
+                                    </span>
                                 </Tooltip>
                                 <span
                                     style={{
@@ -386,10 +398,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                     }}
                                                 >
                                                     {el.text.length > 40
-                                                        ? el.text.slice(
-                                                              0,
-                                                              40,
-                                                          ) + "…"
+                                                        ? el.text.slice(0, 40) +
+                                                          "…"
                                                         : el.text}
                                                 </div>
                                                 <div
@@ -414,13 +424,17 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                         </span>
                                                     )}
                                                     {el.font_size != null && (
-                                                        <span>{el.font_size}px</span>
+                                                        <span>
+                                                            {el.font_size}px
+                                                        </span>
                                                     )}
                                                     {el.font_color && (
                                                         <span
                                                             style={{
-                                                                display: "inline-flex",
-                                                                alignItems: "center",
+                                                                display:
+                                                                    "inline-flex",
+                                                                alignItems:
+                                                                    "center",
                                                                 gap: "3px",
                                                             }}
                                                         >
@@ -430,7 +444,8 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                                         "inline-block",
                                                                     width: "8px",
                                                                     height: "8px",
-                                                                    borderRadius: "2px",
+                                                                    borderRadius:
+                                                                        "2px",
                                                                     background:
                                                                         el.font_color,
                                                                     border: "1px solid #ddd",

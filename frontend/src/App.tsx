@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wires } from "./components/ui/Wires";
 import { useNodePositions } from "./hooks/useNodePositions";
-import { useAppStore } from "./store/useAppStore";
 import { useAuthStore } from "./store/useAuthStore";
 import { useCanvasStore } from "./store/useCanvasStore";
 import { useVideoStore } from "./store/useVideoStore";
@@ -33,10 +32,6 @@ import { TourLangContext } from "./context/TourLangContext";
 
 function App() {
     const { positions, update: updatePos } = useNodePositions();
-    const initWorker = useAppStore((s) => s.initWorker);
-    const destroyWorker = useAppStore((s) => s.destroyWorker);
-    const modelReady = useAppStore((s) => s.modelReady);
-    const saveRunHistory = useAppStore((s) => s.saveRunHistory);
     const user = useAuthStore((s) => s.user);
     const logout = useAuthStore((s) => s.logout);
     const savePreset = useCanvasStore((s) => s.savePreset);
@@ -49,15 +44,6 @@ function App() {
     const [showTour, setShowTour] = useState(false);
     const [tourLang, setTourLang] = useState<"en" | "zh">("en");
     const tour = useTour();
-
-    useEffect(() => {
-        initWorker();
-        return () => destroyWorker();
-    }, []);
-
-    useEffect(() => {
-        if (modelReady) saveRunHistory();
-    }, [modelReady, saveRunHistory]);
 
     useEffect(() => {
         const onClick = (e: MouseEvent) => {

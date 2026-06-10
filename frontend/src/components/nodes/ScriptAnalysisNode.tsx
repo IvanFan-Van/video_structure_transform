@@ -103,17 +103,30 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
             <div
                 style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
-                {!transcriptResult && (scriptStatus === "idle" || scriptStatus === "cancelled") && (
-                    <StatusHeader variant="idle" label="Waiting for extraction..." />
-                )}
+                {!transcriptResult &&
+                    (scriptStatus === "idle" ||
+                        scriptStatus === "cancelled") && (
+                        <StatusHeader
+                            variant="idle"
+                            label="Waiting for extraction..."
+                        />
+                    )}
 
                 {!transcriptResult && scriptStatus === "loading" && (
-                    <StatusHeader variant="loading" label="Analyzing..." accent="#10b981" />
+                    <StatusHeader
+                        variant="loading"
+                        label="Analyzing..."
+                        accent="#10b981"
+                    />
                 )}
 
                 {transcriptResult && (
                     <>
-                        <StatusHeader variant="success" label="ANALYZED" accent="#10b981" />
+                        <StatusHeader
+                            variant="success"
+                            label="ANALYZED"
+                            accent="#10b981"
+                        />
                         {perspectiveLabel && (
                             <div
                                 style={{
@@ -174,8 +187,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                 whiteSpace: "pre-wrap",
                                             }}
                                         >
-                                            {data.visual_text ||
-                                                "(empty)"}
+                                            {data.visual_text || "(empty)"}
                                         </div>
                                     </div>
                                     <div style={{ marginBottom: "6px" }}>
@@ -196,8 +208,7 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                 whiteSpace: "pre-wrap",
                                             }}
                                         >
-                                            {data.audio_text ||
-                                                "(empty)"}
+                                            {data.audio_text || "(empty)"}
                                         </div>
                                     </div>
                                     {(data.emotional_tone ||
@@ -216,34 +227,36 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                         display: "flex",
                                                         justifyContent:
                                                             "space-between",
-                                                        alignItems:
-                                                            "center",
+                                                        alignItems: "center",
                                                     }}
                                                 >
-                                                    <Tooltip tip={{ en: "Emotional tone of this stage: positive/negative/neutral/suspenseful", zh: "该阶段的情感基调：积极/消极/中性/悬疑" }} inline>
-                                                    <span
-                                                        style={{
-                                                            fontSize:
-                                                                "7px",
-                                                            fontWeight: 600,
-                                                            letterSpacing:
-                                                                "1px",
-                                                            color: "#bbb",
+                                                    <Tooltip
+                                                        tip={{
+                                                            en: "Emotional tone of this stage: positive/negative/neutral/suspenseful",
+                                                            zh: "该阶段的情感基调：积极/消极/中性/悬疑",
                                                         }}
+                                                        inline
                                                     >
-                                                        EMOTIONAL TONE
-                                                    </span>
+                                                        <span
+                                                            style={{
+                                                                fontSize: "7px",
+                                                                fontWeight: 600,
+                                                                letterSpacing:
+                                                                    "1px",
+                                                                color: "#bbb",
+                                                            }}
+                                                        >
+                                                            EMOTIONAL TONE
+                                                        </span>
                                                     </Tooltip>
                                                     <span
                                                         style={{
-                                                            fontSize:
-                                                                "7px",
+                                                            fontSize: "7px",
                                                             color: "#555",
                                                         }}
                                                     >
                                                         {EMOTIONAL_TONE_LABELS[
-                                                            data
-                                                                .emotional_tone
+                                                            data.emotional_tone
                                                         ] ||
                                                             data.emotional_tone}
                                                     </span>
@@ -255,36 +268,37 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                         display: "flex",
                                                         justifyContent:
                                                             "space-between",
-                                                        alignItems:
-                                                            "center",
+                                                        alignItems: "center",
                                                     }}
                                                 >
-                                                    <Tooltip tip={{ en: "Hook type: pain_point/suspense/result_first/counter_intuitive/number_shock/identity_lock/scene_immersion/contrast_flip", zh: "开场钩子类型：痛点/悬念/结果前置/反直觉/数字冲击/身份锁定/场景沉浸/对比反转" }} inline>
-                                                    <span
-                                                        style={{
-                                                            fontSize:
-                                                                "7px",
-                                                            fontWeight: 600,
-                                                            letterSpacing:
-                                                                "1px",
-                                                            color: "#bbb",
+                                                    <Tooltip
+                                                        tip={{
+                                                            en: "Hook type: pain_point/suspense/result_first/counter_intuitive/number_shock/identity_lock/scene_immersion/contrast_flip",
+                                                            zh: "开场钩子类型：痛点/悬念/结果前置/反直觉/数字冲击/身份锁定/场景沉浸/对比反转",
                                                         }}
+                                                        inline
                                                     >
-                                                        HOOK TYPE
-                                                    </span>
+                                                        <span
+                                                            style={{
+                                                                fontSize: "7px",
+                                                                fontWeight: 600,
+                                                                letterSpacing:
+                                                                    "1px",
+                                                                color: "#bbb",
+                                                            }}
+                                                        >
+                                                            HOOK TYPE
+                                                        </span>
                                                     </Tooltip>
                                                     <span
                                                         style={{
-                                                            fontSize:
-                                                                "7px",
+                                                            fontSize: "7px",
                                                             color: "#555",
                                                         }}
                                                     >
                                                         {HOOK_TYPE_LABELS[
-                                                            data
-                                                                .hook_type
-                                                        ] ||
-                                                            data.hook_type}
+                                                            data.hook_type
+                                                        ] || data.hook_type}
                                                     </span>
                                                 </div>
                                             )}
@@ -294,36 +308,37 @@ export function ScriptAnalysisNode({ x, y, onPosChange }: Props) {
                                                         display: "flex",
                                                         justifyContent:
                                                             "space-between",
-                                                        alignItems:
-                                                            "center",
+                                                        alignItems: "center",
                                                     }}
                                                 >
-                                                    <Tooltip tip={{ en: "CTA type: follow/like_collect/comment/purchase/discount_hook/dm_funnel/share_spread/challenge", zh: "行动号召类型：关注/点赞收藏/评论/购买/优惠钩子/私信引流/分享传播/挑战" }} inline>
-                                                    <span
-                                                        style={{
-                                                            fontSize:
-                                                                "7px",
-                                                            fontWeight: 600,
-                                                            letterSpacing:
-                                                                "1px",
-                                                            color: "#bbb",
+                                                    <Tooltip
+                                                        tip={{
+                                                            en: "CTA type: follow/like_collect/comment/purchase/discount_hook/dm_funnel/share_spread/challenge",
+                                                            zh: "行动号召类型：关注/点赞收藏/评论/购买/优惠钩子/私信引流/分享传播/挑战",
                                                         }}
+                                                        inline
                                                     >
-                                                        CTA TYPE
-                                                    </span>
+                                                        <span
+                                                            style={{
+                                                                fontSize: "7px",
+                                                                fontWeight: 600,
+                                                                letterSpacing:
+                                                                    "1px",
+                                                                color: "#bbb",
+                                                            }}
+                                                        >
+                                                            CTA TYPE
+                                                        </span>
                                                     </Tooltip>
                                                     <span
                                                         style={{
-                                                            fontSize:
-                                                                "7px",
+                                                            fontSize: "7px",
                                                             color: "#555",
                                                         }}
                                                     >
                                                         {CTA_TYPE_LABELS[
-                                                            data
-                                                                .cta_type
-                                                        ] ||
-                                                            data.cta_type}
+                                                            data.cta_type
+                                                        ] || data.cta_type}
                                                     </span>
                                                 </div>
                                             )}
