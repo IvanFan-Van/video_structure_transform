@@ -106,12 +106,21 @@ def extract_bgm(
             },
         )
 
-    bgm_src = TMP_DIR / Path(output_files[0])
+    bgm_src = None
+    for f in output_files:
+        file_path = TMP_DIR / Path(f)
+        if "bgm" in str(f):
+            bgm_src = file_path
+        else:
+            file_path.unlink(missing_ok=True)
+
+    if bgm_src is None:
+        bgm_src = TMP_DIR / Path(output_files[0])
+
     bgm_dst = dst_dir / f"{audio_asset_id}_bgm.wav"
     bgm_src.rename(bgm_dst)
 
     audio_wav.unlink(missing_ok=True)
-    bgm_src.unlink(missing_ok=True)
 
     return bgm_dst
 
