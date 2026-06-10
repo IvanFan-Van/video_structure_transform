@@ -18,6 +18,7 @@ import {
     SplitResult,
     EffectResult,
     EffectItem,
+    EffectParamResult,
     PlanResult,
     SlotFillResult,
     GenerateResult,
@@ -249,6 +250,9 @@ interface VideoState {
 
     effectStatuses: Record<number, NodeStatus>;
     effectResults: Record<number, EffectResult | null>;
+    effectParamStatuses: Record<number, NodeStatus>;
+    effectParamResults: Record<number, EffectParamResult | null>;
+    effectParamTaskIds: Record<number, string>;
 
     planableTaskIds: {
         script: string | null;
@@ -314,6 +318,7 @@ interface VideoActions {
     startSplit: () => Promise<void>;
     stopSplit: () => Promise<void>;
     analyzeEffect: (assetId: string, segmentIndex: number) => Promise<void>;
+    analyzeEffectParams: (assetId: string, segmentIndex: number, effects: string[]) => Promise<void>;
     startPlan: (userBrief: string, targetDuration?: number) => Promise<void>;
     stopPlan: () => Promise<void>;
     quickUpload: (file: File) => Promise<string | null>;
@@ -391,6 +396,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
 
     effectStatuses: {},
     effectResults: {},
+    effectParamStatuses: {},
+    effectParamResults: {},
+    effectParamTaskIds: {},
 
     planableTaskIds: { script: null, visual: null, audio: null, split: null },
     effectTaskIds: {},
@@ -1154,6 +1162,100 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         }
     },
 
+    analyzeEffectParams: async (assetId, segmentIndex, effects) => {
+        const token = useAuthStore.getState().token;
+        if (!token) return;
+        const t0 = Date.now();
+
+        set({
+            effectParamStatuses: {
+                ...get().effectParamStatuses,
+                [segmentIndex]: "loading",
+            },
+        });
+
+        try {
+            const res = await apiAxios.post(
+                "/api/analyze-effect-params",
+                { asset_id: assetId, effects },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                },
+            );
+
+            if (res.data.status !== "success") {
+                const elapsed = (Date.now() - t0) / 1000;
+                set({
+                    effectParamStatuses: {
+                        ...get().effectParamStatuses,
+                        [segmentIndex]: "error",
+                    },
+                });
+                return;
+            }
+
+            const taskId: string = res.data.data.task_id;
+            set({
+                effectParamTaskIds: {
+                    ...get().effectParamTaskIds,
+                    [segmentIndex]: taskId,
+                },
+            });
+
+            await subscribeTaskStream<EffectParamResult>(taskId, token, {
+                controllerKey: `effect_param_${segmentIndex}`,
+                t0,
+                set,
+                nodeId: `effect_param_segment_${segmentIndex}`,
+                failureLabel: "Effect params analysis failed",
+                onCompleted: (result) => ({
+                    effectParamResults: {
+                        ...get().effectParamResults,
+                        [segmentIndex]: result,
+                    },
+                    effectParamStatuses: {
+                        ...get().effectParamStatuses,
+                        [segmentIndex]: "success" as NodeStatus,
+                    },
+                }),
+                onFailed: () => ({
+                    effectParamStatuses: {
+                        ...get().effectParamStatuses,
+                        [segmentIndex]: "error" as NodeStatus,
+                    },
+                }),
+                onCancelled: () => ({
+                    effectParamStatuses: {
+                        ...get().effectParamStatuses,
+                        [segmentIndex]: "idle" as NodeStatus,
+                    },
+                }),
+            });
+        } catch {
+            set((s) => ({
+                effectParamStatuses: {
+                    ...s.effectParamStatuses,
+                    [segmentIndex]: "error",
+                },
+                videoErrors: [
+                    ...s.videoErrors.filter(
+                        (e) =>
+                            e.nodeId !==
+                            `effect_param_segment_${segmentIndex}`,
+                    ),
+                    makeError(
+                        `effect_param_segment_${segmentIndex}`,
+                        "Network error",
+                        "NETWORK_ERROR",
+                        NETWORK_ERROR_DETAILS,
+                    ),
+                ],
+            }));
+        }
+    },
+
     startPlan: async (userBrief, targetDuration?) => {
         const { planableTaskIds, effectTaskIds } = get();
         const token = useAuthStore.getState().token;
@@ -1835,6 +1937,9 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             splitResult: null,
             effectStatuses: {},
             effectResults: {},
+            effectParamStatuses: {},
+            effectParamResults: {},
+            effectParamTaskIds: {},
             planableTaskIds: {
                 script: null,
                 visual: null,

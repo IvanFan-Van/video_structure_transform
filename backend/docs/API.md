@@ -1663,42 +1663,34 @@ curl -X POST http://127.0.0.1:8000/analyze-effect-params \
 
 ```json
 {
-  "observations": "参考视频开头标题以逐字打字机效果出现，每个字间隔约80ms，伴有微弱淡入。中段文字从严重模糊聚焦至锐利，持续约0.5s。转场处有快速光效闪过，颜色偏暖橙。",
-  "effects": [
+  "observations": "参考视频开头标题以逐字打字机效果出现，每个字间隔约80ms，伴有光标闪烁。中段文字从严重模糊聚焦至锐利，持续约0.5s。",
+  "param_set": [
     {
       "effect_name": "Typewriter",
-      "remocn_component": "Typewriter",
+      "remocn_component": "typewriter",
       "remocn_props": {
         "text": "你知道吗？90%的人都做错了这件事",
         "speed": 50,
-        "enterAnimation": "fade"
+        "cursor": true,
+        "color": "#FFFFFF"
       },
-      "timing": { "start_time": 0.3, "duration": 2.2 },
-      "applies_to": "visual_text",
-      "evidence": "标题文字逐字出现，伴有微弱淡入效果"
+      "timing_start": 0.3,
+      "timing_duration": 2.2,
+      "applies_to": "hook",
+      "evidence": "标题文字逐字出现，伴有光标闪烁"
     },
     {
       "effect_name": "BlurReveal",
-      "remocn_component": "BlurReveal",
+      "remocn_component": "blur-reveal",
       "remocn_props": {
         "text": "我是标题",
-        "blurAmount": 15,
-        "duration": 0.5
+        "blur": 15,
+        "fontSize": 72
       },
-      "timing": { "start_time": 5.5, "duration": 0.5 },
-      "applies_to": "visual_text",
+      "timing_start": 5.5,
+      "timing_duration": 0.5,
+      "applies_to": "setup",
       "evidence": "文字从严重模糊到清晰聚焦"
-    },
-    {
-      "effect_name": "LightLeakTransition",
-      "remocn_component": "LightLeakTransition",
-      "remocn_props": {
-        "colors": ["#FF8C00", "#FFD700"],
-        "intensity": 0.8
-      },
-      "timing": { "start_time": 3.5, "duration": 0.5 },
-      "applies_to": "transition",
-      "evidence": "画面切换时有暖色调光效闪过"
     }
   ]
 }
@@ -1708,19 +1700,20 @@ curl -X POST http://127.0.0.1:8000/analyze-effect-params \
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `observations` | string | 对视频中特效参数的自由形式观察描述 |
-| `effects` | array | 参数化后的特效列表 |
+| `observations` | string | 对视频中视觉现象的自由形式观察描述 |
+| `param_set` | array[EffectParamDetail] | 每个选中效果的参数化匹配结果 |
 
-**`effects[]` 元素字段：**
+**`param_set[]` 元素字段：**
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `effect_name` | string | 用户指定的特效名称（与请求中一致） |
-| `remocn_component` | string | 对应的 Remotion 组件名（通常与 effect_name 相同） |
-| `remocn_props` | object | 从特效文档中的 `## Props` 部分推断的组件参数，可直接传入 Remotion 组件 |
-| `timing` | object | 特效时间信息，包含 `start_time`（秒）和 `duration`（秒） |
-| `applies_to` | string | 特效作用目标类型：`visual_text` / `background` / `transition` / `overlay` |
-| `evidence` | string | 视频中观察到的具体视觉证据，支持参数推理 |
+| `remocn_component` | string | kebab-case 组件 ID（如 `typewriter`、`blur-reveal`） |
+| `remocn_props` | object | 从特效文档 `## Props` 表推断的组件参数，仅包含 docs 中定义的字段 |
+| `timing_start` | float | 效果开始时间（秒），一位小数 |
+| `timing_duration` | float | 效果持续时长（秒），一位小数 |
+| `applies_to` | string | stage 名（hook/setup/story/...）或 slot 类型（visual_text/narration） |
+| `evidence` | string | 视觉证据，参数选择的依据 |
 
 > **参数来源**：服务端通过 `_load_effect_docs` 从 `storage/effect_docs/{kebab}.md` 读取各特效的 `## Props` 章节，结合视频视觉观察（文字内容、时长、颜色等）推断具体参数值。
 

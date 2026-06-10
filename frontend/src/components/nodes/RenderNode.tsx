@@ -25,6 +25,7 @@ const ACCENT = "#8b5cf6";
 const PHASES: { key: string; label: string }[] = [
     { key: "loading", label: "Loading plan data" },
     { key: "bgm", label: "Loading BGM audio" },
+    { key: "tts", label: "Generating narration audio" },
     { key: "building", label: "Building render config" },
     { key: "rendering", label: "Rendering frames" },
     { key: "saving", label: "Saving output video" },
@@ -38,6 +39,7 @@ export function RenderNode({ x, y, onPosChange }: Props) {
     const renderStatus = useVideoStore((s) => s.renderStatus);
     const renderResult = useVideoStore((s) => s.renderResult);
     const renderPhase = useVideoStore((s) => s.renderPhase);
+    const renderPhaseMessage = useVideoStore((s) => s.renderPhaseMessage);
     const renderProgress = useVideoStore((s) => s.renderProgress);
     const renderFrame = useVideoStore((s) => s.renderFrame);
     const renderTotalFrames = useVideoStore((s) => s.renderTotalFrames);
@@ -208,7 +210,9 @@ export function RenderNode({ x, y, onPosChange }: Props) {
                             })}
                         </div>
 
-                        {renderPhase === "rendering" && (
+                        {renderPhase &&
+                            renderPhase !== "loading" &&
+                            renderPhase !== "bgm" && (
                             <div
                                 style={{
                                     display: "flex",
@@ -216,41 +220,56 @@ export function RenderNode({ x, y, onPosChange }: Props) {
                                     gap: "4px",
                                 }}
                             >
-                                <div
-                                    style={{
-                                        width: "100%",
-                                        height: "6px",
-                                        background: "#f0f0f0",
-                                        borderRadius: "3px",
-                                        overflow: "hidden",
-                                    }}
-                                >
+                                {renderPhaseMessage && (
                                     <div
                                         style={{
-                                            width: `${Math.min(renderProgress, 100)}%`,
-                                            height: "100%",
-                                            background: ACCENT,
-                                            borderRadius: "3px",
-                                            transition: "width 0.3s ease",
+                                            fontSize: "7px",
+                                            color: "#888",
                                         }}
-                                    />
-                                </div>
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        fontSize: "8px",
-                                        color: "#888",
-                                    }}
-                                >
-                                    <span>{renderProgress}%</span>
-                                    <span>
-                                        帧 {renderFrame} /{" "}
-                                        {renderTotalFrames > 0
-                                            ? renderTotalFrames
-                                            : "..."}
-                                    </span>
-                                </div>
+                                    >
+                                        {renderPhaseMessage}
+                                    </div>
+                                )}
+                                {renderProgress > 0 && (
+                                    <>
+                                        <div
+                                            style={{
+                                                width: "100%",
+                                                height: "6px",
+                                                background: "#f0f0f0",
+                                                borderRadius: "3px",
+                                                overflow: "hidden",
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    width: `${Math.min(renderProgress, 100)}%`,
+                                                    height: "100%",
+                                                    background: ACCENT,
+                                                    borderRadius: "3px",
+                                                    transition:
+                                                        "width 0.3s ease",
+                                                }}
+                                            />
+                                        </div>
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                fontSize: "8px",
+                                                color: "#888",
+                                            }}
+                                        >
+                                            <span>{renderProgress}%</span>
+                                            {renderTotalFrames > 0 && (
+                                                <span>
+                                                    frame {renderFrame} /{" "}
+                                                    {renderTotalFrames}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
 

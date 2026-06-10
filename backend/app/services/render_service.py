@@ -184,6 +184,7 @@ async def _run_render(
 ) -> None:
     props_path = None
     bgm_dest = None
+    narration_paths = None
     output_asset_id = str(uuid.uuid4())
     output_path = str((VIDEO_DIR / f"{output_asset_id}.mp4").resolve())
 
@@ -211,6 +212,27 @@ async def _run_render(
                 shutil.copy2(asset.path, str(bgm_dest))
                 bgm_filename = "bgm.wav"
 
+        # 2.5. 生成 narration TTS 音频
+        narration_paths = await _generate_all_narration_audio(
+            plan, public_dir, queue
+        )
+
+        # 3. 探测参考视频分辨率
+        width = WIDTH
+        height = HEIGHT
+        if plan.reference_asset_id:
+            ref_asset = get_asset_by_id(session, plan.reference_asset_id)
+            if ref_asset and Path(ref_asset.path).exists():
+                import ffmpeg
+
+                ref_probe = ffmpeg.probe(ref_asset.path)
+                ref_vs = next(
+                    s for s in ref_probe["streams"] if s["codec_type"] == "video"
+                )
+                width = ref_vs["width"]
+                height = ref_vs["height"]
+
+        # 4. 构建 RemotionProps
         _push(
             queue,
             {
@@ -220,7 +242,7 @@ async def _run_render(
             },
         )
         style_config = get_style_config(style)
-        props = _build_remotion_props(plan, bgm_filename, style_config)
+        props = _build_remotion_props(plan, bgm_filename, style_config, width, height)
         RENDER_DIR.mkdir(parents=True, exist_ok=True)
         props_path = str((RENDER_DIR / f"{task_id}.json").resolve())
         with open(props_path, "w", encoding="utf-8") as f:
@@ -283,11 +305,11 @@ async def _run_render(
         )
     except asyncio.CancelledError:
         _push_eof(queue)
-        _cleanup(props_path, bgm_dest, output_path)
+        _cleanup(props_path, bgm_dest, output_path, narration_paths)
     except Exception as e:
         logger.exception("Render task failed")
         _push_eof(queue)
-        _cleanup(props_path, bgm_dest, output_path)
+        _cleanup(props_path, bgm_dest, output_path, narration_paths)
         task_registry.set_error(task_id, str(e))
 
 
@@ -369,6 +391,8 @@ def _build_remotion_props(
     plan: VideoTemplate,
     bgm_filename: str | None,
     style_config: dict | None = None,
+    width: int = WIDTH,
+    height: int = HEIGHT,
 ) -> dict:
     scenes = []
     frame_offset = 0
@@ -449,8 +473,8 @@ def _build_remotion_props(
     return {
         "fps": FPS,
         "durationInFrames": total_frames,
-        "width": WIDTH,
-        "height": HEIGHT,
+        "width": width,
+        "height": height,
         "scenes": scenes,
         "bgmPath": bgm_filename or "",
         "voiceoverPath": "",

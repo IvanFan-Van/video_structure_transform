@@ -7,6 +7,7 @@ interface EffectInfo {
     category: string;
     description: string;
     demo_path: string | null;
+    doc_path: string | null;
 }
 
 interface Props {

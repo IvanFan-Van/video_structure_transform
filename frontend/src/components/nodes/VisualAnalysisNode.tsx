@@ -408,6 +408,37 @@ export function VisualAnalysisNode({ x, y, onPosChange }: Props) {
                                                             ] || el.position}
                                                         </span>
                                                     )}
+                                                    {el.font_weight && (
+                                                        <span>
+                                                            {el.font_weight}
+                                                        </span>
+                                                    )}
+                                                    {el.font_size != null && (
+                                                        <span>{el.font_size}px</span>
+                                                    )}
+                                                    {el.font_color && (
+                                                        <span
+                                                            style={{
+                                                                display: "inline-flex",
+                                                                alignItems: "center",
+                                                                gap: "3px",
+                                                            }}
+                                                        >
+                                                            <span
+                                                                style={{
+                                                                    display:
+                                                                        "inline-block",
+                                                                    width: "8px",
+                                                                    height: "8px",
+                                                                    borderRadius: "2px",
+                                                                    background:
+                                                                        el.font_color,
+                                                                    border: "1px solid #ddd",
+                                                                }}
+                                                            />
+                                                            {el.font_color}
+                                                        </span>
+                                                    )}
                                                     <span>
                                                         {el.appear_time.toFixed(
                                                             1,

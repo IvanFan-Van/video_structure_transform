@@ -180,6 +180,9 @@ export interface VisualTextElement {
     position: string | null;
     appear_time: number;
     disappear_time: number;
+    font_size: number | null;
+    font_weight: string | null;
+    font_color: string | null;
 }
 
 export interface VisualTextDensityPoint {
@@ -258,6 +261,21 @@ export interface SplitResult {
 export interface EffectItem {
     name: string;
     evidence: string;
+}
+
+export interface EffectParamItem {
+    effect_name: string;
+    remocn_component: string;
+    remocn_props: Record<string, unknown>;
+    timing_start: number;
+    timing_duration: number;
+    applies_to: string;
+    evidence: string;
+}
+
+export interface EffectParamResult {
+    observations: string;
+    param_set: EffectParamItem[];
 }
 
 export interface EffectResult {
@@ -352,7 +370,14 @@ export interface RenderResult {
 }
 
 export interface RenderProgress {
-    phase: "loading" | "bgm" | "building" | "rendering" | "saving" | "error";
+    phase:
+        | "loading"
+        | "bgm"
+        | "tts"
+        | "building"
+        | "rendering"
+        | "saving"
+        | "error";
     message?: string;
     progress?: number;
     frame?: number;
