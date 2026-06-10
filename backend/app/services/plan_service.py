@@ -506,6 +506,7 @@ async def run_slot_generation(  # noqa: C901
             task_registry.set_result(
                 task_id, {"generated_slots": [], "message": "没有待生成的槽位"}
             )
+            return
 
         if pending_text:
             user_prompt = _build_slot_gen_prompt(template)
@@ -538,18 +539,17 @@ async def run_slot_generation(  # noqa: C901
             )
             generated_count += img_count
 
-        result: dict = {"generated": generated_count}
+        plan_task.result = template.model_dump()
+
+        result: dict = {
+            "generated_slots": [
+                {"slot_id": s.slot_id, "value": s.value}
+                for s in output.generated_slots
+            ] if output is not None else [],
+            "generated": generated_count,
+        }
         if img_warnings:
             result["warnings"] = img_warnings
-
-        if output is not None:
-            result["generated_slots"] = [
-                {"slot_id": s.slot_id, "value": s.value} for s in output.generated_slots
-            ]
-
-        task_registry.set_result(task_id, result)
-        gen_map = {s.slot_id: s.value for s in output.generated_slots}
-        plan_task.result = template.model_dump()
         task_registry.set_result(task_id, result)
 
     except asyncio.CancelledError:

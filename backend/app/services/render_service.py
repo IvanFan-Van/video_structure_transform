@@ -199,14 +199,15 @@ async def _run_render(
 
         plan = VideoTemplate.model_validate(plan_task.result)
 
+        public_dir = REMOTION_DIR / "public"
+        public_dir.mkdir(parents=True, exist_ok=True)
+
         _push(queue, {"phase": "bgm", "message": "Loading BGM audio..."})
         bgm_filename = None
         bgm_asset_id = plan.bgm_spec.reference_audio_asset_id
         if bgm_asset_id:
             asset = get_asset_by_id(session, bgm_asset_id)
             if asset and Path(asset.path).exists():
-                public_dir = REMOTION_DIR / "public"
-                public_dir.mkdir(parents=True, exist_ok=True)
                 bgm_dest = public_dir / "bgm.wav"
                 shutil.copy2(asset.path, str(bgm_dest))
                 bgm_filename = "bgm.wav"

@@ -318,7 +318,11 @@ interface VideoActions {
     startSplit: () => Promise<void>;
     stopSplit: () => Promise<void>;
     analyzeEffect: (assetId: string, segmentIndex: number) => Promise<void>;
-    analyzeEffectParams: (assetId: string, segmentIndex: number, effects: string[]) => Promise<void>;
+    analyzeEffectParams: (
+        assetId: string,
+        segmentIndex: number,
+        effects: string[],
+    ) => Promise<void>;
     startPlan: (userBrief: string, targetDuration?: number) => Promise<void>;
     stopPlan: () => Promise<void>;
     quickUpload: (file: File) => Promise<string | null>;
@@ -1242,8 +1246,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                 videoErrors: [
                     ...s.videoErrors.filter(
                         (e) =>
-                            e.nodeId !==
-                            `effect_param_segment_${segmentIndex}`,
+                            e.nodeId !== `effect_param_segment_${segmentIndex}`,
                     ),
                     makeError(
                         `effect_param_segment_${segmentIndex}`,
@@ -1482,6 +1485,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         if (!token) return;
         const t0 = Date.now();
 
+        console.log(1);
         set({
             generateStatus: "loading",
             generateTime: null,

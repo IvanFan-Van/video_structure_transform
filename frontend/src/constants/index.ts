@@ -45,4 +45,5 @@ export const WIRES: [string, string][] = [
     ["visual_analysis", "plan"],
     ["plan", "plan_generate"],
     ["plan", "render"],
+    ["plan", "version_preview"],
 ];

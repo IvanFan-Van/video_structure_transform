@@ -128,8 +128,8 @@ export function VersionPreviewNode({ x, y, onPosChange }: Props) {
                                 {previewPhase === "building"
                                     ? `Building style ${previewStyleIndex + 1}/${previewTotalStyles}...`
                                     : previewPhase === "rendering"
-                                    ? `Rendering preview ${previewStyleIndex + 1}/${previewTotalStyles}...`
-                                    : previewPhase}
+                                      ? `Rendering preview ${previewStyleIndex + 1}/${previewTotalStyles}...`
+                                      : previewPhase}
                             </div>
                         )}
                         <ActionButton
@@ -169,8 +169,7 @@ export function VersionPreviewNode({ x, y, onPosChange }: Props) {
                             }}
                         >
                             {previewResults.map((item) => {
-                                const isSelected =
-                                    selectedStyle === item.style;
+                                const isSelected = selectedStyle === item.style;
                                 return (
                                     <div
                                         key={item.style}
@@ -180,17 +179,14 @@ export function VersionPreviewNode({ x, y, onPosChange }: Props) {
                                         style={{
                                             cursor: "pointer",
                                             border: `2px solid ${
-                                                isSelected
-                                                    ? ACCENT
-                                                    : "#e8e8e8"
+                                                isSelected ? ACCENT : "#e8e8e8"
                                             }`,
                                             borderRadius: "6px",
                                             padding: "4px",
                                             background: isSelected
                                                 ? "#f5f3ff"
                                                 : "#fff",
-                                            transition:
-                                                "border-color 0.15s",
+                                            transition: "border-color 0.15s",
                                         }}
                                     >
                                         <PreviewStill

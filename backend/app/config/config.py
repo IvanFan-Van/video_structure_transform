@@ -1,6 +1,6 @@
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).parent.parent.parent.resolve()
+REPO_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
 print(f"Repository root: {REPO_ROOT}")
 
 BACKEND_ROOT = REPO_ROOT / "backend"

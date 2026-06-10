@@ -133,418 +133,428 @@ function App() {
 
     return (
         <TourLangContext.Provider value={tourLang}>
-        <div
-            onMouseDown={(e) => {
-                if (e.ctrlKey) {
-                    onBoxMouseDown(e);
-                } else {
-                    clearSelection();
-                    onPanMouseDown(e);
-                }
-            }}
-            style={{
-                width: "100vw",
-                height: "100vh",
-                overflow: "hidden",
-                position: "relative",
-                fontFamily: "'JetBrains Mono', monospace",
-                background: "#fafafa",
-                backgroundImage:
-                    "radial-gradient(circle, #e0e0e0 0.8px, transparent 0.8px)",
-                backgroundSize: "20px 20px",
-            }}
-        >
             <div
+                onMouseDown={(e) => {
+                    if (e.ctrlKey) {
+                        onBoxMouseDown(e);
+                    } else {
+                        clearSelection();
+                        onPanMouseDown(e);
+                    }
+                }}
                 style={{
-                    position: "fixed",
-                    top: 16,
-                    left: 20,
-                    zIndex: 100,
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    letterSpacing: "3px",
-                    color: "#ccc",
+                    width: "100vw",
+                    height: "100vh",
+                    overflow: "hidden",
+                    position: "relative",
+                    fontFamily: "'JetBrains Mono', monospace",
+                    background: "#fafafa",
+                    backgroundImage:
+                        "radial-gradient(circle, #e0e0e0 0.8px, transparent 0.8px)",
+                    backgroundSize: "20px 20px",
                 }}
             >
-                VIRAL STYLE
-            </div>
-            <div
-                style={{
-                    position: "fixed",
-                    top: 12,
-                    right: 20,
-                    zIndex: 100,
-                    display: "flex",
-                    gap: "8px",
-                    alignItems: "center",
-                }}
-            >
-                <button
-                    onClick={() => {
-                        useCanvasStore.getState().resetToDefaults();
-                        setToast("Canvas layout reset to defaults");
-                    }}
-                    title="Reset all canvas state to defaults"
-                    style={{
-                        fontSize: "10px",
-                        fontFamily: "'JetBrains Mono', monospace",
-                        color: "#c2410c",
-                        background: "#fff7ed",
-                        border: "1px solid #fed7aa",
-                        borderRadius: "20px",
-                        padding: "5px 14px",
-                        cursor: "pointer",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                    }}
-                >
-                    ↺ Reset
-                </button>
                 <div
                     style={{
-                        display: "flex",
-                        border: "1px solid #e0e0e0",
-                        borderRadius: "20px",
-                        overflow: "hidden",
+                        position: "fixed",
+                        top: 16,
+                        left: 20,
+                        zIndex: 100,
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        letterSpacing: "3px",
+                        color: "#ccc",
                     }}
                 >
-                    {(["en", "zh"] as const).map((l) => (
-                        <button
-                            key={l}
-                            onClick={() => setTourLang(l)}
-                            style={{
-                                padding: "5px 10px",
-                                fontSize: "10px",
-                                fontFamily: "'JetBrains Mono', monospace",
-                                cursor: "pointer",
-                                color: tourLang === l ? "#fff" : "#aaa",
-                                background: tourLang === l ? "#8b5cf6" : "#fff",
-                                border: "none",
-                                outline: "none",
-                            }}
-                        >
-                            {l.toUpperCase()}
-                        </button>
-                    ))}
+                    VIRAL STYLE
                 </div>
-                <button
-                    onClick={() => setShowTour(true)}
-                    title="Start guided tour"
-                    style={{
-                        fontSize: "10px",
-                        fontFamily: "'JetBrains Mono', monospace",
-                        color: "#777",
-                        background: "#fff",
-                        border: "1px solid #e0e0e0",
-                        borderRadius: "20px",
-                        padding: "5px 14px",
-                        cursor: "pointer",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                    }}
-                >
-                    ? Guide
-                </button>
-                {user && (
-                    <div ref={dropdownRef} style={{ position: "relative" }}>
-                        <button
-                            onClick={() => setDropdownOpen(!dropdownOpen)}
-                            style={{
-                                fontSize: "10px",
-                                fontFamily: "inherit",
-                                color: "#555",
-                                background: "#fff",
-                                border: "1px solid #e0e0e0",
-                                borderRadius: "20px",
-                                padding: "5px 14px",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                            }}
-                        >
-                            <span
-                                style={{
-                                    maxWidth: "180px",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                }}
-                            >
-                                {user.email}
-                            </span>
-                            <span style={{ fontSize: "8px", color: "#bbb" }}>
-                                ▼
-                            </span>
-                        </button>
-                        {dropdownOpen && (
-                            <div
-                                style={{
-                                    position: "absolute",
-                                    top: "110%",
-                                    right: 0,
-                                    background: "#fff",
-                                    border: "1px solid #e8e8e8",
-                                    borderRadius: "6px",
-                                    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
-                                    overflow: "hidden",
-                                    minWidth: "120px",
-                                }}
-                            >
-                                <button
-                                    onClick={() => {
-                                        savePreset();
-                                        setToast("Layout saved");
-                                        setDropdownOpen(false);
-                                    }}
-                                    style={{
-                                        width: "100%",
-                                        padding: "8px 16px",
-                                        textAlign: "left",
-                                        fontSize: "10px",
-                                        fontFamily: "inherit",
-                                        color: "#666",
-                                        background: "transparent",
-                                        border: "none",
-                                        cursor: "pointer",
-                                    }}
-                                    onMouseEnter={(e) =>
-                                        (e.currentTarget.style.background =
-                                            "#f5f5f5")
-                                    }
-                                    onMouseLeave={(e) =>
-                                        (e.currentTarget.style.background =
-                                            "transparent")
-                                    }
-                                >
-                                    Save layout
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        logout();
-                                        setDropdownOpen(false);
-                                        navigate("/login");
-                                    }}
-                                    style={{
-                                        width: "100%",
-                                        padding: "8px 16px",
-                                        textAlign: "left",
-                                        fontSize: "10px",
-                                        fontFamily: "inherit",
-                                        color: "#666",
-                                        background: "transparent",
-                                        border: "none",
-                                        cursor: "pointer",
-                                    }}
-                                    onMouseEnter={(e) =>
-                                        (e.currentTarget.style.background =
-                                            "#f5f5f5")
-                                    }
-                                    onMouseLeave={(e) =>
-                                        (e.currentTarget.style.background =
-                                            "transparent")
-                                    }
-                                >
-                                    Log out
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            <div
-                style={{
-                    position: "fixed",
-                    bottom: 16,
-                    left: 20,
-                    zIndex: 100,
-                    fontSize: "10px",
-                    color: "#bbb",
-                    lineHeight: "1.8",
-                    pointerEvents: "none",
-                }}
-            >
-                <div>Ctrl + Scroll &mdash; Zoom</div>
-                <div>Drag background &mdash; Pan</div>
-                <div>Drag nodes &mdash; Move</div>
-                <div>Ctrl + Drag background &mdash; Box select nodes</div>
-                <div>Escape &mdash; Clear selection</div>
-            </div>
-
-            <ZoomContext.Provider value={zoom}>
-                <Wires
-                    positions={positions}
-                    wires={allWires}
-                    zoom={zoom}
-                    panX={panX}
-                    panY={panY}
-                />
-                {isSelecting && selRect && <SelectionRect rect={selRect} />}
                 <div
                     style={{
-                        transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
-                        transformOrigin: "top left",
-                        width: `calc(100% / ${zoom})`,
-                        height: `calc(100% / ${zoom})`,
+                        position: "fixed",
+                        top: 12,
+                        right: 20,
+                        zIndex: 100,
+                        display: "flex",
+                        gap: "8px",
+                        alignItems: "center",
                     }}
                 >
-                    <ReferenceNode x={offset} y={30} onPosChange={updatePos} />
-                    <CompressConfigNode
-                        x={offset + 310}
-                        y={30}
-                        onPosChange={updatePos}
-                    />
-                    <CompressNode
-                        x={offset + 640}
-                        y={30}
-                        onPosChange={updatePos}
-                    />
-                    <ExtractingNode
-                        x={offset + 950}
-                        y={30}
-                        onPosChange={updatePos}
-                    />
-                    <SplitNode
-                        x={offset + 1100}
-                        y={30}
-                        onPosChange={updatePos}
-                    />
-                    {splitResult?.segments?.map((seg, i) => (
-                        <EffectAnalysisNode
-                            key={`seg_${i}`}
-                            x={offset + 1430}
-                            y={30 + i * 260}
-                            segment={seg}
-                            clip={splitResult.clip_assets?.find(
-                                (c) => c.index === i,
+                    <button
+                        onClick={() => {
+                            useCanvasStore.getState().resetToDefaults();
+                            setToast("Canvas layout reset to defaults");
+                        }}
+                        title="Reset all canvas state to defaults"
+                        style={{
+                            fontSize: "10px",
+                            fontFamily: "'JetBrains Mono', monospace",
+                            color: "#c2410c",
+                            background: "#fff7ed",
+                            border: "1px solid #fed7aa",
+                            borderRadius: "20px",
+                            padding: "5px 14px",
+                            cursor: "pointer",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                        }}
+                    >
+                        ↺ Reset
+                    </button>
+                    <div
+                        style={{
+                            display: "flex",
+                            border: "1px solid #e0e0e0",
+                            borderRadius: "20px",
+                            overflow: "hidden",
+                        }}
+                    >
+                        {(["en", "zh"] as const).map((l) => (
+                            <button
+                                key={l}
+                                onClick={() => setTourLang(l)}
+                                style={{
+                                    padding: "5px 10px",
+                                    fontSize: "10px",
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    cursor: "pointer",
+                                    color: tourLang === l ? "#fff" : "#aaa",
+                                    background:
+                                        tourLang === l ? "#8b5cf6" : "#fff",
+                                    border: "none",
+                                    outline: "none",
+                                }}
+                            >
+                                {l.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
+                    <button
+                        onClick={() => setShowTour(true)}
+                        title="Start guided tour"
+                        style={{
+                            fontSize: "10px",
+                            fontFamily: "'JetBrains Mono', monospace",
+                            color: "#777",
+                            background: "#fff",
+                            border: "1px solid #e0e0e0",
+                            borderRadius: "20px",
+                            padding: "5px 14px",
+                            cursor: "pointer",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                        }}
+                    >
+                        ? Guide
+                    </button>
+                    {user && (
+                        <div ref={dropdownRef} style={{ position: "relative" }}>
+                            <button
+                                onClick={() => setDropdownOpen(!dropdownOpen)}
+                                style={{
+                                    fontSize: "10px",
+                                    fontFamily: "inherit",
+                                    color: "#555",
+                                    background: "#fff",
+                                    border: "1px solid #e0e0e0",
+                                    borderRadius: "20px",
+                                    padding: "5px 14px",
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        maxWidth: "180px",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {user.email}
+                                </span>
+                                <span
+                                    style={{ fontSize: "8px", color: "#bbb" }}
+                                >
+                                    ▼
+                                </span>
+                            </button>
+                            {dropdownOpen && (
+                                <div
+                                    style={{
+                                        position: "absolute",
+                                        top: "110%",
+                                        right: 0,
+                                        background: "#fff",
+                                        border: "1px solid #e8e8e8",
+                                        borderRadius: "6px",
+                                        boxShadow:
+                                            "0 4px 12px rgba(0,0,0,0.06)",
+                                        overflow: "hidden",
+                                        minWidth: "120px",
+                                    }}
+                                >
+                                    <button
+                                        onClick={() => {
+                                            savePreset();
+                                            setToast("Layout saved");
+                                            setDropdownOpen(false);
+                                        }}
+                                        style={{
+                                            width: "100%",
+                                            padding: "8px 16px",
+                                            textAlign: "left",
+                                            fontSize: "10px",
+                                            fontFamily: "inherit",
+                                            color: "#666",
+                                            background: "transparent",
+                                            border: "none",
+                                            cursor: "pointer",
+                                        }}
+                                        onMouseEnter={(e) =>
+                                            (e.currentTarget.style.background =
+                                                "#f5f5f5")
+                                        }
+                                        onMouseLeave={(e) =>
+                                            (e.currentTarget.style.background =
+                                                "transparent")
+                                        }
+                                    >
+                                        Save layout
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            logout();
+                                            setDropdownOpen(false);
+                                            navigate("/login");
+                                        }}
+                                        style={{
+                                            width: "100%",
+                                            padding: "8px 16px",
+                                            textAlign: "left",
+                                            fontSize: "10px",
+                                            fontFamily: "inherit",
+                                            color: "#666",
+                                            background: "transparent",
+                                            border: "none",
+                                            cursor: "pointer",
+                                        }}
+                                        onMouseEnter={(e) =>
+                                            (e.currentTarget.style.background =
+                                                "#f5f5f5")
+                                        }
+                                        onMouseLeave={(e) =>
+                                            (e.currentTarget.style.background =
+                                                "transparent")
+                                        }
+                                    >
+                                        Log out
+                                    </button>
+                                </div>
                             )}
-                            index={i}
-                            method={splitResult.method}
-                            onPosChange={updatePos}
-                        />
-                    ))}
-                    <ScriptAnalysisNode
-                        x={offset + 1260}
-                        y={30}
-                        onPosChange={updatePos}
-                    />
-                    <AudioAnalysisNode
-                        x={offset + 1570}
-                        y={30}
-                        onPosChange={updatePos}
-                    />
-                    <VisualAnalysisNode
-                        x={offset + 1880}
-                        y={30}
-                        onPosChange={updatePos}
-                    />
-                    <PlanNode
-                        x={offset + 2190}
-                        y={30}
-                        onPosChange={updatePos}
-                    />
-                    <GenerateNode
-                        x={offset + 2190}
-                        y={400}
-                        onPosChange={updatePos}
-                    />
-                    {planResult?.segments?.map((seg, i) => (
-                        <SlotNode
-                            key={`slot_seg_${i}`}
-                            x={offset + 2600}
-                            y={30 + i * 360}
-                            segmentIndex={i}
-                            onPosChange={updatePos}
-                        />
-                    ))}
-                    <VersionPreviewNode
-                        x={offset + 2910}
-                        y={
-                            30 +
-                            Math.round(
-                                Math.max(
-                                    0,
-                                    ((planResult?.segments?.length ?? 1) - 1) *
-                                        360,
-                                ) / 2,
-                            )
-                        }
-                        onPosChange={updatePos}
-                    />
-                    <RenderNode
-                        x={offset + 3220}
-                        y={
-                            30 +
-                            Math.round(
-                                Math.max(
-                                    0,
-                                    ((planResult?.segments?.length ?? 1) - 1) *
-                                        360,
-                                ) / 2,
-                            )
-                        }
-                        onPosChange={updatePos}
-                    />
+                        </div>
+                    )}
+                </div>
 
-                    <style
-                        dangerouslySetInnerHTML={{
-                            __html: `
+                <div
+                    style={{
+                        position: "fixed",
+                        bottom: 16,
+                        left: 20,
+                        zIndex: 100,
+                        fontSize: "10px",
+                        color: "#bbb",
+                        lineHeight: "1.8",
+                        pointerEvents: "none",
+                    }}
+                >
+                    <div>Ctrl + Scroll &mdash; Zoom</div>
+                    <div>Drag background &mdash; Pan</div>
+                    <div>Drag nodes &mdash; Move</div>
+                    <div>Ctrl + Drag background &mdash; Box select nodes</div>
+                    <div>Escape &mdash; Clear selection</div>
+                </div>
+
+                <ZoomContext.Provider value={zoom}>
+                    <Wires
+                        positions={positions}
+                        wires={allWires}
+                        zoom={zoom}
+                        panX={panX}
+                        panY={panY}
+                    />
+                    {isSelecting && selRect && <SelectionRect rect={selRect} />}
+                    <div
+                        style={{
+                            transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
+                            transformOrigin: "top left",
+                            width: `calc(100% / ${zoom})`,
+                            height: `calc(100% / ${zoom})`,
+                        }}
+                    >
+                        <ReferenceNode
+                            x={offset}
+                            y={30}
+                            onPosChange={updatePos}
+                        />
+                        <CompressConfigNode
+                            x={offset + 310}
+                            y={30}
+                            onPosChange={updatePos}
+                        />
+                        <CompressNode
+                            x={offset + 640}
+                            y={30}
+                            onPosChange={updatePos}
+                        />
+                        <ExtractingNode
+                            x={offset + 950}
+                            y={30}
+                            onPosChange={updatePos}
+                        />
+                        <SplitNode
+                            x={offset + 1100}
+                            y={30}
+                            onPosChange={updatePos}
+                        />
+                        {splitResult?.segments?.map((seg, i) => (
+                            <EffectAnalysisNode
+                                key={`seg_${i}`}
+                                x={offset + 1430}
+                                y={30 + i * 260}
+                                segment={seg}
+                                clip={splitResult.clip_assets?.find(
+                                    (c) => c.index === i,
+                                )}
+                                index={i}
+                                method={splitResult.method}
+                                onPosChange={updatePos}
+                            />
+                        ))}
+                        <ScriptAnalysisNode
+                            x={offset + 1260}
+                            y={30}
+                            onPosChange={updatePos}
+                        />
+                        <AudioAnalysisNode
+                            x={offset + 1570}
+                            y={30}
+                            onPosChange={updatePos}
+                        />
+                        <VisualAnalysisNode
+                            x={offset + 1880}
+                            y={30}
+                            onPosChange={updatePos}
+                        />
+                        <PlanNode
+                            x={offset + 2190}
+                            y={30}
+                            onPosChange={updatePos}
+                        />
+                        <GenerateNode
+                            x={offset + 2190}
+                            y={400}
+                            onPosChange={updatePos}
+                        />
+                        {planResult?.segments?.map((seg, i) => (
+                            <SlotNode
+                                key={`slot_seg_${i}`}
+                                x={offset + 2600}
+                                y={30 + i * 360}
+                                segmentIndex={i}
+                                onPosChange={updatePos}
+                            />
+                        ))}
+                        <VersionPreviewNode
+                            x={offset + 2910}
+                            y={
+                                30 +
+                                Math.round(
+                                    Math.max(
+                                        0,
+                                        ((planResult?.segments?.length ?? 1) -
+                                            1) *
+                                            360,
+                                    ) / 2,
+                                )
+                            }
+                            onPosChange={updatePos}
+                        />
+                        <RenderNode
+                            x={offset + 3220}
+                            y={
+                                30 +
+                                Math.round(
+                                    Math.max(
+                                        0,
+                                        ((planResult?.segments?.length ?? 1) -
+                                            1) *
+                                            360,
+                                    ) / 2,
+                                )
+                            }
+                            onPosChange={updatePos}
+                        />
+
+                        <style
+                            dangerouslySetInnerHTML={{
+                                __html: `
         * { box-sizing: border-box; }
         input[type=range] { -webkit-appearance: none; background: #e8e8e8; border-radius: 2px; outline: none; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #999; cursor: pointer; }
         ::selection { background: #dbeafe; }
       `,
+                            }}
+                        />
+                    </div>
+                </ZoomContext.Provider>
+                {toast && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            top: 48,
+                            right: 20,
+                            zIndex: 200,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "10px",
+                            fontFamily: "'JetBrains Mono', monospace",
+                            color: "#166534",
+                            background: "#f0fdf4",
+                            border: "1px solid #bbf7d0",
+                            borderRadius: "6px",
+                            padding: "8px 14px",
+                            boxShadow: "0 2px 8px rgba(34,197,94,0.10)",
                         }}
-                    />
-                </div>
-            </ZoomContext.Provider>
-            {toast && (
-                <div
-                    style={{
-                        position: "fixed",
-                        top: 48,
-                        right: 20,
-                        zIndex: 200,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontSize: "10px",
-                        fontFamily: "'JetBrains Mono', monospace",
-                        color: "#166534",
-                        background: "#f0fdf4",
-                        border: "1px solid #bbf7d0",
-                        borderRadius: "6px",
-                        padding: "8px 14px",
-                        boxShadow: "0 2px 8px rgba(34,197,94,0.10)",
-                    }}
-                >
-                    <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#22c55e"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
                     >
-                        <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    {toast}
-                </div>
-            )}
-            <NodeErrorToast />
-            {showTour && (
-                <TourGuide
-                    onClose={() => {
-                        setShowTour(false);
-                        tour.markSeen();
-                    }}
-                    planResultReady={!!planResult?.segments?.length}
-                    lang={tourLang}
-                />
-            )}
-        </div>
+                        <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#22c55e"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        {toast}
+                    </div>
+                )}
+                <NodeErrorToast />
+                {showTour && (
+                    <TourGuide
+                        onClose={() => {
+                            setShowTour(false);
+                            tour.markSeen();
+                        }}
+                        planResultReady={!!planResult?.segments?.length}
+                        lang={tourLang}
+                    />
+                )}
+            </div>
         </TourLangContext.Provider>
     );
 }
