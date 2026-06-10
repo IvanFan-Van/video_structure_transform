@@ -312,7 +312,9 @@ def _merge_text_style(segment: Segment, visual_result: dict | None) -> None:
     best_te = None
     best_dist = float("inf")
     for te in text_elements:
-        te_mid = (te.get("appear_time", 0) + te.get("disappear_time", segment.end_time)) / 2
+        te_mid = (
+            te.get("appear_time", 0) + te.get("disappear_time", segment.end_time)
+        ) / 2
         dist = abs(te_mid - mid)
         if dist < best_dist:
             best_dist = dist

@@ -10,8 +10,11 @@ _STYLES_CACHE: dict | None = None
 def _load_styles() -> dict:
     global _STYLES_CACHE
     if _STYLES_CACHE is None:
-        with open(_CONFIG_PATH, encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        try:
+            with open(_CONFIG_PATH, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+        except Exception:
+            data = {}
         _STYLES_CACHE = data or {}
     return _STYLES_CACHE
 

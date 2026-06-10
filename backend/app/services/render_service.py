@@ -3,10 +3,9 @@ import json
 import logging
 import shutil
 import uuid
-
-import edge_tts
 from pathlib import Path
 
+import edge_tts
 from sqlmodel import Session
 
 from app.config.config import RENDER_DIR, VIDEO_DIR
@@ -213,9 +212,7 @@ async def _run_render(
                 bgm_filename = "bgm.wav"
 
         # 2.5. 生成 narration TTS 音频
-        narration_paths = await _generate_all_narration_audio(
-            plan, public_dir, queue
-        )
+        narration_paths = await _generate_all_narration_audio(plan, public_dir, queue)
 
         # 3. 探测参考视频分辨率
         width = WIDTH
