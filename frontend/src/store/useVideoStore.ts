@@ -23,6 +23,8 @@ import {
     GenerateResult,
     RenderResult,
     RenderProgress,
+    StyleOption,
+    PreviewItem,
 } from "./types";
 import { useAuthStore } from "./useAuthStore";
 
@@ -37,6 +39,7 @@ const streamControllers: Record<string, AbortController | null> = {
     plan: null,
     slot_generate: null,
     render: null,
+    render_preview: null,
 };
 
 function abortStream(key: string) {
@@ -273,6 +276,15 @@ interface VideoState {
     renderTotalFrames: number;
     renderErrorMessage: string | null;
 
+    availableStyles: StyleOption[];
+    selectedStyle: string;
+    previewStatus: NodeStatus;
+    previewTaskId: string | null;
+    previewResults: PreviewItem[];
+    previewPhase: string | null;
+    previewStyleIndex: number;
+    previewTotalStyles: number;
+
     videoErrors: NodeError[];
 }
 
@@ -308,6 +320,10 @@ interface VideoActions {
     stopSlotGenerate: () => Promise<void>;
     startRender: () => Promise<void>;
     stopRender: () => Promise<void>;
+    fetchStyles: () => Promise<void>;
+    setSelectedStyle: (style: string) => void;
+    startPreview: () => Promise<void>;
+    stopPreview: () => Promise<void>;
     dismissError: (id: number) => void;
     removeEffect: (segmentIndex: number, effectIndex: number) => void;
     addEffect: (segmentIndex: number, effect: EffectItem) => void;
@@ -393,6 +409,15 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     renderFrame: 0,
     renderTotalFrames: 0,
     renderErrorMessage: null,
+
+    availableStyles: [],
+    selectedStyle: "standard",
+    previewStatus: "idle",
+    previewTaskId: null,
+    previewResults: [],
+    previewPhase: null,
+    previewStyleIndex: 0,
+    previewTotalStyles: 0,
 
     videoErrors: [],
 
@@ -1461,7 +1486,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
     },
 
     startRender: async () => {
-        const { planResult } = get();
+        const { planResult, selectedStyle } = get();
         if (!planResult) return;
         const token = useAuthStore.getState().token;
         const t0 = Date.now();
@@ -1480,7 +1505,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
         try {
             const res = await apiAxios.post(
                 "/api/render",
-                { plan_id: planResult.plan_id },
+                { plan_id: planResult.plan_id, style: selectedStyle },
             );
 
             if (res.data.status !== "success") {
@@ -1570,6 +1595,119 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             renderProgress: 0,
             renderResult: null,
             renderErrorMessage: null,
+        });
+    },
+
+    fetchStyles: async () => {
+        try {
+            const res = await apiAxios.get("/api/styles");
+            if (res.data.status === "success") {
+                set({ availableStyles: res.data.data });
+            }
+        } catch {
+            // use defaults
+        }
+    },
+
+    setSelectedStyle: (style) => {
+        set({ selectedStyle: style });
+    },
+
+    startPreview: async () => {
+        const { planResult } = get();
+        if (!planResult) return;
+        const token = useAuthStore.getState().token;
+        const t0 = Date.now();
+
+        set({
+            previewStatus: "loading",
+            previewResults: [],
+            previewPhase: null,
+            previewStyleIndex: 0,
+            previewTotalStyles: 0,
+        });
+
+        try {
+            const res = await apiAxios.post(
+                "/api/render/preview",
+                { plan_id: planResult.plan_id },
+            );
+
+            if (res.data.status !== "success") {
+                const { msg, code, details } = parseApiError(
+                    res.data,
+                    "Preview failed",
+                );
+                set((s) => ({
+                    previewStatus: "error",
+                    videoErrors: [
+                        ...s.videoErrors.filter(
+                            (e) => e.nodeId !== "version_preview",
+                        ),
+                        makeError("version_preview", msg, code, details),
+                    ],
+                }));
+                return;
+            }
+
+            const taskId: string = res.data.data.task_id;
+            set({ previewTaskId: taskId });
+
+            await subscribeTaskStream<PreviewItem[]>(taskId, token, {
+                controllerKey: "render_preview",
+                t0,
+                set,
+                nodeId: "version_preview",
+                failureLabel: "Preview failed",
+                onProgress: (data: any) => {
+                    set({
+                        previewPhase: data.phase ?? null,
+                        previewStyleIndex: data.styleIndex ?? 0,
+                        previewTotalStyles: data.totalStyles ?? 0,
+                    });
+                },
+                onCompleted: (result) => ({
+                    previewResults: result,
+                    previewStatus: "success",
+                    previewPhase: null,
+                }),
+                onFailed: (_elapsed, error) => ({
+                    previewStatus: "error",
+                    previewPhase: null,
+                }),
+                onCancelled: () => ({
+                    previewStatus: "idle",
+                    previewPhase: null,
+                }),
+            });
+        } catch (error: any) {
+            const detail = error?.response?.data?.detail;
+            const msg = detail ? String(detail) : "Network error";
+            set((s) => ({
+                previewStatus: "error",
+                videoErrors: [
+                    ...s.videoErrors.filter(
+                        (e) => e.nodeId !== "version_preview",
+                    ),
+                    makeError(
+                        "version_preview",
+                        msg,
+                        "NETWORK_ERROR",
+                        NETWORK_ERROR_DETAILS,
+                    ),
+                ],
+            }));
+        }
+    },
+
+    stopPreview: async () => {
+        abortStream("render_preview");
+        const taskId = get().previewTaskId;
+        if (taskId) await cancelTaskRequest(taskId);
+        set({
+            previewStatus: "idle",
+            previewPhase: null,
+            previewResults: [],
         });
     },
 
@@ -1692,6 +1830,14 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             renderFrame: 0,
             renderTotalFrames: 0,
             renderErrorMessage: null,
+            availableStyles: [],
+            selectedStyle: "standard",
+            previewStatus: "idle",
+            previewTaskId: null,
+            previewResults: [],
+            previewPhase: null,
+            previewStyleIndex: 0,
+            previewTotalStyles: 0,
             videoErrors: [],
         });
     },

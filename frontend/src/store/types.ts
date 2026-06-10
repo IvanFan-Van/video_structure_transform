@@ -320,7 +320,23 @@ export interface GenerateResult {
     generated: number;
 }
 
+export interface StyleOption {
+    name: string;
+    label: string;
+    description: string;
+}
+
+export interface PreviewItem {
+    style: string;
+    label: string;
+    description: string;
+    still_path: string;
+    duration_frames: number;
+    scene_count: number;
+}
+
 export interface RenderResult {
+    style?: string;
     asset_id: string;
     path: string;
     duration: number;

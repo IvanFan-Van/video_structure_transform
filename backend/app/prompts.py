@@ -700,10 +700,7 @@ PLAN_USER_PROMPT_TASK = """## 用户新视频需求
 1. segments 数量与原视频 stage/镜头数量对应，不要自行增减
 2. story 阶段若原视频有多个镜头，拆分为多个连续 segment（stage 均填 "story"）
 3. start_time 与 end_time 均以 {estimated_duration}s 为总时长，按比例映射
-4. 每个 segment 包含 2 或 3 个 slots，规则如下：
-   - 始终包含：visual_text、narration
-   - is_text_frame 为 false 时，额外加 background_video（视频素材段）
-   - is_text_frame 为 true 时，额外加 background_image（纯文字帧）
+4. 每个 segment 包含 3 个 slots，固定为：visual_text、narration、background_image
 5. narrative_intent 和 slot.description 必须结合用户主题说明具体内容，
    禁止使用"文案"、"台词"等泛泛词语
 6. stage 枚举值：hook / setup / story / insight / cta / outro

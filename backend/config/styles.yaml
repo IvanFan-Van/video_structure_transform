@@ -1,0 +1,57 @@
+# Video render style definitions.
+# Add or modify styles here — no code changes needed.
+
+styles:
+  standard:
+    label: "Standard"
+    description: "Balanced pacing, default text animations"
+    duration_scale: 1.0
+    rhythm_pattern: "standard"
+    visual_style: "mixed"
+
+  high_click:
+    label: "High Click"
+    description: "Compressed hook, fast fade-in animations"
+    duration_scale: 1.0
+    stage_duration_multipliers:
+      hook: 0.8
+    stage_type_overrides:
+      hook: "emphasis_text"
+    text_animation: "typewriter"
+    rhythm_pattern: "high_rhythm"
+    visual_style: "dynamic"
+
+  high_convert:
+    label: "High Convert"
+    description: "Extended CTA, detailed product scenes"
+    duration_scale: 1.0
+    stage_duration_multipliers:
+      story: 1.2
+      insight: 1.2
+      cta: 1.3
+    stage_type_overrides:
+      cta: "emphasis_text"
+      story: "emphasis_text"
+    rhythm_pattern: "standard"
+    visual_style: "cinematic"
+
+  high_rhythm:
+    label: "High Rhythm"
+    description: "All scenes compressed 25%, fast-paced cuts"
+    duration_scale: 0.75
+    min_duration_frames: 24
+    text_animation: "fade_in"
+    rhythm_pattern: "high_rhythm"
+    visual_style: "dynamic"
+
+  high_quality:
+    label: "High Quality"
+    description: "Cinematic emphasis on key stages, typewriter text"
+    duration_scale: 1.0
+    stage_type_overrides:
+      hook: "emphasis_text"
+      insight: "emphasis_text"
+      cta: "emphasis_text"
+    text_animation: "typewriter"
+    rhythm_pattern: "standard"
+    visual_style: "cinematic"

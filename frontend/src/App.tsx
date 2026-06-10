@@ -20,6 +20,7 @@ import { PlanNode } from "./components/nodes/PlanNode";
 import { SlotNode } from "./components/nodes/SlotNode";
 import { GenerateNode } from "./components/nodes/GenerateNode";
 import { RenderNode } from "./components/nodes/RenderNode";
+import { VersionPreviewNode } from "./components/nodes/VersionPreviewNode";
 import { NodeErrorToast } from "./components/ui/NodeErrorToast";
 import { SelectionRect } from "./components/ui/SelectionRect";
 import { TourGuide } from "./components/ui/TourGuide";
@@ -123,8 +124,9 @@ function App() {
         if (planResult?.segments) {
             for (let i = 0; i < planResult.segments.length; i++) {
                 base.push(["plan", `slot_segment_${i}`]);
-                base.push([`slot_segment_${i}`, "render"]);
+                base.push([`slot_segment_${i}`, "version_preview"]);
             }
+            base.push(["version_preview", "render"]);
         }
         return base;
     }, [splitResult, planResult]);
@@ -456,8 +458,22 @@ function App() {
                             onPosChange={updatePos}
                         />
                     ))}
-                    <RenderNode
+                    <VersionPreviewNode
                         x={offset + 2910}
+                        y={
+                            30 +
+                            Math.round(
+                                Math.max(
+                                    0,
+                                    ((planResult?.segments?.length ?? 1) - 1) *
+                                        360,
+                                ) / 2,
+                            )
+                        }
+                        onPosChange={updatePos}
+                    />
+                    <RenderNode
+                        x={offset + 3220}
                         y={
                             30 +
                             Math.round(

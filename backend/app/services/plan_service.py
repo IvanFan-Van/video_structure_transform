@@ -6,8 +6,11 @@ from datetime import UTC, datetime
 
 import instructor
 from pydantic import ValidationError
+from sqlmodel import Session as SqlSession
 
+from app.database import engine as db_engine
 from app.llm import async_client
+from app.models import Asset
 from app.prompts import (
     PLAN_SYSTEM_PROMPT,
     PLAN_USER_PROMPT_HEADER,
@@ -17,6 +20,7 @@ from app.prompts import (
     SLOT_GENERATION_SYSTEM_PROMPT,
     SLOT_GENERATION_USER_TEMPLATE,
 )
+from app.repositories import create_asset as crt_asset
 from app.schemas.plan import (
     BgmSpec,
     FillMethod,
@@ -32,6 +36,7 @@ from app.schemas.plan import (
     VideoTemplate,
 )
 from app.schemas.visual import CameraMovement
+from app.services.image_service import generate_image
 from app.services.task import register_and_launch
 from app.tasks import task_registry
 
@@ -390,7 +395,43 @@ def _build_slot_gen_prompt(template: VideoTemplate) -> str:
     )
 
 
-async def run_slot_generation(task_id: str, plan_id: str, user_id: str) -> None:
+async def _generate_background_images(
+    pending_image: list[tuple[Segment, Slot]],
+    template: VideoTemplate,
+    user_id: str,
+) -> tuple[int, list[str]]:
+    generated = 0
+    warnings: list[str] = []
+    for seg, slot in pending_image:
+        prompt_parts = [slot.description, template.user_brief]
+        if seg.narrative_intent:
+            prompt_parts.append(seg.narrative_intent)
+        prompt = "，".join(p for p in prompt_parts if p.strip())
+
+        image_path, err = await generate_image(prompt)
+        if image_path:
+            asset_id = str(uuid.uuid4())
+            with SqlSession(db_engine) as s:
+                asset = Asset(
+                    asset_id=asset_id,
+                    user_id=user_id,
+                    path=image_path,
+                    type="image",
+                )
+                crt_asset(s, asset)
+
+            slot.value = asset_id
+            slot.status = SlotStatus.filled
+            slot.fill_method = FillMethod.ai_generate
+            generated += 1
+        elif err:
+            warnings.append(f"{slot.slot_id}: {err}")
+    return generated, warnings
+
+
+async def run_slot_generation(  # noqa: C901
+    task_id: str, plan_id: str, user_id: str
+) -> None:
     try:
         plan_task = task_registry.get(plan_id)
         if plan_task is None or plan_task.type != "plan":
@@ -399,45 +440,58 @@ async def run_slot_generation(task_id: str, plan_id: str, user_id: str) -> None:
 
         template = VideoTemplate.model_validate(plan_task.result)
 
-        pending: list[tuple[Segment, Slot]] = []
+        pending_text: list[tuple[Segment, Slot]] = []
+        pending_image: list[tuple[Segment, Slot]] = []
         for seg in template.segments:
             for slot in seg.slots:
-                if slot.status == SlotStatus.pending and slot.slot_type in (
-                    SlotType.visual_text,
-                    SlotType.narration,
-                ):
-                    pending.append((seg, slot))
+                if slot.status == SlotStatus.pending:
+                    if slot.slot_type in (SlotType.visual_text, SlotType.narration):
+                        pending_text.append((seg, slot))
+                    elif slot.slot_type == SlotType.background_image:
+                        pending_image.append((seg, slot))
 
-        if not pending:
+        generated_count = 0
+        img_warnings: list[str] = []
+
+        if not pending_text and not pending_image:
             task_registry.set_result(
-                task_id, {"generated": 0, "message": "没有待生成的文本槽位"}
+                task_id, {"generated": 0, "message": "没有待生成的槽位"}
             )
             return
 
-        user_prompt = _build_slot_gen_prompt(template)
+        if pending_text:
+            user_prompt = _build_slot_gen_prompt(template)
 
-        instructor_client = instructor.from_openai(async_client)
-        output: SlotGenerationOutput = await instructor_client.chat.completions.create(
-            model=os.getenv("MODEL"),  # type: ignore
-            response_model=SlotGenerationOutput,
-            messages=[
-                {"role": "system", "content": SLOT_GENERATION_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
+            instructor_client = instructor.from_openai(async_client)
+            output: SlotGenerationOutput = await instructor_client.chat.completions.create(
+                model=os.getenv("MODEL"),  # type: ignore
+                response_model=SlotGenerationOutput,
+                messages=[
+                    {"role": "system", "content": SLOT_GENERATION_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
 
-        gen_map = {s.slot_id: s.value for s in output.generated_slots}
-        generated_count = 0
-        for seg, slot in pending:
-            val = gen_map.get(slot.slot_id)
-            if val:
-                slot.value = val
-                slot.status = SlotStatus.filled
-                slot.fill_method = FillMethod.ai_generate
-                generated_count += 1
+            gen_map = {s.slot_id: s.value for s in output.generated_slots}
+            for seg, slot in pending_text:
+                val = gen_map.get(slot.slot_id)
+                if val:
+                    slot.value = val
+                    slot.status = SlotStatus.filled
+                    slot.fill_method = FillMethod.ai_generate
+                    generated_count += 1
+
+        if pending_image:
+            img_count, img_warnings = await _generate_background_images(
+                pending_image, template, user_id
+            )
+            generated_count += img_count
 
         plan_task.result = template.model_dump()
-        task_registry.set_result(task_id, {"generated": generated_count})
+        result: dict = {"generated": generated_count}
+        if img_warnings:
+            result["warnings"] = img_warnings
+        task_registry.set_result(task_id, result)
 
     except asyncio.CancelledError:
         pass

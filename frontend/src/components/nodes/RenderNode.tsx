@@ -34,6 +34,7 @@ export function RenderNode({ x, y, onPosChange }: Props) {
     const { hasError } = useNodeError(NODE_ID);
 
     const planResult = useVideoStore((s) => s.planResult);
+    const selectedStyle = useVideoStore((s) => s.selectedStyle);
     const renderStatus = useVideoStore((s) => s.renderStatus);
     const renderResult = useVideoStore((s) => s.renderResult);
     const renderPhase = useVideoStore((s) => s.renderPhase);
@@ -122,6 +123,16 @@ export function RenderNode({ x, y, onPosChange }: Props) {
                                 onClick={startRender}
                             />
                         </Tooltip>
+                        <div
+                            style={{
+                                fontSize: "7px",
+                                color: "#999",
+                                textAlign: "center",
+                                marginTop: "2px",
+                            }}
+                        >
+                            Style: {selectedStyle}
+                        </div>
                     </>
                 )}
 
@@ -133,6 +144,16 @@ export function RenderNode({ x, y, onPosChange }: Props) {
                             label="RENDERING"
                             accent={ACCENT}
                         />
+                        <div
+                            style={{
+                                fontSize: "7px",
+                                color: "#999",
+                                textAlign: "center",
+                                marginBottom: "2px",
+                            }}
+                        >
+                            Style: {selectedStyle}
+                        </div>
                         <div
                             style={{
                                 display: "flex",

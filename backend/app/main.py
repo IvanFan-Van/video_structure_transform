@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from dotenv import find_dotenv, load_dotenv
@@ -16,6 +17,11 @@ from app.routers import (
     plan_router,
     render_router,
     task_router,
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
 load_dotenv(find_dotenv())
