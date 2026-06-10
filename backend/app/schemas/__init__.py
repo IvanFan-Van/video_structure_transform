@@ -1,7 +1,14 @@
 from .analyze import AnalyzeRequest
 from .auth import LoginRequest, RegisterRequest
 from .compress import CompressRequest
-from .effect import EffectAnalysisResult, EffectMatch, UpdateEffectRequest
+from .effect import (
+    EffectAnalysisResult,
+    EffectMatch,
+    EffectParamAnalysisRequest,
+    EffectParamAnalysisResult,
+    EffectParamDetail,
+    UpdateEffectRequest,
+)
 from .plan import (
     FillSlotRequest,
     PlanOutput,
@@ -19,6 +26,9 @@ __all__ = [
     "CutPointList",
     "EffectAnalysisResult",
     "EffectMatch",
+    "EffectParamAnalysisRequest",
+    "EffectParamAnalysisResult",
+    "EffectParamDetail",
     "FillSlotRequest",
     "LoginRequest",
     "PlanOutput",

@@ -4,7 +4,7 @@ import re
 
 from sqlmodel import Session, func, select
 
-from app.config import COMPONENTS_JSON, EFFECT_DIR
+from app.config import COMPONENTS_JSON, EFFECT_DIR, EFFECT_DOC_DIR
 from app.models import Effect
 
 logger = logging.getLogger(__name__)
@@ -33,10 +33,13 @@ def seed_effects(session: Session) -> int:
     logger.info("Loaded %d effect entries, seeding...", len(entries))
 
     demo_found = 0
+    doc_found = 0
     for entry in entries:
         kebab = _pascal_to_kebab(entry["name"])
         demo_file = EFFECT_DIR / f"{kebab}.mp4"
+        doc_file = EFFECT_DOC_DIR / f"{kebab}.md"
         demo_path = f"/effects/demo/{kebab}.mp4" if demo_file.exists() else None
+        doc_path = f"/effects/doc/{kebab}.md" if doc_file.exists() else None
         if demo_path:
             demo_found += 1
         else:
@@ -45,6 +48,14 @@ def seed_effects(session: Session) -> int:
                 entry["name"],
                 demo_file,
             )
+        if doc_path:
+            doc_found += 1
+        else:
+            logger.warning(
+                "Doc file not found for effect '%s' (expected at %s)",
+                entry["name"],
+                doc_file,
+            )
         session.add(
             Effect(
                 name=entry["name"],
@@ -52,13 +63,15 @@ def seed_effects(session: Session) -> int:
                 description=entry["description"],
                 library="remocn",
                 demo_path=demo_path,
+                doc_path=doc_path,
             )
         )
     session.commit()
     logger.info(
-        "Seeded %d effects (%d with demo videos).",
+        "Seeded %d effects (%d with demo videos, %d with docs).",
         len(entries),
         demo_found,
+        doc_found,
     )
     return len(entries)
 

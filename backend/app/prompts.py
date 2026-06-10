@@ -580,7 +580,7 @@ VIDEO_VISUAL_ANALYSIS_SYSTEM_PROMPT = """你是一位专业的短视频视觉分
 1. **镜头切分**：识别每一个镜头的起止时间，镜头间以画面明显变化为边界。
 2. **镜头属性**：判断每个镜头的运镜方式（static/zoom_in/zoom_out/pan/tilt/handheld），以及是否为纯文字帧（is_text_frame）。
 3. **转场识别**：识别每两个相邻镜头之间的转场类型（cut/dissolve/wipe/fade_in/fade_out/slide/zoom/glitch/rgb_split）及其持续时长。
-4. **文字元素**：识别视频中所有叙事性文字（忽略水印、平台 UI、进度条等无关元素），记录每个文字元素的内容、屏幕位置、出现/消失时间。文字元素的时间轴独立于镜头，可跨越多个镜头。
+4. **文字元素**：识别视频中所有叙事性文字（忽略水印、平台 UI、进度条等无关元素），记录每个文字元素的**内容**、**屏幕位置**、**出现/消失时间**、**字体大小**（估算像素值，如 48/56/64/72/96）、**字重**（bold/normal/lighter）、**字体颜色**（hex 格式如 #FFFFFF 或 #FFD700）。文字元素的时间轴独立于镜头，可跨越多个镜头。
 5. **节奏摘要**：计算平均镜头时长，判断整体节奏档位（fast/medium/slow），并标记节奏骤然加快的时间点。
 
 输出约束：
@@ -702,7 +702,9 @@ PLAN_USER_PROMPT_TASK = """## 用户新视频需求
 3. start_time 与 end_time 均以 {estimated_duration}s 为总时长，按比例映射
 4. 每个 segment 包含 3 个 slots，固定为：visual_text、narration、background_image
 5. narrative_intent 和 slot.description 必须结合用户主题说明具体内容，
-   禁止使用"文案"、"台词"等泛泛词语
+   禁止使用"文案"、"台词"等泛泛词语。
+   position / font_size / font_weight / font_color 无需填写，
+   将由视觉分析结果自动注入，AI 请忽略这些字段。
 6. stage 枚举值：hook / setup / story / insight / cta / outro
 7. hook_type（仅 hook 段）：
    pain_point / suspense / result_first / counter_intuitive /
@@ -712,10 +714,11 @@ PLAN_USER_PROMPT_TASK = """## 用户新视频需求
    dm_funnel / share_spread / challenge
 9. emotional_tone：positive / negative / neutral / suspenseful / curious / urgent / humorous / calm
 10. constraints 中以下字段建议使用指定值（超出范围时服务端会自动降级为默认值）：
-   - position: top_center / center / bottom_center / overlay_left / overlay_right / full_screen
+   - position: 无需填写，由视觉分析自动注入
    - appear_style: fade_in / pop / slide / typewriter（或其它动效名称）
    - emphasis: zoom / shake / color_change / stroke
    - camera_movement: static / zoom_in / zoom_out / pan / tilt / handheld
+   - font_size / font_weight / font_color: 无需填写，由视觉分析自动注入
 11. bgm_mood 描述 BGM 情绪关键词，如 "energetic" / "calm" / "uplifting"
 """
 
@@ -762,4 +765,40 @@ SLOT_GENERATION_USER_TEMPLATE = """## 视频主题
   ]
 }}
 """
+
+
+EFFECT_PARAM_ANALYSIS_SYSTEM_PROMPT = (
+    "You are a visual effects parameter analyst. "
+    "Given a short video and a list of pre-selected effect names, "
+    "your task is to assign precise component parameters for each effect.\n"
+    "\n"
+    "## Selected Effects Documentation\n"
+    "\n"
+    "{effects_docs}\n"
+    "\n"
+    "## Analysis Process\n"
+    "\n"
+    "### Step 1: Free Observation\n"
+    "Watch the video carefully and describe every visual phenomenon. "
+    "Focus on HOW things look and move, not WHAT the content is about.\n"
+    "\n"
+    "### Step 2: Match to Documentation\n"
+    "For each selected effect, locate the exact timestamp where it appears. "
+    "Using ONLY the Props table from the documentation above, assign "
+    "specific values to each parameter. Do NOT invent props that are not "
+    "in the table.\n"
+    "\n"
+    "## Output Rules\n"
+    "- remocn_component must be the kebab-case component ID listed in docs\n"
+    "- remocn_props must only contain props defined in that component's Props table\n"
+    "- timing_start and timing_duration in seconds, one decimal place\n"
+    "- applies_to: the stage name (hook/story/cta/...) or slot type (visual_text/narration)\n"
+    "- evidence: the specific visual observation that supports each parameter choice\n"
+    "- Only output valid JSON, no markdown wrappers or preamble\n"
+)
+
+EFFECT_PARAM_ANALYSIS_USER_PROMPT = (
+    "Please analyze the video and assign component parameters "
+    "for each of the selected effects listed in the documentation."
+)
 

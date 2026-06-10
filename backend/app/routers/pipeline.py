@@ -8,12 +8,18 @@ from app.database import get_session
 from app.deps import get_current_user, get_video_asset
 from app.lib.video import probe_video
 from app.models import User
-from app.schemas import AnalyzeRequest, CompressRequest, SplitRequest
+from app.schemas import (
+    AnalyzeRequest,
+    CompressRequest,
+    EffectParamAnalysisRequest,
+    SplitRequest,
+)
 from app.services import (
     check_analysis_size_limit,
     start_audio_analysis,
     start_compress_task,
     start_effect_analysis,
+    start_effect_param_analysis,
     start_script_analysis,
     start_split_task,
     start_visual_analysis,
@@ -130,6 +136,23 @@ async def analyze_effect_endpoint(
     check_analysis_size_limit(meta)
 
     task_id = start_effect_analysis(current_user, source_asset.path, req.asset_id)
+    return JSONResponse(
+        status_code=202, content={"status": "success", "data": {"task_id": task_id}}
+    )
+
+
+@router.post("/analyze-effect-params")
+async def analyze_effect_params_endpoint(
+    req: EffectParamAnalysisRequest,
+    current_user: User = Depends(get_current_user),
+):
+    source_asset = get_video_asset(req.asset_id, current_user)
+    meta = probe_video(source_asset.path)
+    check_analysis_size_limit(meta)
+
+    task_id = start_effect_param_analysis(
+        current_user, source_asset.path, req.asset_id, req.effects
+    )
     return JSONResponse(
         status_code=202, content={"status": "success", "data": {"task_id": task_id}}
     )

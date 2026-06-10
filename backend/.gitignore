@@ -13,6 +13,7 @@ storage/images/
 storage/videos/
 storage/audios/
 storage/tmp/
+storage/render/
 
 .ruff_cache/
 .pytest_cache/

@@ -3,6 +3,8 @@ import json
 import logging
 import shutil
 import uuid
+
+import edge_tts
 from pathlib import Path
 
 from sqlmodel import Session
@@ -287,6 +289,63 @@ async def _run_render(
         _push_eof(queue)
         _cleanup(props_path, bgm_dest, output_path)
         task_registry.set_error(task_id, str(e))
+
+
+async def _generate_narration_audio(
+    text: str,
+    output_path: str,
+    voice: str = "zh-CN-XiaoxiaoNeural",
+) -> None:
+    communicate = edge_tts.Communicate(text, voice)
+    await communicate.save(output_path)
+
+
+async def _generate_all_narration_audio(
+    plan: VideoTemplate,
+    public_dir: Path,
+    queue: asyncio.Queue,
+) -> list[Path]:
+    narration_slots = [
+        slot
+        for seg in plan.segments
+        for slot in seg.slots
+        if slot.slot_type.value == "narration" and slot.value
+    ]
+    if not narration_slots:
+        return []
+
+    paths: list[Path] = []
+    total = len(narration_slots)
+    _push(
+        queue,
+        {
+            "phase": "tts",
+            "message": f"Generating narration audio ({total} segments)...",
+        },
+    )
+    for i, slot in enumerate(narration_slots):
+        dest = public_dir / f"narration_{slot.slot_id}.wav"
+        try:
+            await _generate_narration_audio(slot.value, str(dest))
+            paths.append(dest)
+            _push(
+                queue,
+                {
+                    "phase": "tts",
+                    "progress": int((i + 1) / total * 100),
+                    "message": f"TTS {i + 1}/{total}: narration_{slot.slot_id}.wav",
+                },
+            )
+        except Exception as e:
+            logger.warning("TTS failed for slot %s: %s", slot.slot_id, e)
+            _push(
+                queue,
+                {
+                    "phase": "tts",
+                    "message": f"TTS failed for narration_{slot.slot_id}: {e}",
+                },
+            )
+    return paths
 
 
 def _resolve_background_image(seg) -> str | None:
@@ -589,7 +648,10 @@ def _push_eof(queue: asyncio.Queue) -> None:
 
 
 def _cleanup(
-    props_path: str | None, bgm_dest: Path | None, output_path: str | None
+    props_path: str | None,
+    bgm_dest: Path | None,
+    output_path: str | None,
+    narration_paths: list[Path] | None = None,
 ) -> None:
     if props_path:
         try:
@@ -601,6 +663,12 @@ def _cleanup(
             bgm_dest.unlink(missing_ok=True)
         except OSError:
             pass
+    if narration_paths:
+        for p in narration_paths:
+            try:
+                p.unlink(missing_ok=True)
+            except OSError:
+                pass
     if output_path:
         try:
             Path(output_path).unlink(missing_ok=True)

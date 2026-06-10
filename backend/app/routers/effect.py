@@ -40,6 +40,7 @@ async def list_effects(
                     "category": e.category,
                     "description": e.description,
                     "demo_path": e.demo_path,
+                    "doc_path": e.doc_path,
                 }
                 for e in effects
             ],

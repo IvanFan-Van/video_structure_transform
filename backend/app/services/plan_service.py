@@ -251,6 +251,7 @@ def _build_segments_from_llm_output(
     all_effects: list[str],
     scaled_shots: list[dict],
     transition_map: dict[float, TransitionSpec],
+    visual_result: dict | None = None,
 ) -> list[Segment]:
     """Build Segment objects from LLM output, merging with visual analysis data."""
     segments: list[Segment] = []
@@ -291,8 +292,46 @@ def _build_segments_from_llm_output(
             transition_out=_find_transition(raw_seg.end_time, transition_map),
             slots=slots,
         )
+
+        # Merge text style attributes from visual analysis
+        _merge_text_style(seg, visual_result)
+
         segments.append(seg)
     return segments
+
+
+def _merge_text_style(segment: Segment, visual_result: dict | None) -> None:
+    """Merge font_size, font_weight, font_color, position from TextElement."""
+    if not visual_result:
+        return
+    text_elements = visual_result.get("text_elements", [])
+    if not text_elements:
+        return
+
+    mid = (segment.start_time + segment.end_time) / 2
+    best_te = None
+    best_dist = float("inf")
+    for te in text_elements:
+        te_mid = (te.get("appear_time", 0) + te.get("disappear_time", segment.end_time)) / 2
+        dist = abs(te_mid - mid)
+        if dist < best_dist:
+            best_dist = dist
+            best_te = te
+
+    if not best_te:
+        return
+
+    for slot in segment.slots:
+        if slot.slot_type != SlotType.visual_text:
+            continue
+        if best_te.get("position") and not slot.constraints.position:
+            slot.constraints.position = best_te["position"]
+        if best_te.get("font_size") is not None and not slot.constraints.font_size:
+            slot.constraints.font_size = best_te["font_size"]
+        if best_te.get("font_weight") and not slot.constraints.font_weight:
+            slot.constraints.font_weight = best_te["font_weight"]
+        if best_te.get("font_color") and not slot.constraints.font_color:
+            slot.constraints.font_color = best_te["font_color"]
 
 
 async def run_plan_generation(task_id: str, request: PlanRequest, user_id: str) -> None:
@@ -325,6 +364,7 @@ async def run_plan_generation(task_id: str, request: PlanRequest, user_id: str) 
             all_effects=pre["all_effects"],
             scaled_shots=pre["scaled_shots"],
             transition_map=pre["transition_map"],
+            visual_result=pre["visual_result"],
         )
 
         # ── Step 5: build and store VideoTemplate ─────────────

@@ -344,7 +344,12 @@ def load_effects() -> list[dict]:
     with Session(engine) as session:
         effects = session.exec(select(Effect)).all()
         return [
-            {"name": e.name, "category": e.category, "description": e.description}
+            {
+                "name": e.name,
+                "category": e.category,
+                "description": e.description,
+                "doc_path": e.doc_path,
+            }
             for e in effects
         ]
 
@@ -400,6 +405,115 @@ def start_effect_analysis(user: User, video_path_str: str, asset_id: str) -> str
         task_type="analyze-effect",
         resource_id=asset_id,
         coro=run_effect_analysis(task_id, video_path_str),
+    )
+    return task_id
+
+
+# EFFECT PARAM ANALYSIS (new — parameterized effects)
+
+_re_kebab_split = __import__("re").compile(
+    r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])"
+)
+
+
+def _pascal_to_kebab(name: str) -> str:
+    return _re_kebab_split.sub("-", name).lower()
+
+
+def _load_effect_docs(effect_names: list[str]) -> str:
+    from app.config import EFFECT_DOC_DIR
+
+    parts = []
+    for name in effect_names:
+        kebab = _pascal_to_kebab(name)
+        doc_file = EFFECT_DOC_DIR / f"{kebab}.md"
+        if doc_file.exists():
+            content = doc_file.read_text(encoding="utf-8")
+            section = _extract_props_section(content)
+            parts.append(f"### {name}\n{section}\n")
+    return "\n".join(parts)
+
+
+def _extract_props_section(md_content: str) -> str:
+    lines = md_content.split("\n")
+    in_props = False
+    props_lines = []
+    for line in lines:
+        if line.startswith("## Props"):
+            in_props = True
+            props_lines.append(line)
+        elif in_props and line.startswith("## "):
+            break
+        elif in_props:
+            props_lines.append(line)
+    if not props_lines:
+        return md_content
+    return "\n".join(props_lines)
+
+
+async def run_effect_param_analysis(
+    task_id: str,
+    video_path_str: str,
+    asset_id: str,
+    selected_effects: list[str],
+) -> None:
+    try:
+        from app.prompts import (
+            EFFECT_PARAM_ANALYSIS_SYSTEM_PROMPT,
+            EFFECT_PARAM_ANALYSIS_USER_PROMPT,
+        )
+        from app.schemas.effect import EffectParamAnalysisResult
+
+        docs_text = _load_effect_docs(selected_effects)
+        system_prompt = EFFECT_PARAM_ANALYSIS_SYSTEM_PROMPT.format(
+            effects_docs=docs_text,
+        )
+
+        video_path = Path(video_path_str)
+        video_b64 = video_to_base64(video_path)
+
+        user_content: list[dict] = [
+            {"type": "text", "text": EFFECT_PARAM_ANALYSIS_USER_PROMPT},
+            {
+                "type": "video_url",
+                "video_url": {"url": f"data:video/mp4;base64,{video_b64}"},
+            },
+        ]
+
+        instructor_client_v = instructor.from_openai(async_client)
+        result: EffectParamAnalysisResult = (
+            await instructor_client_v.chat.completions.create(
+                model=os.getenv("MODEL"),  # type: ignore
+                response_model=EffectParamAnalysisResult,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},  # type: ignore
+                ],
+            )
+        )
+
+        task_registry.set_result(task_id, result.model_dump())
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        task_registry.set_error(task_id, str(e))
+
+
+def start_effect_param_analysis(
+    user: User,
+    video_path_str: str,
+    asset_id: str,
+    selected_effects: list[str],
+) -> str:
+    task_id = str(uuid.uuid4())
+    register_and_launch(
+        task_id=task_id,
+        user_id=user.user_id,
+        task_type="analyze-effect-params",
+        resource_id=asset_id,
+        coro=run_effect_param_analysis(
+            task_id, video_path_str, asset_id, selected_effects
+        ),
     )
     return task_id
 

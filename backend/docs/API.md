@@ -88,31 +88,38 @@ Base URL: `http://127.0.0.1:8000`
     - [14.1 GET /effects — 查询特效库](#141-get-effects--查询特效库)
     - [14.2 PATCH /effects — 校正任务特效](#142-patch-effects--校正任务特效)
     - [14.3 GET /effects/demo/{filename} — 获取特效 Demo 视频](#143-get-effectsdemofilename--获取特效-demo-视频)
-  - [15. POST /plan — 生成视频模板](#15-post-plan--生成视频模板)
+  - [15. POST /analyze-effect-params — 特效参数化分析](#15-post-analyze-effect-params--特效参数化分析)
     - [请求参数](#请求参数-10)
     - [请求示例](#请求示例-11)
     - [成功响应 (202)](#成功响应-202-6)
-    - [通过 SSE / 轮询获取模板](#通过-sse--轮询获取模板)
+    - [任务结果结构](#任务结果结构-1)
+    - [工作流](#工作流)
     - [错误响应](#错误响应-13)
-  - [16. PATCH /plan/{plan\_id}/slot/{slot\_id} — 填充模板槽位](#16-patch-planplan_idslotslot_id--填充模板槽位)
-    - [路径参数](#路径参数-4)
+  - [16. POST /plan — 生成视频模板](#16-post-plan--生成视频模板)
     - [请求参数](#请求参数-11)
-    - [响应示例](#响应示例-1)
-    - [错误响应](#错误响应-14)
-  - [17. POST /plan/{plan\_id}/generate — 批量 AI 生成槽位内容](#17-post-planplan_idgenerate--批量-ai-生成槽位内容)
-    - [路径参数](#路径参数-5)
+    - [请求示例](#请求示例-12)
     - [成功响应 (202)](#成功响应-202-7)
+    - [通过 SSE / 轮询获取模板](#通过-sse--轮询获取模板)
+    - [错误响应](#错误响应-14)
+  - [17. PATCH /plan/{plan_id}/slot/{slot_id} — 填充模板槽位](#17-patch-planplan_idslotslot_id--填充模板槽位)
+    - [路径参数](#路径参数-4)
+    - [请求参数](#请求参数-12)
+    - [响应示例](#响应示例-1)
+    - [错误响应](#错误响应-15)
+  - [18. POST /plan/{plan_id}/generate — 批量 AI 生成槽位内容](#18-post-planplan_idgenerate--批量-ai-生成槽位内容)
+    - [路径参数](#路径参数-5)
+    - [成功响应 (202)](#成功响应-202-8)
     - [通过 SSE / 轮询获取结果](#通过-sse--轮询获取结果)
     - [生成逻辑](#生成逻辑)
-    - [错误响应](#错误响应-15)
-  - [18. POST /render — 渲染视频](#18-post-render--渲染视频)
-    - [请求参数](#请求参数-12)
-    - [请求示例](#请求示例-12)
-    - [成功响应 (202)](#成功响应-202-8)
-    - [通过 SSE / 轮询获取渲染进度](#通过-sse--轮询获取渲染进度)
-    - [任务结果结构](#任务结果结构-1)
-    - [渲染流程](#渲染流程)
     - [错误响应](#错误响应-16)
+  - [19. POST /render — 渲染视频](#19-post-render--渲染视频)
+    - [请求参数](#请求参数-13)
+    - [请求示例](#请求示例-13)
+    - [成功响应 (202)](#成功响应-202-9)
+    - [通过 SSE / 轮询获取渲染进度](#通过-sse--轮询获取渲染进度)
+    - [任务结果结构](#任务结果结构-2)
+    - [渲染流程](#渲染流程)
+    - [错误响应](#错误响应-17)
   - [附录 B: 错误码参考](#附录-b-错误码参考)
     - [客户端错误 (4xx) — 无 error code，直接通过 `message` 字段描述](#客户端错误-4xx--无-error-code直接通过-message-字段描述)
     - [服务端错误 (5xx) — 附带 `data.code` 和 `data.details`](#服务端错误-5xx--附带-datacode-和-datadetails)
@@ -758,7 +765,10 @@ curl -X POST http://127.0.0.1:8000/upload \
       "text": "你知道吗？90%的人都做错了这件事",
       "position": "center",
       "appear_time": 0.3,
-      "disappear_time": 2.5
+      "disappear_time": 2.5,
+      "font_size": 48,
+      "font_weight": "bold",
+      "font_color": "#FFFFFF"
     }
   ],
   "text_density_curve": [
@@ -816,6 +826,9 @@ curl -X POST http://127.0.0.1:8000/upload \
 | `position` | string \| null | 屏幕位置：`top_center` / `center` / `bottom_center` / `overlay_left` / `overlay_right` / `full_screen` |
 | `appear_time` | float | 文字出现时间（秒） |
 | `disappear_time` | float | 文字消失时间（秒） |
+| `font_size` | int \| null | AI 估算的文字字号（像素），非精确值；无文字信标时为 `null` |
+| `font_weight` | string \| null | AI 估算的字重：`bold` / `normal` / `light`；无文字信标时为 `null` |
+| `font_color` | string \| null | AI 估算的文字颜色，CSS 格式（如 `#FFFFFF`）；无文字信标时为 `null` |
 
 **`text_density_curve` 数组元素字段：**
 
@@ -1462,13 +1475,15 @@ curl "http://127.0.0.1:8000/effects" \
       "name": "BlurReveal",
       "category": "Typography",
       "description": "文字从严重模糊聚焦至锐利，由虚到实单次进场。...",
-      "demo_path": null
+      "demo_path": null,
+      "doc_path": "/effects/doc/blur-reveal.md"
     },
     {
       "name": "FrostedGlassWipe",
       "category": "Transitions",
       "description": "磨砂玻璃面板从画面一侧滑过遮旧场景露新场景。...",
-      "demo_path": "/effects/demo/frosted-glass-wipe.mp4"
+      "demo_path": "/effects/demo/frosted-glass-wipe.mp4",
+      "doc_path": null
     }
   ]
 }
@@ -1482,6 +1497,7 @@ curl "http://127.0.0.1:8000/effects" \
 | `category` | string | 分类：Typography / Core Primitives / Environment & Lighting / UI Blocks / Transitions / Compositions |
 | `description` | string | 中文功能描述 |
 | `demo_path` | string \| null | 特效 Demo 视频的 URL 路径，前端使用时需加 `/api` 前缀；无 Demo 视频时为 `null` |
+| `doc_path` | string \| null | 特效参数文档的 URL 路径（Markdown），供 `/analyze-effect-params` 使用；无文档时为 `null` |
 
 #### 错误响应
 
@@ -1597,7 +1613,147 @@ curl "http://127.0.0.1:8000/effects/demo/typewriter.mp4" -o demo.mp4
 
 ---
 
-## 15. POST /plan — 生成视频模板
+## 15. POST /analyze-effect-params — 特效参数化分析
+
+对用户确认的特效列表进行参数化分析，根据特效文档（`doc_path`）为每个选定的特效生成可被 Remotion 组件直接消费的 props 参数。
+
+> **工作流**：`/analyze-effect` → 用户校正（`PATCH /effects`） → `/analyze-effect-params`。此接口是 `/analyze-effect` 的扩展而非替代，需要用户先确认特效名称后再调用。
+
+| 属性 | 值 |
+|---|---|
+| **方法** | `POST` |
+| **认证** | 需要（Bearer Token） |
+| **Content-Type** | `application/json` |
+
+### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `asset_id` | string | **是** | 参考视频的 asset_id |
+| `effects` | array[string] | **是** | 用户确认的特效名称列表，如 `["Typewriter", "BlurReveal"]` |
+
+### 请求示例
+
+```bash
+curl -X POST http://127.0.0.1:8000/analyze-effect-params \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "asset_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "effects": ["Typewriter", "BlurReveal", "LightLeakTransition"]
+  }'
+```
+
+### 成功响应 (202)
+
+分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取结果。
+
+```json
+{
+  "status": "success",
+  "data": {
+    "task_id": "pppppppp-pppp-pppp-pppp-pppppppppppp"
+  }
+}
+```
+
+### 任务结果结构
+
+任务完成后，`GET /task/{task_id}/stream` 返回的 `result` 字段：
+
+```json
+{
+  "observations": "参考视频开头标题以逐字打字机效果出现，每个字间隔约80ms，伴有微弱淡入。中段文字从严重模糊聚焦至锐利，持续约0.5s。转场处有快速光效闪过，颜色偏暖橙。",
+  "effects": [
+    {
+      "effect_name": "Typewriter",
+      "remocn_component": "Typewriter",
+      "remocn_props": {
+        "text": "你知道吗？90%的人都做错了这件事",
+        "speed": 50,
+        "enterAnimation": "fade"
+      },
+      "timing": { "start_time": 0.3, "duration": 2.2 },
+      "applies_to": "visual_text",
+      "evidence": "标题文字逐字出现，伴有微弱淡入效果"
+    },
+    {
+      "effect_name": "BlurReveal",
+      "remocn_component": "BlurReveal",
+      "remocn_props": {
+        "text": "我是标题",
+        "blurAmount": 15,
+        "duration": 0.5
+      },
+      "timing": { "start_time": 5.5, "duration": 0.5 },
+      "applies_to": "visual_text",
+      "evidence": "文字从严重模糊到清晰聚焦"
+    },
+    {
+      "effect_name": "LightLeakTransition",
+      "remocn_component": "LightLeakTransition",
+      "remocn_props": {
+        "colors": ["#FF8C00", "#FFD700"],
+        "intensity": 0.8
+      },
+      "timing": { "start_time": 3.5, "duration": 0.5 },
+      "applies_to": "transition",
+      "evidence": "画面切换时有暖色调光效闪过"
+    }
+  ]
+}
+```
+
+**顶层字段：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `observations` | string | 对视频中特效参数的自由形式观察描述 |
+| `effects` | array | 参数化后的特效列表 |
+
+**`effects[]` 元素字段：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `effect_name` | string | 用户指定的特效名称（与请求中一致） |
+| `remocn_component` | string | 对应的 Remotion 组件名（通常与 effect_name 相同） |
+| `remocn_props` | object | 从特效文档中的 `## Props` 部分推断的组件参数，可直接传入 Remotion 组件 |
+| `timing` | object | 特效时间信息，包含 `start_time`（秒）和 `duration`（秒） |
+| `applies_to` | string | 特效作用目标类型：`visual_text` / `background` / `transition` / `overlay` |
+| `evidence` | string | 视频中观察到的具体视觉证据，支持参数推理 |
+
+> **参数来源**：服务端通过 `_load_effect_docs` 从 `storage/effect_docs/{kebab}.md` 读取各特效的 `## Props` 章节，结合视频视觉观察（文字内容、时长、颜色等）推断具体参数值。
+
+### 工作流
+
+```
+① 对参考视频运行 /analyze-effect           ← 识别视频中包含哪些特效
+② 用户在 /effects 查看 AI 结果并校正       ← 删除误判、补充遗漏的特效名称
+③ 调用 /analyze-effect-params               ← 对校正后的特效列表生成参数化 props
+④ 结果注入 /plan 的 Segment.effects[]       ← 供 /render 消费
+```
+
+### 错误响应
+
+| HTTP 状态码 | message | 说明 |
+|---|---|---|
+| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
+| 400 | `缺少 asset_id 参数` | 请求体未提供 asset_id |
+| 400 | `缺少 effects 参数` | 请求体未提供特效列表 |
+| 400 | `视频文件过大（xx MB），超过分析上限 xx MB` | 视频文件超过 `MAX_ANALYZE_SIZE_MB` 限制 |
+| 404 | `素材 xxx 不存在` | 该 asset_id 对应的记录不存在 |
+| 403 | `无权访问该素材` | 素材不属于当前用户 |
+
+**服务端错误（附带 error code）：**
+
+| HTTP 状态码 | data.code | 说明 |
+|---|---|---|
+| 500 | `FILE_MISSING` | 数据库记录存在但磁盘文件已丢失 |
+| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 `GET /task/{task_id}/stream` 查询 `status: "failed"` 获取详情） |
+
+---
+
+## 16. POST /plan — 生成视频模板
 
 基于已完成的分析任务（/analyze-script、/analyze-visual 等），使用 LLM 将参考视频的叙事结构迁移到新的用户主题上，生成一个包含 segments 和 slots 的视频模板。
 
@@ -1701,7 +1857,7 @@ curl -X POST http://127.0.0.1:8000/plan \
 
 ---
 
-## 16. PATCH /plan/{plan_id}/slot/{slot_id} — 填充模板槽位
+## 17. PATCH /plan/{plan_id}/slot/{slot_id} — 填充模板槽位
 
 为模板中的指定 slot 填充内容。支持三种方式：
 - **user_upload**：上传已有的文件素材（需提供 asset_id），slot 状态变为 `filled`
@@ -1817,7 +1973,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 
 ---
 
-## 17. POST /plan/{plan_id}/generate — 批量 AI 生成槽位内容
+## 18. POST /plan/{plan_id}/generate — 批量 AI 生成槽位内容
 
 将模板中所有 `status="pending"` 的文本类槽位（visual_text / narration）一次性批量生成。LLM 会拥有全部 segment 的上下文，确保生成的文案在整条视频中叙事连贯、语气统一。
 
@@ -1891,7 +2047,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 
 ---
 
-## 18. POST /render — 渲染视频
+## 19. POST /render — 渲染视频
 
 基于已完成填充的 Plan 模板，调用 effects-renderer 引擎渲染生成最终的 MP4 视频。以异步任务模式运行，通过 SSE 实时推送渲染进度。
 
@@ -1912,7 +2068,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 > 2. 所需 slot 已通过 `PATCH /plan/{plan_id}/slot/{slot_id}` 填充
 > 3. BGM 已通过 `POST /analyze-audio` 生成（slot 中的 `reference_audio_asset_id` 指向有效的 BGM 音频文件）
 >
-> 渲染引擎使用 `effects-renderer` 项目，输出规格为 1080×1920（9:16 竖屏）30fps H.264 MP4。
+> 渲染引擎使用 `effects-renderer` 项目，输出分辨率自动匹配参考视频（通过 ffprobe 探测 `reference_asset_id` 的宽高）；若无法探测则默认 1080×720 横屏 30fps H.264 MP4。
 
 ### 请求示例
 
@@ -1947,6 +2103,12 @@ data: {"phase":"loading","message":"Loading plan data..."}
 
 data: {"phase":"bgm","message":"Loading BGM audio..."}
 
+data: {"phase":"tts","message":"Generating narration audio (3 segments)..."}
+
+data: {"phase":"tts","progress":33,"message":"TTS 1/3: narration_seg0_narration.wav"}
+
+data: {"phase":"tts","progress":100,"message":"TTS 3/3: narration_seg2_narration.wav"}
+
 data: {"phase":"building","message":"Building video project..."}
 
 data: {"phase":"rendering","progress":0,"frame":0,"totalFrames":498}
@@ -1970,8 +2132,9 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
 
 | 帧类型 | phase 值 | 额外字段 | 说明 |
 |---|---|---|---|
-| 准备阶段 | `loading` | `message` | 读取 Plan 模板数据 |
+| 准备阶段 | `loading` | `message` | 读取 Plan 模板数据、探测参考视频分辨率 |
 | BGM 准备 | `bgm` | `message` | 拷贝 BGM 音频到 effects-renderer/public/ |
+| TTS 生成 | `tts` | `message`, `progress` | 为每个 narration slot 调用 edge_tts 生成旁白音频 |
 | 构建配置 | `building` | `message` | 将 Plan 模板转换为 VideoProject JSON |
 | 渲染中 | `rendering` | `progress`，首帧附带 `frame` 和 `totalFrames` | 逐帧渲染进度百分比 |
 | 保存中 | `saving` | `message` | 将输出 MP4 写入 storage，创建 Asset 记录 |
@@ -1992,8 +2155,9 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
     "path": "storage\\videos\\m1m1m1m1-....mp4",
     "duration": 45.0,
     "fps": 30,
-    "width": 1080,
-    "height": 1920
+    "width": 1920,
+    "height": 1080,
+    "cover_image_asset_id": "n1n1n1n1-n1n1-n1n1-n1n1-n1n1n1n1n1n1"
   }
 }
 ```
@@ -2004,18 +2168,22 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
 | `path` | string | 视频文件的存储路径 |
 | `duration` | float | 视频时长（秒） |
 | `fps` | int | 帧率（固定 30fps） |
-| `width` | int | 视频宽度（像素，固定 1080） |
-| `height` | int | 视频高度（像素，固定 1920） |
+| `width` | int | 视频宽度（像素），匹配参考视频或默认 1080 |
+| `height` | int | 视频高度（像素），匹配参考视频或默认 720 |
+| `cover_image_asset_id` | string | 自动提取的视频封面图 asset_id，可通过 `GET /files/{asset_id}` 下载 |
 
 ### 渲染流程
 
 ```
 ① 读 PlanResult                   ← task_registry.get(plan_id).result
-② 拷贝 BGM                        ← bgm_spec.reference_audio_asset_id → effects-renderer/public/bgm.wav
-③ 构建 VideoProject JSON           ← PlanResult → scenes (background + overlays + transition + audio)
-④ effects-renderer CLI 渲染        ← pnpm exec tsx scripts/render-compose.ts --project ... --out ...
-⑤ 创建 Asset 记录                 ← Asset(asset_id, user_id, path, type="video")
-⑥ 清理临时文件（异常/取消时）       ← props JSON + 拷贝的 BGM + 输出 MP4
+② 探测参考视频分辨率                  ← ffprobe 获取宽高 → VideoProject composition 使用动态分辨率
+③ 拷贝 BGM                        ← bgm_spec.reference_audio_asset_id → effects-renderer/public/bgm.wav
+④ 生成 TTS 旁白                     ← edge_tts 为每个 narration slot 生成 .wav → effects-renderer/public/
+⑤ 构建 VideoProject JSON           ← PlanResult → scenes (background + overlays + transition + audio)
+⑥ effects-renderer CLI 渲染        ← pnpm exec tsx scripts/render-compose.ts --project ... --out ...
+⑦ 创建 Asset 记录                 ← Asset(asset_id, user_id, path, type="video")
+⑧ 提取封面图                       ← ffmpeg 从渲染输出视频的首帧提取封面
+⑨ 清理临时文件（异常/取消时）          ← BGM + narration 音频 + 输出 MP4
 ```
 
 ### 错误响应
@@ -2103,7 +2271,7 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
 
 ### 概述
 
-视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`)、视频切割 (`/split`)、模板生成 (`/plan`) 和视频渲染 (`/render`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端通过 **SSE 实时推送**获取进度和结果。
+视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`、`/analyze-effect-params`)、视频切割 (`/split`)、模板生成 (`/plan`) 和视频渲染 (`/render`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端通过 **SSE 实时推送**获取进度和结果。
 
 ### 工作流程
 
@@ -2112,8 +2280,9 @@ POST /compress       → 202 { task_id }                    ← 立即返回
 POST /analyze-script → 202 { task_id }                    ← 立即返回
 POST /analyze-visual → 202 { task_id }                    ← 立即返回
 POST /analyze-audio  → 202 { task_id }                    ← 立即返回
-POST /analyze-effect → 202 { task_id }                    ← 立即返回
-POST /split          → 202 { task_id }                    ← 立即返回
+POST /analyze-effect       → 202 { task_id }                    ← 立即返回
+POST /analyze-effect-params → 202 { task_id }                    ← 立即返回
+POST /split            → 202 { task_id }                    ← 立即返回
 POST /plan           → 202 { task_id }                    ← 立即返回
 POST /render          → 202 { task_id }                    ← 立即返回
                      → 连接 GET /task/{id}/stream (SSE)   ← 实时推送状态
@@ -2136,7 +2305,7 @@ POST /task/{id}/cancel → 200 "已发起取消"                   ← 中途取
 ### 取消机制
 
 - **`/compress`**: 底层 `ffmpeg` 子进程被 `SIGKILL` 杀死，部分压缩文件被清理
-- **`/analyze-script` / `/analyze-visual` / `/analyze-effect`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
+- **`/analyze-script` / `/analyze-visual` / `/analyze-effect` / `/analyze-effect-params`**: 底层异步 HTTP 请求的 TCP 连接被关闭，API 调用立即中止
 - **`/analyze-audio`**: 底层 `ffmpeg` 和模型推理被 `asyncio.CancelledError` 中断，中间产物（storage/tmp 下的文件）由任务内部清理
 - **`/split`**: 底层 `ffmpeg` 子进程被终止，已生成的临时切割文件被清理
 - **`/plan`**: 底层异步 LLM 请求被 `asyncio.CancelledError` 中断，API 调用立即中止

@@ -40,6 +40,9 @@ class SlotConstraints(BaseModel):
     max_duration_sec: float | None = None
     duration_sec: float | None = None
     camera_movement: CameraMovement | None = None
+    font_size: int | None = None
+    font_weight: str | None = None
+    font_color: str | None = None
 
 
 class Slot(BaseModel):

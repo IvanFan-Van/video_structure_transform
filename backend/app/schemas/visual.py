@@ -63,6 +63,18 @@ class TextElement(BaseModel):
     )
     appear_time: float = Field(description="文字出现时间（秒）")
     disappear_time: float = Field(description="文字消失时间（秒）")
+    font_size: int | None = Field(
+        default=None,
+        description="估算字体大小（像素值），如 48/56/64/72",
+    )
+    font_weight: str | None = Field(
+        default=None,
+        description="字重：bold/normal/lighter",
+    )
+    font_color: str | None = Field(
+        default=None,
+        description="字体颜色（hex 格式，如 #FFFFFF）",
+    )
 
     _coerce_nulls = null_str_validator("position")
 
