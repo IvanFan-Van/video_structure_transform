@@ -691,10 +691,10 @@ cp .env.example .env
 #   ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 # 4. 首次启动 (自动创建 SQLite 数据库 + 初始化特效表)
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 # 或者
 .venv\Scripts\activate
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 **验证**：访问 `http://127.0.0.1:8000/`，应返回 `{"status":"success","data":"ok"}`。
