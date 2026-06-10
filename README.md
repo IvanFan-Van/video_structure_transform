@@ -727,8 +727,6 @@ pnpm run build
 
 ### 5.5 Remotion 渲染引擎
 
-#### 5.5.1 生产渲染引擎 (viral-structure-engine)
-
 ```bash
 cd viral-structure-engine/remotion-video
 
@@ -743,27 +741,6 @@ pnpm run render
 
 # 使用自定义 Props 渲染
 pnpm run render:props
-```
-
-#### 5.5.2 特效渲染器 (effects-renderer)
-
-```bash
-cd effects-renderer
-
-# 安装依赖
-pnpm install
-
-# 启动 Remotion Studio
-pnpm run dev
-
-# 渲染单个特效 Demo
-pnpm run render
-
-# 渲染组合视频
-pnpm run render:compose -- --project compose-example.json -o out/video.mp4
-
-# 批量渲染所有 59 个特效 Demo
-npx tsx scripts/render-all.ts
 ```
 
 ### 5.6 完整启动流程
