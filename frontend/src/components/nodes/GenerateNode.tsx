@@ -225,8 +225,8 @@ export function GenerateNode({ x, y, onPosChange }: Props) {
                                 color: "#555",
                             }}
                         >
-                            {generateResult.generated} slot
-                            {generateResult.generated !== 1 ? "s" : ""} filled
+                            {generateResult.generated_slots.length} slot
+                            {generateResult.generated_slots.length !== 1 ? "s" : ""} filled
                         </div>
                         <ActionButton
                             variant="muted"

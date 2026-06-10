@@ -263,7 +263,10 @@ interface VideoState {
     planResult: PlanResult | null;
     planTaskId: string | null;
 
-    slotFillStatuses: Record<string, "filling" | "filled" | "error">;
+    slotFillStatuses: Record<
+        string,
+        "pending" | "filling" | "filled" | "error"
+    >;
 
     generateStatus: NodeStatus;
     generateTime: number | null;
@@ -1311,7 +1314,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                         return {
                             slotFillStatuses: {
                                 ...s.slotFillStatuses,
-                                [slotId]: "filled",
+                                [slotId]: filled.status,
                             },
                         };
 
@@ -1329,7 +1332,7 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
                         planResult: { ...plan, segments },
                         slotFillStatuses: {
                             ...s.slotFillStatuses,
-                            [slotId]: "filled",
+                            [slotId]: filled.status,
                         },
                     };
                 });
@@ -1443,18 +1446,40 @@ export const useVideoStore = create<VideoState & VideoActions>((set, get) => ({
             });
 
             if (get().generateStatus === "success") {
-                try {
-                    const planRes = await apiAxios.get(
-                        `/api/task/${planResult.plan_id}`,
+                const generatedSlots = get().generateResult?.generated_slots;
+                if (generatedSlots && generatedSlots.length > 0) {
+                    const slotMap = new Map(
+                        generatedSlots.map((g) => [g.slot_id, g.value]),
                     );
-                    if (
-                        planRes.data.status === "success" &&
-                        planRes.data.data?.result
-                    ) {
-                        set({ planResult: planRes.data.data.result });
-                    }
-                } catch {
-                    // best-effort re-fetch
+                    set((s) => {
+                        const plan = s.planResult;
+                        if (!plan) return {};
+                        const segments = plan.segments.map((seg) => ({
+                            ...seg,
+                            slots: seg.slots.map((slot) => {
+                                const genValue = slotMap.get(slot.slot_id);
+                                return genValue !== undefined
+                                    ? {
+                                          ...slot,
+                                          status: "filled" as const,
+                                          fill_method: "ai_generate" as const,
+                                          value: genValue,
+                                      }
+                                    : slot;
+                            }),
+                        }));
+                        const newStatuses: Record<string, "filled"> = {};
+                        for (const g of generatedSlots) {
+                            newStatuses[g.slot_id] = "filled";
+                        }
+                        return {
+                            planResult: { ...plan, segments },
+                            slotFillStatuses: {
+                                ...s.slotFillStatuses,
+                                ...newStatuses,
+                            },
+                        };
+                    });
                 }
             }
         } catch {

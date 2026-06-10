@@ -46,23 +46,18 @@ Base URL: `http://127.0.0.1:8000`
     - [成功响应 (202)](#成功响应-202-2)
     - [响应字段说明](#响应字段说明-1)
     - [错误响应](#错误响应-5)
-  - [8. GET /task/{task\_id} — 查询异步任务状态（轮询）](#8-get-tasktask_id--查询异步任务状态轮询)
-    - [路径参数](#路径参数)
-    - [成功响应 (200)](#成功响应-200-1)
-    - [响应字段说明](#响应字段说明-2)
-    - [错误响应](#错误响应-6)
-  - [9. GET /task/{task\_id}/stream — SSE 实时推送任务状态（推荐）](#9-get-tasktask_idstream--sse-实时推送任务状态推荐)
+  - [8. GET /task/{task\_id}/stream — SSE 实时推送任务状态（推荐）](#8-get-tasktask_idstream--sse-实时推送任务状态推荐)
     - [路径参数](#路径参数-1)
     - [请求示例](#请求示例-5)
     - [响应格式 (SSE)](#响应格式-sse)
     - [SSE 事件说明](#sse-事件说明)
     - [错误响应](#错误响应-7)
-  - [10. POST /task/{task\_id}/cancel — 取消异步任务](#10-post-tasktask_idcancel--取消异步任务)
+  - [9. POST /task/{task\_id}/cancel — 取消异步任务](#9-post-tasktask_idcancel--取消异步任务)
     - [路径参数](#路径参数-2)
     - [请求示例](#请求示例-6)
     - [成功响应 (200)](#成功响应-200-2)
     - [错误响应](#错误响应-8)
-  - [11. POST /analyze-audio — 异步音频分析](#11-post-analyze-audio--异步音频分析)
+  - [10. POST /analyze-audio — 异步音频分析](#10-post-analyze-audio--异步音频分析)
     - [请求参数](#请求参数-7)
     - [请求示例](#请求示例-7)
     - [成功响应 (202)](#成功响应-202-3)
@@ -71,40 +66,40 @@ Base URL: `http://127.0.0.1:8000`
     - [result 字段说明](#result-字段说明)
     - [前端集成示例](#前端集成示例)
     - [错误响应](#错误响应-9)
-  - [12. GET /files/{asset\_id} — 访问素材文件](#12-get-filesasset_id--访问素材文件)
+  - [11. GET /files/{asset\_id} — 访问素材文件](#11-get-filesasset_id--访问素材文件)
     - [路径参数](#路径参数-3)
     - [请求示例](#请求示例-8)
     - [安全校验](#安全校验)
     - [成功响应](#成功响应)
     - [错误响应](#错误响应-10)
-  - [13. POST /split — 视频切割](#13-post-split--视频切割)
+  - [12. POST /split — 视频切割](#12-post-split--视频切割)
     - [请求参数](#请求参数-8)
     - [请求示例](#请求示例-9)
     - [成功响应 (202)](#成功响应-202-4)
     - [任务结果结构](#任务结果结构)
     - [错误响应](#错误响应-11)
-  - [14. POST /analyze-effect — 视频特效分析](#14-post-analyze-effect--视频特效分析)
+  - [13. POST /analyze-effect — 视频特效分析](#13-post-analyze-effect--视频特效分析)
     - [请求参数](#请求参数-9)
     - [请求示例](#请求示例-10)
     - [成功响应 (202)](#成功响应-202-5)
     - [响应字段说明](#响应字段说明-3)
     - [错误响应](#错误响应-12)
-  - [15. GET / PATCH /effects — 查询与编辑特效](#15-get--patch-effects--查询与编辑特效)
-    - [15.1 GET /effects — 查询特效库](#151-get-effects--查询特效库)
-    - [15.2 PATCH /effects — 校正任务特效](#152-patch-effects--校正任务特效)
-    - [15.3 GET /effects/demo/{filename} — 获取特效 Demo 视频](#153-get-effectsdemofilename--获取特效-demo-视频)
-  - [16. POST /plan — 生成视频模板](#16-post-plan--生成视频模板)
+  - [14. GET / PATCH /effects — 查询与编辑特效](#14-get--patch-effects--查询与编辑特效)
+    - [14.1 GET /effects — 查询特效库](#141-get-effects--查询特效库)
+    - [14.2 PATCH /effects — 校正任务特效](#142-patch-effects--校正任务特效)
+    - [14.3 GET /effects/demo/{filename} — 获取特效 Demo 视频](#143-get-effectsdemofilename--获取特效-demo-视频)
+  - [15. POST /plan — 生成视频模板](#15-post-plan--生成视频模板)
     - [请求参数](#请求参数-10)
     - [请求示例](#请求示例-11)
     - [成功响应 (202)](#成功响应-202-6)
     - [通过 SSE / 轮询获取模板](#通过-sse--轮询获取模板)
     - [错误响应](#错误响应-13)
-  - [17. PATCH /plan/{plan\_id}/slot/{slot\_id} — 填充模板槽位](#17-patch-planplan_idslotslot_id--填充模板槽位)
+  - [16. PATCH /plan/{plan\_id}/slot/{slot\_id} — 填充模板槽位](#16-patch-planplan_idslotslot_id--填充模板槽位)
     - [路径参数](#路径参数-4)
     - [请求参数](#请求参数-11)
     - [响应示例](#响应示例-1)
     - [错误响应](#错误响应-14)
-  - [18. POST /plan/{plan\_id}/generate — 批量 AI 生成槽位内容](#18-post-planplan_idgenerate--批量-ai-生成槽位内容)
+  - [17. POST /plan/{plan\_id}/generate — 批量 AI 生成槽位内容](#17-post-planplan_idgenerate--批量-ai-生成槽位内容)
     - [路径参数](#路径参数-5)
     - [成功响应 (202)](#成功响应-202-7)
     - [通过 SSE / 轮询获取结果](#通过-sse--轮询获取结果)
@@ -493,7 +488,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ### 成功响应 (202)
 
-压缩任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
+压缩任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取结果。
 
 ```json
 {
@@ -504,7 +499,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 }
 ```
 
-任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下结构：
+任务完成后，`GET /task/{task_id}/stream` 返回的 `result` 字段包含以下结构：
 
 ```json
 {
@@ -564,7 +559,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ### 成功响应 (202)
 
-分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
+分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取结果。
 
 ```json
 {
@@ -575,7 +570,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 }
 ```
 
-任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下叙事结构：
+任务完成后，`GET /task/{task_id}/stream` 返回的 `result` 字段包含以下叙事结构：
 
 ```json
 {
@@ -682,7 +677,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | HTTP 状态码 | data.code | 说明 |
 |---|---|---|
 | 500 | `FILE_MISSING` | 数据库记录存在但磁盘文件已丢失 |
-| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 GET /task/{task_id} 查询 status: "failed" 获取详情） |
+| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 `GET /task/{task_id}/stream` 查询 `status: "failed"` 获取详情） |
 
 ---
 
@@ -712,7 +707,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 
 ### 成功响应 (202)
 
-分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
+分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取结果。
 
 ```json
 {
@@ -723,7 +718,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 }
 ```
 
-任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下视觉分析结果：
+任务完成后，`GET /task/{task_id}/stream` 返回的 `result` 字段包含以下视觉分析结果：
 
 ```json
 {
@@ -845,118 +840,11 @@ curl -X POST http://127.0.0.1:8000/upload \
 | HTTP 状态码 | data.code | 说明 |
 |---|---|---|
 | 500 | `FILE_MISSING` | 数据库记录存在但磁盘文件已丢失 |
-| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 GET /task/{task_id} 查询 status: "failed" 获取详情） |
+| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 `GET /task/{task_id}/stream` 查询 `status: "failed"` 获取详情） |
 
 ---
 
-## 8. GET /task/{task_id} — 查询异步任务状态（轮询）
-
-查询由 `/compress`、`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`、`/split`、`/render` 或 `/plan/{plan_id}/generate` 提交的异步任务的当前状态和结果。
-
-> **推荐使用 SSE**：`GET /task/{task_id}/stream` 提供实时推送，无需轮询。此端点在客户端不支持 SSE 时作为降级回退使用。
-
-| 属性 | 值 |
-|---|---|
-| **方法** | `GET` |
-| **认证** | 需要（Bearer Token） |
-| **Content-Type** | —（无请求体） |
-
-### 路径参数
-
-| 参数 | 类型 | 必填 | 说明 |
-|---|---|---|---|
-| `task_id` | string | **是** | 任务 ID（由发起接口返回） |
-
-### 成功响应 (200)
-
-**任务运行中：**
-
-```json
-{
-  "status": "success",
-  "data": {
-    "task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
-    "type": "analyze-script",
-    "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "status": "running",
-    "created_at": "2025-01-01T12:00:00+00:00"
-  }
-}
-```
-
-**任务已完成：**
-
-```json
-{
-  "status": "success",
-  "data": {
-    "task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
-    "type": "analyze-script",
-    "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "status": "completed",
-    "created_at": "2025-01-01T12:00:00+00:00",
-    "result": { ... }
-  }
-}
-```
-
-**任务失败：**
-
-```json
-{
-  "status": "success",
-  "data": {
-    "task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
-    "type": "compress",
-    "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "status": "failed",
-    "created_at": "2025-01-01T12:00:00+00:00",
-    "error": "ffmpeg exited with code 1: ..."
-  }
-}
-```
-
-**任务已取消：**
-
-```json
-{
-  "status": "success",
-  "data": {
-    "task_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
-    "type": "compress",
-    "resource_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "status": "cancelled",
-    "created_at": "2025-01-01T12:00:00+00:00"
-  }
-}
-```
-
-### 响应字段说明
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `task_id` | string | 任务唯一标识 |
-| `type` | string | 任务类型：`compress` / `analyze-script` / `analyze-visual` / `analyze-audio` / `analyze-effect` / `split` / `plan` / `slot-generation` / `render` |
-| `resource_id` | string | 关联的资源 ID（如 asset_id） |
-| `status` | string | 任务状态：`running` / `completed` / `failed` / `cancelled` |
-| `created_at` | string | 任务创建时间（ISO 8601） |
-| `result` | any | （仅 `completed`）任务执行结果 |
-| `error` | string | （仅 `failed`）错误描述 |
-
-### 错误响应
-
-| HTTP 状态码 | message | 说明 |
-|---|---|---|
-| 401 | `未提供认证令牌` | 请求头缺少 Authorization |
-| 401 | `令牌已过期或无效` | JWT 解码失败 |
-| 401 | `令牌格式无效` | JWT 缺少 user_id |
-| 401 | `用户不存在或已注销` | 令牌对应的用户已被删除 |
-| 403 | `无权访问该任务` | 试图查询其他用户的任务 |
-| 404 | `任务 xxx 不存在` | task_id 不在注册表中 |
-
----
-
-## 9. GET /task/{task_id}/stream — SSE 实时推送任务状态（推荐）
+## 8. GET /task/{task_id}/stream — SSE 实时推送任务状态（推荐）
 
 使用 **Server-Sent Events (SSE)** 实时订阅任务状态变更，无需反复轮询。连接建立后立即推送当前状态；若任务仍在运行，期间每 15 秒发送一次 keepalive 注释保持连接；任务终止时推送最终状态后自动关闭连接。
 
@@ -967,7 +855,7 @@ curl -X POST http://127.0.0.1:8000/upload \
 | **Content-Type** | —（无请求体） |
 | **响应类型** | `text/event-stream`（SSE 流式推送） |
 
-> **推荐**：此端点比 `GET /task/{task_id}` 轮询更高效。仅在客户端不支持 SSE 时使用轮询端点作为降级回退。
+> **推荐**：此端点比轮询更高效。
 
 ### 路径参数
 
@@ -1040,9 +928,9 @@ data: {"task_id":"dddddddd-...","type":"analyze-script","resource_id":"a1b2...",
 
 ---
 
-## 10. POST /task/{task_id}/cancel — 取消异步任务
+## 9. POST /task/{task_id}/cancel — 取消异步任务
 
-取消一个正在执行的异步任务。取消后通过 `GET /task/{task_id}` 查询将返回 `status: "cancelled"`。
+取消一个正在执行的异步任务。取消后通过 `GET /task/{task_id}/stream` 查询将返回 `status: "cancelled"`。
 
 | 属性 | 值 |
 |---|---|
@@ -1084,7 +972,7 @@ curl -X POST http://127.0.0.1:8000/task/dddddddd-dddd-dddd-dddd-dddddddddddd/can
 | 404 | `任务 xxx 不存在` | task_id 不在注册表中 |
 ---
 
-## 11. POST /analyze-audio — 异步音频分析
+## 10. POST /analyze-audio — 异步音频分析
 
 对已上传的视频进行音频分析：提取背景音乐（BGM）并使用 librosa 一次性提取全局音频特征（BPM、节拍时间点、能量曲线等）。采用与 `/compress`、`/analyze-script`、`/analyze-visual` 一致的异步任务模式。
 
@@ -1113,7 +1001,7 @@ curl -X POST http://127.0.0.1:8000/analyze-audio \
 
 ### 成功响应 (202)
 
-分析任务已提交，通过 `GET /task/{task_id}` 轮询或 `GET /task/{task_id}/stream` (SSE) 获取最终结果。
+分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取最终结果。
 
 ```json
 {
@@ -1131,7 +1019,7 @@ curl -X POST http://127.0.0.1:8000/analyze-audio \
 与其他分析接口（`/analyze-script`、`/analyze-visual` 等）一致，通过统一的任务接口获取结果：
 
 ```
-GET /task/{task_id}
+GET /task/{task_id}/stream
 ```
 
 或通过 SSE 获取完成通知：
@@ -1230,11 +1118,11 @@ poll();
 | 403 | `无权访问该素材` | 素材不属于当前用户 |
 | 500 | `源文件丢失` | 数据库记录存在但磁盘文件已丢失 |
 
-若分析开始后发生运行时错误，任务状态变为 `failed`，通过 `GET /task/{task_id}` 的 `error` 字段获取详情。
+若分析开始后发生运行时错误，任务状态变为 `failed`，通过 `GET /task/{task_id}/stream` 的 `error` 字段获取详情。
 
 ---
 
-## 12. GET /files/{asset_id} — 访问素材文件
+## 11. GET /files/{asset_id} — 访问素材文件
 
 通过 `asset_id` 直接访问已上传的素材文件。服务端自动校验归属权限，返回文件二进制流。
 
@@ -1298,7 +1186,7 @@ curl "http://127.0.0.1:8000/files/d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1" \
 
 ---
 
-## 13. POST /split — 视频切割
+## 12. POST /split — 视频切割
 
 对已上传的视频进行场景切分，支持两种检测方式：基于 `scenedetect` 的程序化检测（默认）或基于多模态 LLM 的语义切割。切割后的每个片段保存为独立 Asset，通过 `/files/{asset_id}` 访问。
 
@@ -1350,7 +1238,7 @@ curl -X POST http://127.0.0.1:8000/split \
 
 ### 成功响应 (202)
 
-切割任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
+切割任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取结果。
 
 ```json
 {
@@ -1363,7 +1251,7 @@ curl -X POST http://127.0.0.1:8000/split \
 
 ### 任务结果结构
 
-任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下结构：
+任务完成后，`GET /task/{task_id}/stream` 返回的 `result` 字段包含以下结构：
 
 ```json
 {
@@ -1436,7 +1324,7 @@ curl -X POST http://127.0.0.1:8000/split \
 
 ---
 
-## 14. POST /analyze-effect — 视频特效分析
+## 13. POST /analyze-effect — 视频特效分析
 
 使用 AI 多模态模型分析视频中包含的 UI/动效设计视觉特效，匹配内置特效库识别特效类型。
 
@@ -1463,7 +1351,7 @@ curl -X POST http://127.0.0.1:8000/analyze-effect \
 
 ### 成功响应 (202)
 
-分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 或 `GET /task/{task_id}` 轮询获取结果。
+分析任务已提交，通过 `GET /task/{task_id}/stream` (SSE) 获取结果。
 
 ```json
 {
@@ -1474,7 +1362,7 @@ curl -X POST http://127.0.0.1:8000/analyze-effect \
 }
 ```
 
-任务完成后，`GET /task/{task_id}` 返回的 `result` 字段包含以下特效分析结果：
+任务完成后，`GET /task/{task_id}/stream` 返回的 `result` 字段包含以下特效分析结果：
 
 ```json
 {
@@ -1529,13 +1417,13 @@ curl -X POST http://127.0.0.1:8000/analyze-effect \
 | HTTP 状态码 | data.code | 说明 |
 |---|---|---|
 | 500 | `FILE_MISSING` | 数据库记录存在但磁盘文件已丢失 |
-| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 `GET /task/{task_id}` 查询 `status: "failed"` 获取详情） |
+| 500 | `EXTRACT_FAILED` | AI 模型调用失败（通过 `GET /task/{task_id}/stream` 查询 `status: "failed"` 获取详情） |
 
 ---
 
-## 15. GET / PATCH /effects — 查询与编辑特效
+## 14. GET / PATCH /effects — 查询与编辑特效
 
-### 15.1 GET /effects — 查询特效库
+### 14.1 GET /effects — 查询特效库
 
 获取所有可用的视觉特效组件列表，支持模糊搜索。
 
@@ -1602,7 +1490,7 @@ curl "http://127.0.0.1:8000/effects" \
 | 401 | `未提供认证令牌` | 请求头缺少 Authorization |
 | 401 | `令牌已过期或无效` | JWT 解码失败 |
 
-### 15.2 PATCH /effects — 校正任务特效
+### 14.2 PATCH /effects — 校正任务特效
 
 修改已完成 `/analyze-effect` 任务的 effects 列表。前端在查看 AI 分析结果后可删除误判或补充遗漏的特效，修正后的列表会被 `/plan` 端点消费。
 
@@ -1664,9 +1552,9 @@ curl -X PATCH http://127.0.0.1:8000/effects \
 | 400 | `任务类型为 xxx，仅 analyze-effect 可修改 effects` | task_id 对应的不是特效分析任务 |
 | 400 | `任务状态为 xxx，仅 completed 可修改 effects` | 任务尚未完成或已失败 |
 
-> 其余认证/权限错误与 `GET /task/{task_id}` 一致。
+> 其余认证/权限错误与 `GET /task/{task_id}/stream` 一致。
 
-### 15.3 GET /effects/demo/{filename} — 获取特效 Demo 视频
+### 14.3 GET /effects/demo/{filename} — 获取特效 Demo 视频
 
 获取特效组件的预渲染演示视频。**公开访问，无需认证。**
 
@@ -1676,7 +1564,7 @@ curl -X PATCH http://127.0.0.1:8000/effects \
 | **认证** | 不需要 |
 | **响应类型** | `video/mp4` |
 
-> **数据来源**：Demo 视频由 `effects-renderer` 项目预渲染生成，存放在 `effects-renderer/out/` 目录下。文件名采用特效名称的 kebab-case 形式（如 `typewriter.mp4`、`frosted-glass-wipe.mp4`）。前端通过 `GET /effects` 获取 `demo_path` 字段后拼接此 URL 即可访问。
+> **数据来源**：Demo 视频由 `effects-renderer` 项目预渲染生成，存放在 `backend/storage/effects/` 目录下。文件名采用特效名称的 kebab-case 形式（如 `typewriter.mp4`、`frosted-glass-wipe.mp4`）。前端通过 `GET /effects` 获取 `demo_path` 字段后拼接此 URL 即可访问。
 
 #### 路径参数
 
@@ -1709,7 +1597,7 @@ curl "http://127.0.0.1:8000/effects/demo/typewriter.mp4" -o demo.mp4
 
 ---
 
-## 16. POST /plan — 生成视频模板
+## 15. POST /plan — 生成视频模板
 
 基于已完成的分析任务（/analyze-script、/analyze-visual 等），使用 LLM 将参考视频的叙事结构迁移到新的用户主题上，生成一个包含 segments 和 slots 的视频模板。
 
@@ -1799,7 +1687,7 @@ curl -X POST http://127.0.0.1:8000/plan \
 }
 ```
 
-> **与任务架构一致**：`plan_id == task_id`。前端通过 `GET /task/{task_id}` 或 SSE 即可获取完整模板，无需额外请求。字段说明同下方 PATCH 接口的模板结构。
+> **与任务架构一致**：`plan_id == task_id`。前端通过 `GET /task/{task_id}/stream` (SSE) 即可获取完整模板，无需额外请求。字段说明同下方 PATCH 接口的模板结构。
 
 ### 错误响应
 
@@ -1813,7 +1701,7 @@ curl -X POST http://127.0.0.1:8000/plan \
 
 ---
 
-## 17. PATCH /plan/{plan_id}/slot/{slot_id} — 填充模板槽位
+## 16. PATCH /plan/{plan_id}/slot/{slot_id} — 填充模板槽位
 
 为模板中的指定 slot 填充内容。支持三种方式：
 - **user_upload**：上传已有的文件素材（需提供 asset_id），slot 状态变为 `filled`
@@ -1929,7 +1817,7 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 
 ---
 
-## 18. POST /plan/{plan_id}/generate — 批量 AI 生成槽位内容
+## 17. POST /plan/{plan_id}/generate — 批量 AI 生成槽位内容
 
 将模板中所有 `status="pending"` 的文本类槽位（visual_text / narration）一次性批量生成。LLM 会拥有全部 segment 的上下文，确保生成的文案在整条视频中叙事连贯、语气统一。
 
@@ -1964,23 +1852,33 @@ curl -X PATCH http://127.0.0.1:8000/plan/iiiiiiii-iiii-iiii-iiii-iiiiiiiiiiii/sl
 
 ```json
 {
-  "generated": 3
+  "generated_slots": [
+    {"slot_id": "seg0_visual_text", "value": "为什么你的沟通总被无视？"},
+    {"slot_id": "seg1_visual_text", "value": "原因很简单..."},
+    {"slot_id": "seg0_narration", "value": "你有没有想过..."}
+  ]
 }
 ```
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `generated` | int | 成功生成的槽位数量 |
+| `generated_slots` | array | 成功生成的槽位列表，每个元素包含 `slot_id` 和 `value` |
+| `generated_slots[].slot_id` | string | 对应 slot 的唯一标识 |
+| `generated_slots[].value` | string | LLM 生成的文本内容 |
+
+> **提示**：前端可通过 `generated_slots.length` 获取生成数量。
+
+若无 pending 槽位，返回 `{"generated_slots": []}`。
 
 生成后的 slot 内容已直接写入原 plan 模板中。通过 `GET /task/{plan_id}/stream` 重新获取模板即可看到更新后的 slot 值（status 变为 `filled`，fill_method 变为 `ai_generate`）。
 
 ### 生成逻辑
 
 1. 忽略已填（`filled`）和未标记（`empty`）的 slot，只处理 `status="pending"` 的 `visual_text` 和 `narration`
-2. 若没有 pending 的文本 slot → 返回 `{"generated": 0}`
+2. 若没有 pending 的文本 slot → 返回 `{"generated_slots": []}`
 3. 将完整模板结构 + 用户 brief + 已填 slot 的值作为上下文传给 LLM
 4. LLM 一次调用生成所有 pending slot 的文本内容
-5. 写回模板，通过 `GET /task/{plan_id}` 可获取更新后的模板
+5. 写回模板，通过 `GET /task/{plan_id}/stream` 可获取更新后的模板
 
 ### 错误响应
 
@@ -2080,7 +1978,7 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
 
 ### 任务结果结构
 
-任务完成后，`GET /task/{task_id}` 返回的 `result` 字段：
+任务完成后，`GET /task/{task_id}/stream` 返回的 `result` 字段：
 
 ```json
 {
@@ -2129,7 +2027,7 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
 | 403 | `无权访问该计划` | 模板不属于当前用户 |
 | 404 | `计划 xxx 不存在` | plan_id 不在注册表中 |
 
-**运行时错误**（通过 `GET /task/{task_id}` 的 `status: "failed"` 和 `error` 字段返回）：
+**运行时错误**（通过 `GET /task/{task_id}/stream` 的 `status: "failed"` 和 `error` 字段返回）：
 
 | 场景 | error 内容 |
 |---|---|
@@ -2205,7 +2103,7 @@ data: {"task_id":"llllllll-...","status":"completed","result":{...}}
 
 ### 概述
 
-视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`)、视频切割 (`/split`)、模板生成 (`/plan`) 和视频渲染 (`/render`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端可通过 **SSE 实时推送**（推荐）或**轮询**获取进度和结果。
+视频压缩 (`/compress`)、AI 分析 (`/analyze-script`、`/analyze-visual`、`/analyze-audio`、`/analyze-effect`)、视频切割 (`/split`)、模板生成 (`/plan`) 和视频渲染 (`/render`) 是长时异步操作。这些端点采用 **fire-and-forget** 模式：发起接口立即返回 `task_id`，客户端通过 **SSE 实时推送**获取进度和结果。
 
 ### 工作流程
 
@@ -2218,11 +2116,12 @@ POST /analyze-effect → 202 { task_id }                    ← 立即返回
 POST /split          → 202 { task_id }                    ← 立即返回
 POST /plan           → 202 { task_id }                    ← 立即返回
 POST /render          → 202 { task_id }                    ← 立即返回
-                     → 连接 GET /task/{id}/stream (SSE)   ← 推荐：实时推送
-GET  /task/{id}      → 200 { status: "running" }           ← 轮询回退
-GET  /task/{id}      → 200 { status: "completed", ... }    ← 结果就绪
+                     → 连接 GET /task/{id}/stream (SSE)   ← 实时推送状态
+                     ...（SSE 心跳保持连接）
+                     → 最终帧 { task_id, status: "completed", result: {...} }
+                     → 最终帧 { task_id, status: "failed", error: "..." }
 POST /task/{id}/cancel → 200 "已发起取消"                   ← 中途取消
-GET  /task/{id}      → 200 { status: "cancelled" }
+                     → 最终帧 { task_id, status: "cancelled" }
 ```
 
 ### 任务状态
@@ -2249,4 +2148,4 @@ GET  /task/{id}      → 200 { status: "cancelled" }
 - 任务记录在服务内存中持久保存，服务重启后丢失
 - 取消操作是尽力而为的——AI 模型可能已经消耗了部分 token
 - **推荐使用 SSE**：`GET /task/{task_id}/stream` 提供实时推送，连接后立即获取当前状态，任务完成时自动推送结果，无需反复轮询
-- 建议客户端以 1-2 秒间隔轮询 `GET /task/{task_id}`（仅在不支持 SSE 时使用）
+- 建议客户端通过 `GET /task/{task_id}/stream` (SSE) 订阅任务状态，无需轮询

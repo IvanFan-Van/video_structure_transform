@@ -458,24 +458,26 @@ async def run_slot_generation(  # noqa: C901
 
         generated_count = 0
         img_warnings: list[str] = []
+        output = None  # type: ignore
 
         if not pending_text and not pending_image:
             task_registry.set_result(
-                task_id, {"generated": 0, "message": "没有待生成的槽位"}
+                task_id, {"generated_slots": [], "message": "没有待生成的槽位"}
             )
-            return
 
         if pending_text:
             user_prompt = _build_slot_gen_prompt(template)
 
             instructor_client = instructor.from_openai(async_client)
-            output: SlotGenerationOutput = await instructor_client.chat.completions.create(
-                model=os.getenv("MODEL"),  # type: ignore
-                response_model=SlotGenerationOutput,
-                messages=[
-                    {"role": "system", "content": SLOT_GENERATION_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
+            output: SlotGenerationOutput = (
+                await instructor_client.chat.completions.create(
+                    model=os.getenv("MODEL"),  # type: ignore
+                    response_model=SlotGenerationOutput,
+                    messages=[
+                        {"role": "system", "content": SLOT_GENERATION_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                )
             )
 
             gen_map = {s.slot_id: s.value for s in output.generated_slots}
@@ -497,6 +499,12 @@ async def run_slot_generation(  # noqa: C901
         result: dict = {"generated": generated_count}
         if img_warnings:
             result["warnings"] = img_warnings
+
+        plan_task.result = template.model_dump()
+        if output is not None:
+            result["generated_slots"] = [
+                {"slot_id": s.slot_id, "value": s.value} for s in output.generated_slots
+            ]
         task_registry.set_result(task_id, result)
 
     except asyncio.CancelledError:

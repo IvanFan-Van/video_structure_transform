@@ -316,8 +316,13 @@ export interface SlotFillResult {
     value: string | null;
 }
 
+export interface GeneratedSlot {
+    slot_id: string;
+    value: string;
+}
+
 export interface GenerateResult {
-    generated: number;
+    generated_slots: GeneratedSlot[];
 }
 
 export interface StyleOption {
