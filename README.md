@@ -738,7 +738,7 @@ pnpm run render:props
 ```bash
 # 终端 1: 启动后端
 cd backend
-uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 # 终端 2: 启动前端
 cd frontend
