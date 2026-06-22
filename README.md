@@ -198,7 +198,6 @@
 | 5    | **计划生成**                                                 | 脚本分析 + 视觉分析 + 用户 brief | `PlanOutput`             | 生成 VideoTemplate：segments（按叙事阶段）、slots（visual_text/narration/background_image）、constraints（位置/动效/镜头） |
 | 6    | **槽位内容生成**                                             | 模板上下文 + 用户 brief          | `SlotGenerationOutput`   | 批量生成 pending 槽位的具体 visual_text 和 narration 内容    |
 | 7    | **旁白清洗**                                                 | 原始 ASR 文本                    | 纯文本                   | 英文缩写拆字母、数字汉字化、去除口语填充词（已定义，当前未接入管线） |
-| 8~11 | **品牌设计文档生成**（DESIGN.md / SCRIPT.md / STORYBOARD.md / Composition HTML） | 视频分析数据                     | Markdown / HTML          | 面向 Remotion 渲染的品牌设计规范文档生成（已定义，当前未接入管线） |
 
 **Prompt 设计亮点**：
 
