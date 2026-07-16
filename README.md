@@ -10,6 +10,7 @@
 >
 > **演示视频**：(https://drive.google.com/file/d/1_UVm80NZq5OzuHRALEXAeZHByeYhQ0KA/view?usp=sharing)
 
+
 ---
 
 ## 目录
@@ -172,7 +173,7 @@
                             │  └────────────────────────┘  │
                             │              │               │
                             │  ┌───────────▼────────────┐  │
-                            │  │  存储层                 │  │
+                            │  │  repository                 │  │
                             │  │  ├─ SQLite (database)  │  │
                             │  │  └─ storage/ (文件)    │  │
                             │  └────────────────────────┘  │
@@ -618,37 +619,10 @@ video_structure_transform/
 │       ├── package.json
 │       └── tsconfig.json
 │
-├── effects-renderer/                 # Remotion 特效展示/组合渲染器
-│   ├── src/
-│   │   ├── index.ts                  # Remotion 入口
-│   │   ├── Root.tsx                  # 双 Composition (render + compose)
-│   │   ├── VideoComposer.tsx         # 全场景组合编排器
-│   │   ├── SceneRenderer.tsx         # 场景渲染器
-│   │   ├── BackgroundRenderer.tsx    # 6 种背景类型
-│   │   ├── OverlayRenderer.tsx       # 特效/图片/视频叠加
-│   │   ├── DynamicRenderer.tsx       # 单特效渲染模式
-│   │   ├── effects/
-│   │   │   └── index.ts              # EFFECT_REGISTRY + 元数据
-│   │   ├── types/
-│   │   │   └── composition.ts        # VideoProject JSON Schema
-│   │   ├── lib/
-│   │   │   └── timeline.ts           # 时间线预计算
-│   │   └── components/
-│   │       └── remocn/               # 59 个特效组件 (共享实现)
-│   ├── scripts/
-│   │   ├── render-all.ts             # 批量渲染 59 个特效 Demo
-│   │   └── render-compose.ts         # 组合渲染 CLI
-│   ├── compose-example.json          # 示例组合项目
-│   ├── demo-comprehensive.json       # 综合演示 (7 场景)
-│   ├── render_commands.jsonl         # 59 个特效渲染命令
-│   ├── package.json
-│   └── remotion.config.ts
 │
-├── 7d5e4d15-7026-414a-bacf-1ffa1732d32b.mp4  # 产出视频示例
 ├── README.md
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
-└── PROJECT_DOCS.md                   # 本文档
 ```
 
 ### 5.2 环境要求
